@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# Testing artifacts
+.pytest_cache/
+
+# Environment variables / secrets
+.env
+.env.*
+*.pem
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Misc
+.DS_Store
