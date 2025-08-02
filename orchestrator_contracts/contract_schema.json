@@ -1,0 +1,7 @@
+{
+  "module": "analytics_engine",
+  "agent": "data_collector",
+  "allowed_files": ["config.yaml", "data/input.csv"],
+  "required_endpoints": ["GET /health", "POST /execute"],
+  "status": "draft"
+}
