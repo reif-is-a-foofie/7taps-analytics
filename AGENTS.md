@@ -1,3 +1,8 @@
+# Agent Guidelines
+
+- Run `pytest` after making changes.
+- When creating or modifying orchestrator contracts, follow the schema in `orchestrator_contracts/contract_schema.json`.
+
 # AGENTS.md
 
 ## Overview
@@ -165,4 +170,3 @@ The orchestrator is **responsible for assigning modules, generating contracts, a
 * ✅ Every module has **UI or JSON endpoints** for verification
 * ✅ Testing Agent validates every module and blocks merges on failure
 * ✅ CI/CD or orchestrator logs show **full module lifecycle**
-
