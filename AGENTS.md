@@ -1,5 +1,9 @@
 # Agent Guidelines
 
+- **MUST** follow `.cursorrules` for all file boundaries and module sequencing
+- **MUST** read assigned agent MDC file for role definition
+- **NEVER** mark modules as completed (only Orchestrator Agent can do this)
+- **ENFORCE** anti-spec-gaming - never write tests for modules you implement
 - Run `pytest` after making changes.
 - When creating or modifying orchestrator contracts, follow the schema in `orchestrator_contracts/contract_schema.json`.
 
@@ -23,6 +27,7 @@ The orchestrator is **responsible for assigning modules, generating contracts, a
 ## Agents & Responsibilities
 
 ### 1. Orchestrator Agent (Required)
+**Contract File**: `orchestrator_contract.mdc`
 
 * **Role:** Project Manager / Coordinator
 * **Responsibilities:**
@@ -42,6 +47,7 @@ The orchestrator is **responsible for assigning modules, generating contracts, a
 ---
 
 ### 2. Backend Agent
+**Contract File**: `backend_agent.mdc`
 
 * **Owns:**
   * Streaming ETL (`app/etl_streaming.py`)
@@ -68,6 +74,7 @@ The orchestrator is **responsible for assigning modules, generating contracts, a
 ---
 
 ### 3. Job Agent
+**Contract File**: `job_agent.mdc` (to be created)
 
 * **Owns:**
   * Daily reminder job & notification system
@@ -88,6 +95,7 @@ The orchestrator is **responsible for assigning modules, generating contracts, a
 ---
 
 ### 4. UI Agent
+**Contract File**: `ui_agent.mdc`
 
 * **Owns:**
   * Admin panel and JSON UI endpoints
@@ -110,6 +118,7 @@ The orchestrator is **responsible for assigning modules, generating contracts, a
 ---
 
 ### 5. Testing Agent
+**Contract File**: `testing_agent.mdc`
 
 * **Owns:**
   * All `tests/*` modules
@@ -132,17 +141,28 @@ The orchestrator is **responsible for assigning modules, generating contracts, a
 1. **Immutable Plan:**
    * All modules and file ownership are defined in `plan.md`
    * No new files or directories without Orchestrator approval
+   * **MUST** follow `.cursorrules` for all file boundaries
+
 2. **Sequential by Module, Parallel by Agent:**
    * Agents may work **in parallel** if their modules do not conflict
    * Orchestrator enforces dependency order
-3. **JSON Endpoint Requirement:**
+
+3. **Anti-Spec-Gaming Enforcement:**
+   * **NEVER** let implementation agents write tests for their own modules
+   * **NEVER** let implementation agents mark modules as completed
+   * **REQUIRE** independent Testing Agent validation
+   * **ENFORCE** spec-based testing, not implementation-based testing
+
+4. **JSON Endpoint Requirement:**
    * Every backend process must have a JSON endpoint or UI page for verification
    * Example: `/ui/test-etl-streaming` shows last processed statement
-4. **Read-Only DB Terminal:**
+
+5. **Read-Only DB Terminal:**
    * `/ui/db-terminal` allows whitelisted queries only
    * No destructive operations (DROP/DELETE/UPDATE)
-5. **CI/CD Flow:**
-   * Orchestrator assigns → Agent implements → Testing Agent validates → Merge
+
+6. **Honest CI/CD Flow:**
+   * Orchestrator assigns → Agent implements → **Testing Agent validates independently** → Orchestrator reviews → Merge
 
 ---
 

@@ -1,0 +1,64 @@
+{
+  "module": "b.04_orchestrator_mcp",
+  "agent": "orchestrator_agent",
+  "allowed_files": ["app/api/orchestrator.py", "tests/test_orchestrator.py"],
+  "required_endpoints": ["/api/debug/progress", "/api/debug/test-report", "/api/debug/active-agents"],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2024-01-01T00:00:00Z",
+    "estimated_duration": "2h",
+    "dependencies": ["b.03"],
+    "subtasks": [
+      {
+        "id": "b.04.1",
+        "description": "Extend orchestrator APIs to log active MCP calls",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["app/api/orchestrator.py"]
+      },
+      {
+        "id": "b.04.2",
+        "description": "Implement /api/debug/progress endpoint",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["app/api/orchestrator.py"]
+      },
+      {
+        "id": "b.04.3",
+        "description": "Implement /api/debug/test-report endpoint",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["app/api/orchestrator.py"]
+      },
+      {
+        "id": "b.04.4",
+        "description": "Implement /api/debug/active-agents endpoint",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["app/api/orchestrator.py"]
+      },
+      {
+        "id": "b.04.5",
+        "description": "Create test suite for orchestrator APIs",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["tests/test_orchestrator.py"]
+      }
+    ],
+    "completion_criteria": [
+      "Orchestrator APIs log active MCP calls and test results",
+      "/api/debug/progress endpoint shows module assignment and test results",
+      "/api/debug/test-report endpoint provides test validation results",
+      "/api/debug/active-agents endpoint lists current active modules/agents",
+      "pytest tests/test_orchestrator.py passes"
+    ],
+    "blocking_issues": ["Waiting for b.03 completion"],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "orchestrator_agent",
+    "handoff_notes": "Orchestrator MCP integration for tracking agent progress and test results",
+    "required_approval": false
+  }
+} 

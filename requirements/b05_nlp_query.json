@@ -1,0 +1,16 @@
+{
+  "module": "b.05_nlp_query",
+  "requirements": [
+    "Translate natural language to SQL using LangChain/LlamaIndex",
+    "Use MCP DB for database operations",
+    "Provide /ui/nlp-query endpoint",
+    "Handle various query types (cohort, completion, analytics)",
+    "Return structured JSON responses"
+  ],
+  "test_criteria": [
+    "Must translate English to SQL correctly",
+    "Must use MCP DB for database access",
+    "Must provide functional endpoint",
+    "Must handle query errors gracefully"
+  ]
+} 

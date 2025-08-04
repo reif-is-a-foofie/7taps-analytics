@@ -1,0 +1,17 @@
+{
+  "module": "b.04_orchestrator_mcp",
+  "requirements": [
+    "Extend orchestrator APIs to log active MCP calls",
+    "Implement /api/debug/progress endpoint",
+    "Implement /api/debug/test-report endpoint", 
+    "Implement /api/debug/active-agents endpoint",
+    "Track module assignment and test results"
+  ],
+  "test_criteria": [
+    "Must log active MCP calls and test results",
+    "Must provide progress endpoint with module status",
+    "Must provide test report endpoint",
+    "Must provide active agents endpoint",
+    "Must handle contract updates correctly"
+  ]
+} 

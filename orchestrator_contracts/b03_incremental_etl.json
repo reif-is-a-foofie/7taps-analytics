@@ -1,0 +1,57 @@
+{
+  "module": "b.03_incremental_etl",
+  "agent": "backend_agent",
+  "allowed_files": ["app/etl_incremental.py"],
+  "required_endpoints": ["/ui/test-etl-incremental"],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2024-01-01T00:00:00Z",
+    "estimated_duration": "2h",
+    "dependencies": ["b.02"],
+    "subtasks": [
+      {
+        "id": "b.03.1",
+        "description": "Implement periodic catch-up ETL using MCP Python",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/etl_incremental.py"]
+      },
+      {
+        "id": "b.03.2",
+        "description": "Add scheduling mechanism for incremental processing",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/etl_incremental.py"]
+      },
+      {
+        "id": "b.03.3",
+        "description": "Expose /ui/test-etl-incremental endpoint",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/api/etl.py"]
+      },
+      {
+        "id": "b.03.4",
+        "description": "Create test suite for incremental ETL",
+        "status": "removed_self_written_tests",
+        "agent": "backend_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Periodic catch-up ETL processes missed statements",
+      "Scheduling mechanism works correctly",
+      "/ui/test-etl-incremental endpoint returns status",
+      "All missing functions added: get_missed_statements, mcp_python_client, mcp_db_client, process_missed_statements, process_batch_mcp_python, write_batch_to_mcp_db, scheduler, retry_mechanism, schedule_incremental_etl, retry_failed_batch",
+      "Implementation complete - awaiting Testing Agent validation"
+    ],
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "backend_agent",
+    "handoff_notes": "Incremental ETL job for catching up missed statements. Depends on b.02 streaming ETL completion.",
+    "required_approval": false
+  }
+} 

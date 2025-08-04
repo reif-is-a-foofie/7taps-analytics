@@ -1,0 +1,64 @@
+{
+  "module": "b.08_deployment_streaming",
+  "agent": "backend_agent",
+  "allowed_files": ["docker-compose.yml", "Dockerfile", "requirements.txt"],
+  "required_endpoints": ["/health", "/api/debug/deployment-status"],
+  "status": "assigned",
+  "task_tracking": {
+    "assigned_at": "2024-08-04T15:00:00Z",
+    "estimated_duration": "2h",
+    "dependencies": ["b.06", "b.07"],
+    "subtasks": [
+      {
+        "id": "b.08.1",
+        "description": "Update docker-compose.yml with all MCP servers",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["docker-compose.yml"]
+      },
+      {
+        "id": "b.08.2",
+        "description": "Optimize Dockerfile for production deployment",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["Dockerfile"]
+      },
+      {
+        "id": "b.08.3",
+        "description": "Add deployment status endpoint",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["app/api/orchestrator.py"]
+      },
+      {
+        "id": "b.08.4",
+        "description": "Create test suite for deployment",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["tests/test_deployment.py"]
+      }
+    ],
+    "completion_criteria": [
+      "All MCP servers integrated in docker-compose.yml",
+      "Production-optimized Dockerfile",
+      "/api/debug/deployment-status endpoint functional",
+      "pytest tests/test_deployment.py passes",
+      "Independent validation completed"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "status": "pending",
+      "notes": "Requires full docker-compose deployment with all services",
+      "docker_compose_required": true,
+      "test_environment": "docker-compose up with all MCP servers"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "Deployment and streaming infrastructure optimization",
+    "required_approval": false
+  }
+} 

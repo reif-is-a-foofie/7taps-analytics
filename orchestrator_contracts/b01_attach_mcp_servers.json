@@ -1,0 +1,57 @@
+{
+  "module": "b.01_attach_mcp_servers",
+  "agent": "orchestrator_agent",
+  "allowed_files": ["docker-compose.yml"],
+  "required_endpoints": ["/health"],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2024-01-01T00:00:00Z",
+    "estimated_duration": "1h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "b.01.1",
+        "description": "Add Postgres DB MCP service to docker-compose.yml",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["docker-compose.yml"]
+      },
+      {
+        "id": "b.01.2",
+        "description": "Add pydantic-ai/mcp-run-python service",
+        "status": "completed", 
+        "agent": "orchestrator_agent",
+        "files": ["docker-compose.yml"]
+      },
+      {
+        "id": "b.01.3",
+        "description": "Add SQLPad/Superset service",
+        "status": "completed",
+        "agent": "orchestrator_agent", 
+        "files": ["docker-compose.yml"]
+      },
+      {
+        "id": "b.01.4",
+        "description": "Verify each MCP server responds to /health",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Postgres DB MCP server added to docker-compose.yml",
+      "pydantic-ai/mcp-run-python service added",
+      "SQLPad/Superset service added", 
+      "All MCP servers respond to /health endpoint",
+      "docker compose build succeeds"
+    ],
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "orchestrator_agent",
+    "handoff_notes": "Initial MCP server setup required for all subsequent modules",
+    "required_approval": false
+  }
+} 

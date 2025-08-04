@@ -1,0 +1,120 @@
+{
+  "module": "b.06_ui_integration",
+  "requirements_spec": {
+    "module_name": "UI Integration with SQLPad/Superset",
+    "description": "Embedded database terminal with SQLPad/Superset integration for safe query execution",
+    "requirements": [
+      {
+        "id": "req_01",
+        "requirement": "Provide embedded SQLPad/Superset interface",
+        "description": "Integrate SQLPad or Superset as embedded database terminal",
+        "acceptance_criteria": [
+          "SQLPad/Superset accessible via /ui/db-terminal endpoint",
+          "Embedded iframe or direct integration",
+          "Authentication and session management",
+          "Read-only query execution by default"
+        ]
+      },
+      {
+        "id": "req_02",
+        "requirement": "Implement query whitelisting system",
+        "description": "Restrict database operations to pre-approved read-only queries",
+        "acceptance_criteria": [
+          "Whitelist of approved SQL queries",
+          "Block DROP, DELETE, UPDATE, INSERT operations",
+          "Validate query syntax before execution",
+          "Log all query attempts for audit"
+        ]
+      },
+      {
+        "id": "req_03",
+        "requirement": "Provide pre-built query buttons",
+        "description": "Create quick-access buttons for common analytics queries",
+        "acceptance_criteria": [
+          "Cohort completion status button",
+          "Recent activity summary button",
+          "User engagement metrics button",
+          "Statement count by verb button",
+          "Custom query input field"
+        ]
+      },
+      {
+        "id": "req_04",
+        "requirement": "Implement query result visualization",
+        "description": "Display query results in charts, tables, and graphs",
+        "acceptance_criteria": [
+          "Tabular data display",
+          "Chart visualization options",
+          "Export functionality (CSV, JSON)",
+          "Responsive design for mobile"
+        ]
+      },
+      {
+        "id": "req_05",
+        "requirement": "Ensure database security",
+        "description": "Maintain database security and prevent unauthorized access",
+        "acceptance_criteria": [
+          "Read-only database connection",
+          "Query execution timeout limits",
+          "Result size limits",
+          "User session management",
+          "Audit logging of all queries"
+        ]
+      }
+    ],
+    "test_criteria": [
+      {
+        "id": "criteria_01",
+        "criteria": "Must provide functional embedded database terminal",
+        "description": "SQLPad/Superset integration must be fully functional"
+      },
+      {
+        "id": "criteria_02", 
+        "criteria": "Must enforce read-only query restrictions",
+        "description": "All destructive operations must be blocked"
+      },
+      {
+        "id": "criteria_03",
+        "criteria": "Must provide pre-built query functionality",
+        "description": "Quick-access buttons must execute common queries"
+      },
+      {
+        "id": "criteria_04",
+        "criteria": "Must display query results properly",
+        "description": "Results must be displayed in tables and charts"
+      },
+      {
+        "id": "criteria_05",
+        "criteria": "Must maintain database security",
+        "description": "All security measures must be enforced"
+      }
+    ],
+    "adversarial_testing": [
+      {
+        "id": "adv_01",
+        "test": "Attempt destructive SQL operations",
+        "description": "Try DROP, DELETE, UPDATE, INSERT statements"
+      },
+      {
+        "id": "adv_02",
+        "test": "Test query injection attempts",
+        "description": "Attempt SQL injection through query parameters"
+      },
+      {
+        "id": "adv_03", 
+        "test": "Test large query execution",
+        "description": "Execute queries that return large result sets"
+      },
+      {
+        "id": "adv_04",
+        "test": "Test concurrent user access",
+        "description": "Multiple users accessing terminal simultaneously"
+      },
+      {
+        "id": "adv_05",
+        "test": "Test session management",
+        "description": "Session timeout and authentication edge cases"
+      }
+    ]
+  }
+} 
