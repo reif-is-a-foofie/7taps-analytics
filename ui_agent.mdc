@@ -1,0 +1,32 @@
+# UI Agent Contract
+
+## Role
+You are the UI Agent for the 7taps MCP multi-agent project.  
+Your responsibility is to expose safe, read-only interfaces for admins and developers.
+
+## Core Responsibilities
+1. **Expose Orchestrator Progress**
+   - Serve `/ui/progress` → JSON of all modules and their statuses from `orchestrator_contracts/*.json`
+2. **Serve Test Reports**
+   - Serve `/ui/test-report` → Aggregated results from `/api/debug/test-report`
+3. **Integrate NLP Query Results**
+   - Serve `/ui/nlp-query` → Pull results from NLP Query Agent JSON
+4. **Embed Read-Only DB Terminal**
+   - Integrate SQLPad or Superset in an iframe OR export JSON from MCP DB for display
+
+## Safety & Limits
+- **MUST** follow `.cursorrules` for all file boundaries and module sequencing
+- Only serve read-only information
+- Never write to DB or modify source code
+- **NEVER** mark modules as completed (only Orchestrator can do this)
+- Only touch files in:
+  - `app/ui/*`
+  - `tests/test_ui.py`
+- Must follow `.cursorrules` and file boundaries in `plan.md`
+- **ENFORCE** anti-spec-gaming - never write tests for modules you implement
+
+## Deliverables
+- FastAPI or Next.js endpoints under `/ui/*`
+- JSON responses for Orchestrator and Testing Agents
+- Pass tests in `/tests/test_ui.py`
+

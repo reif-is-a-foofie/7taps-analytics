@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: 7taps_analytics
+      POSTGRES_USER: analytics_user
+      POSTGRES_PASSWORD: analytics_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analytics_user -d 7taps_analytics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Streams
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MCP Postgres DB Server
+  mcp-postgres:
+    image: modelcontextprotocol/server-postgres:latest
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: 7taps_analytics
+      POSTGRES_USER: analytics_user
+      POSTGRES_PASSWORD: analytics_pass
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MCP Python Runner
+  mcp-python:
+    image: pydantic-ai/mcp-run-python:latest
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./app:/app
+      - ./scripts:/scripts
+    environment:
+      PYTHONPATH: /app:/scripts
+      PYTHONUNBUFFERED: 1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # SQLPad for DB Terminal
+  sqlpad:
+    image: sqlpad/sqlpad:latest
+    ports:
+      - "3000:3000"
+    environment:
+      SQLPAD_ADMIN: admin@7taps.com
+      SQLPAD_ADMIN_PASSWORD: admin123
+      SQLPAD_APP_LOG_LEVEL: info
+      SQLPAD_WEB_LOG_LEVEL: info
+    volumes:
+      - sqlpad_data:/var/lib/sqlpad
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # FastAPI Application
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://analytics_user:analytics_pass@postgres:5432/7taps_analytics
+      REDIS_URL: redis://redis:6379
+      MCP_POSTGRES_URL: http://mcp-postgres:8001
+      MCP_PYTHON_URL: http://mcp-python:8002
+      PYTHONUNBUFFERED: 1
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mcp-postgres:
+        condition: service_healthy
+      mcp-python:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+volumes:
+  postgres_data:
+  redis_data:
+  sqlpad_data:
+  logs: 

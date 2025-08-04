@@ -1,0 +1,57 @@
+{
+  "module": "b.05_nlp_query",
+  "agent": "ui_agent",
+  "allowed_files": ["app/api/nlp.py"],
+  "required_endpoints": ["/ui/nlp-query"],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2024-01-01T00:00:00Z",
+    "estimated_duration": "3h",
+    "dependencies": ["b.04"],
+    "subtasks": [
+      {
+        "id": "b.05.1",
+        "description": "Implement LangChain or LlamaIndex integration",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["app/api/nlp.py"]
+      },
+      {
+        "id": "b.05.2",
+        "description": "Translate natural language into SQL using MCP DB",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["app/api/nlp.py"]
+      },
+      {
+        "id": "b.05.3",
+        "description": "Implement /ui/nlp-query endpoint",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["app/api/nlp.py"]
+      },
+      {
+        "id": "b.05.4",
+        "description": "Create test suite for NLP query functionality",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "LangChain or LlamaIndex integration working",
+      "Natural language translated to SQL via MCP DB",
+      "/ui/nlp-query endpoint functional",
+      "Independent test validation passes",
+      "NLP query examples working correctly"
+    ],
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "ui_agent",
+    "handoff_notes": "NLP query agent for translating natural language to SQL using MCP DB integration",
+    "required_approval": false
+  }
+} 

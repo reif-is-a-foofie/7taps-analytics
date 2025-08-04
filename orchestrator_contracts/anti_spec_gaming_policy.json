@@ -1,0 +1,38 @@
+{
+  "policy": "anti_spec_gaming",
+  "version": "1.0",
+  "enforcement_rules": {
+    "implementation_agents_forbidden": [
+      "Write tests for modules they implement",
+      "Mark modules as completed",
+      "Self-validate their own work",
+      "Create tests that mirror current outputs"
+    ],
+    "orchestrator_required": [
+      "Sole authority to mark modules completed",
+      "Use independent Testing Agent validation",
+      "Verify requirements.json or .mdc spec coverage",
+      "Reject self-validation attempts"
+    ],
+    "testing_agent_required": [
+      "Independent test generation from requirements",
+      "Coverage reports based on spec, not implementation",
+      "No implementation code changes",
+      "Adversarial testing approach"
+    ]
+  },
+  "validation_workflow": {
+    "step_1": "Implementation Agent → awaiting_review with progress summary",
+    "step_2": "Testing Agent → Independent test run + coverage report", 
+    "step_3": "Orchestrator → Review results and spec coverage",
+    "step_4": "Orchestrator → Mark completed only if all requirements met"
+  },
+          "current_violations": [
+           "b.04: Orchestrator Agent self-written test removed - awaiting independent validation"
+        ],
+      "required_fixes": [
+      "Generate independent test for b.04 based on requirements spec",
+      "Validate b.04 with independent test suite",
+      "Complete anti-spec-gaming compliance for all modules"
+    ]
+} 
