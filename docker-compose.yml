@@ -34,12 +34,7 @@ services:
   # MCP Postgres DB Server
   mcp-postgres:
     image: mcp/postgres:latest
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: 7taps_analytics
-      POSTGRES_USER: analytics_user
-      POSTGRES_PASSWORD: analytics_pass
+    command: ["postgresql://analytics_user:analytics_pass@postgres:5432/7taps_analytics"]
     ports:
       - "8001:8001"
     depends_on:
@@ -51,7 +46,22 @@ services:
       timeout: 10s
       retries: 3
 
-
+  # MCP Python Server
+  mcp-python:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp-python
+    ports:
+      - "8002:8002"
+    environment:
+      PYTHONPATH: /app
+    volumes:
+      - ./app:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # SQLPad for DB Terminal
   sqlpad:
@@ -69,7 +79,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -83,7 +93,7 @@ services:
       DATABASE_URL: postgresql://analytics_user:analytics_pass@postgres:5432/7taps_analytics
       REDIS_URL: redis://redis:6379
       MCP_POSTGRES_URL: http://mcp-postgres:8001
-      MCP_PYTHON_URL: http://localhost:8000
+      MCP_PYTHON_URL: http://mcp-python:8002
       PYTHONUNBUFFERED: 1
       LOG_LEVEL: info
     depends_on:
@@ -92,6 +102,8 @@ services:
       redis:
         condition: service_healthy
       mcp-postgres:
+        condition: service_healthy
+      mcp-python:
         condition: service_healthy
 
     volumes:
