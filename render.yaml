@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: 7taps-analytics
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: 7taps-analytics-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: 7taps-analytics-redis
+          property: connectionString
+
+databases:
+  - name: 7taps-analytics-db
+    databaseName: 7taps_analytics
+    user: analytics_user 

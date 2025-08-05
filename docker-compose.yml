@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: analytics_user
       POSTGRES_PASSWORD: analytics_pass
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -33,7 +33,7 @@ services:
 
   # MCP Postgres DB Server
   mcp-postgres:
-    image: modelcontextprotocol/server-postgres:latest
+    image: mcp/postgres:latest
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -51,29 +51,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # MCP Python Runner
-  mcp-python:
-    image: pydantic-ai/mcp-run-python:latest
-    ports:
-      - "8002:8002"
-    volumes:
-      - ./app:/app
-      - ./scripts:/scripts
-    environment:
-      PYTHONPATH: /app:/scripts
-      PYTHONUNBUFFERED: 1
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
+
 
   # SQLPad for DB Terminal
   sqlpad:
@@ -105,7 +83,7 @@ services:
       DATABASE_URL: postgresql://analytics_user:analytics_pass@postgres:5432/7taps_analytics
       REDIS_URL: redis://redis:6379
       MCP_POSTGRES_URL: http://mcp-postgres:8001
-      MCP_PYTHON_URL: http://mcp-python:8002
+      MCP_PYTHON_URL: http://localhost:8000
       PYTHONUNBUFFERED: 1
       LOG_LEVEL: info
     depends_on:
@@ -115,8 +93,7 @@ services:
         condition: service_healthy
       mcp-postgres:
         condition: service_healthy
-      mcp-python:
-        condition: service_healthy
+
     volumes:
       - ./app:/app
       - ./logs:/app/logs
