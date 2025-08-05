@@ -230,31 +230,18 @@ async def receive_7taps_webhook(request: Request):
         if webhook_payload.event_type == "xapi_statement":
             xapi_data = webhook_payload.data
             
-            # Validate xAPI statement
-            try:
-                statement = xAPIStatement(**xapi_data)
-                
-                # Queue to Redis for ETL processing
-                from app.api.xapi import queue_statement_to_redis, get_redis_client
-                redis_client = get_redis_client()
-                message_id = queue_statement_to_redis(statement, redis_client)
-                
-                webhook_stats["successful_requests"] += 1
-                
-                return {
-                    "success": True,
-                    "message": "xAPI statement received and queued",
-                    "message_id": message_id,
-                    "statement_id": statement.id,
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-                
-            except Exception as e:
-                webhook_stats["failed_requests"] += 1
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"Invalid xAPI statement: {str(e)}"
-                )
+            # Log the xAPI statement (simplest milestone)
+            print(f"🎉 FIRST xAPI EVENT RECEIVED: {xapi_data}")
+            
+            webhook_stats["successful_requests"] += 1
+            
+            return {
+                "success": True,
+                "message": "xAPI statement received successfully",
+                "statement_id": xapi_data.get("id", "unknown"),
+                "timestamp": datetime.utcnow().isoformat(),
+                "milestone": "First xAPI webhook event received!"
+            }
         
         # Handle other event types
         webhook_stats["successful_requests"] += 1
