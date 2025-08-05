@@ -49,24 +49,58 @@ class SevenTapsKeyInfo(BaseModel):
     is_valid: bool = Field(..., description="Key validity status")
 
 
+def get_private_key() -> bytes:
+    """Get private key from environment or file."""
+    # Try environment variable first (base64 encoded)
+    private_key_base64 = os.getenv("SEVENTAPS_PRIVATE_KEY_BASE64")
+    if private_key_base64:
+        import base64
+        return base64.b64decode(private_key_base64)
+    
+    # Fallback to file path
+    private_key_path = os.getenv("SEVENTAPS_PRIVATE_KEY_PATH", "keys/7taps_private_key.pem")
+    try:
+        with open(private_key_path, 'rb') as f:
+            return f.read()
+    except FileNotFoundError:
+        raise Exception(f"Private key not found at {private_key_path} and SEVENTAPS_PRIVATE_KEY_BASE64 not set")
+
+
+def get_public_key() -> bytes:
+    """Get public key from environment or file."""
+    # Try environment variable first (base64 encoded)
+    public_key_base64 = os.getenv("SEVENTAPS_PUBLIC_KEY_BASE64")
+    if public_key_base64:
+        import base64
+        return base64.b64decode(public_key_base64)
+    
+    # Fallback to file path
+    public_key_path = os.getenv("SEVENTAPS_PUBLIC_KEY_PATH", "keys/7taps_public_key.pem")
+    try:
+        with open(public_key_path, 'rb') as f:
+            return f.read()
+    except FileNotFoundError:
+        raise Exception(f"Public key not found at {public_key_path} and SEVENTAPS_PUBLIC_KEY_BASE64 not set")
+
+
 def get_private_key_path() -> str:
-    """Get private key path from environment."""
+    """Get private key path from environment (for backward compatibility)."""
     return os.getenv("SEVENTAPS_PRIVATE_KEY_PATH", "keys/7taps_private_key.pem")
 
 
 def get_public_key_path() -> str:
-    """Get public key path from environment."""
+    """Get public key path from environment (for backward compatibility)."""
     return os.getenv("SEVENTAPS_PUBLIC_KEY_PATH", "keys/7taps_public_key.pem")
 
 
-def verify_7taps_signature(payload: bytes, signature: str, public_key_path: str) -> bool:
+def verify_7taps_signature(payload: bytes, signature: str, public_key_path: str = None) -> bool:
     """
     Verify 7taps webhook signature using RSA.
     
     Args:
         payload: Request payload bytes
         signature: RSA signature to verify
-        public_key_path: Path to public key file
+        public_key_path: Path to public key file (optional, uses environment if not provided)
         
     Returns:
         True if signature is valid, False otherwise
@@ -75,9 +109,14 @@ def verify_7taps_signature(payload: bytes, signature: str, public_key_path: str)
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import padding
         
-        # Load public key
-        with open(public_key_path, 'rb') as f:
-            public_key = serialization.load_pem_public_key(f.read())
+        # Load public key from environment or file
+        if public_key_path:
+            with open(public_key_path, 'rb') as f:
+                public_key_data = f.read()
+        else:
+            public_key_data = get_public_key()
+        
+        public_key = serialization.load_pem_public_key(public_key_data)
         
         # Verify signature
         public_key.verify(
@@ -152,8 +191,7 @@ async def authenticate_7taps_request(request: Request) -> bool:
         # Verify RSA signature if enabled
         verify_rsa = os.getenv("SEVENTAPS_VERIFY_SIGNATURE", "true").lower() == "true"
         if verify_rsa:
-            public_key_path = get_public_key_path()
-            if not verify_7taps_signature(body, signature, public_key_path):
+            if not verify_7taps_signature(body, signature):
                 webhook_stats["authentication_failures"] += 1
                 return False
         
