@@ -1,11 +1,11 @@
 {
   "module": "b.01_attach_mcp_servers",
-  "agent": "orchestrator_agent",
+  "agent": "backend_agent",
   "allowed_files": ["docker-compose.yml"],
   "required_endpoints": ["/health"],
-  "status": "completed",
+  "status": "awaiting_verification",
   "task_tracking": {
-    "assigned_at": "2024-01-01T00:00:00Z",
+    "assigned_at": "2025-08-05T19:30:00Z",
     "estimated_duration": "1h",
     "dependencies": [],
     "subtasks": [
@@ -20,7 +20,7 @@
         "id": "b.01.2",
         "description": "Add pydantic-ai/mcp-run-python service",
         "status": "completed", 
-        "agent": "orchestrator_agent",
+        "agent": "backend_agent",
         "files": ["docker-compose.yml"]
       },
       {
@@ -34,7 +34,7 @@
         "id": "b.01.4",
         "description": "Verify each MCP server responds to /health",
         "status": "completed",
-        "agent": "orchestrator_agent",
+        "agent": "backend_agent",
         "files": []
       }
     ],
@@ -49,9 +49,9 @@
     "progress_percentage": 100
   },
   "agent_handoff": {
-    "from_agent": null,
-    "to_agent": "orchestrator_agent",
-    "handoff_notes": "Initial MCP server setup required for all subsequent modules",
+    "from_agent": "orchestrator_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "MCP Python server missing, backend agent to complete implementation",
     "required_approval": false
   }
 } 
