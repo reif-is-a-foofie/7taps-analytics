@@ -245,9 +245,67 @@ async def get_7taps_key_info():
         private_key_path = get_private_key_path()
         public_key_path = get_public_key_path()
         
-        # Check if keys exist
+        # Check if keys exist (with fallback to embedded keys)
         private_exists = os.path.exists(private_key_path)
         public_exists = os.path.exists(public_key_path)
+        
+        # If keys don't exist, create them from embedded data
+        if not private_exists or not public_exists:
+            os.makedirs("keys", exist_ok=True)
+            
+            # Embedded private key
+            private_key_content = """-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC3Z5oKuJySJ4B1
+V5mO6kO+3F1GvKKRnjYaJOMHfOYeYVzE3lFEN8jR/c/EKZffwWGmCckz0b9B1l5e
+f0yuCxZe7eH2L2gMNDTsfUj1YCrG0K17lBsD53H5mwTPp28vsVJvi2ONnFD0rYPM
+BkmKAVP+ZyKyO8WgLXQdMn7HeqET6Om135QuumjSDOHK21ilp5XhyaN4081V5+Mo
+hNZANWUbf0D6rjP5TclS6QrKpdrgITrZxMcao+h/7MurgR1SnmkYTtFYpeq+vcBf
+aNPHhNmfutBjUVZ02BVNWgj8LTqXP2Vg8ZpdMQUkPCVmXUCLBNrTMsThAuIjKo8b
+6bpf0OULAgMBAAECggEAANfMZd4kSiEUYey9s+ILFdSMezRALpVBT8pzV8zI6KCy
+wsvfPkxEQ+G+kJD2odcVVyRdrG++1tw++33aLRZqw8ggY88Ewbb6tACzOCa/UfN2
+sgow1b8/fWGe4sxlE9W7t+Hib1hpF/w5UcX5xmnqBRrJ+uxUCp7VW1WUHkBJE8W2
+bsogC2aKUNLE5cw9Kv6LIN4MnQRvklI7Y29CxIbUM/YF8/pXjZmZ11PGO99JKO/D
+lXVC54JK5a07zIur98txoPY5z3jNguaPnswoN47sVdevpl8rrA0HXqm0ssXiPVJi
+CmNwi6U8hwPgwVPTMFrWJoycfTLDpeSE//mlJ2DtSQKBgQD0HlgsXaHnm5vVeB8j
++CNrYa3ctOjEytiQHt3vBeD7V24niz2V4SXmujhAKNXP8XJLryJDXYeH0UZKXAfC
+3EKQODgwdKnAJXbm2OfgSTPoY0XtZ7xQrQYfulRJbUb+azafBuA5FniODFHIO+r/
+TBiy/0mwN26UfjdT5nSD6dyQowKBgQDAVMczTufh8LYuGMp9qQhKYfANNjwhTyxp
+ftlhlJX27Yg7ki4nlyw2Q+IyZw7+OBkIWJ5b/WD0Z2yBeH+hDaungwzPlHduUxY4
+TT54ZMTviyqGPgLkuv4g/PNUL4ipDjrt6h/+YqLz3b9X59wCaZBRlRzEZ+fCIHNy
+wJPCDs3YeQKBgFc2BAANj0rD3786g72A5350Tf2cL9AmO4n5TQYYTpDcYkEEUIMc
+BUNRYckiDYiVVGTPc2knn8SYsgjcqfUmZS1KuGAvPXmkqL693NDWthGebZvrxG35
+8kchdP0qagN4X/IeLbqXWYg9xHXJWiHMmMJRy4yFsR6hnLh/iz6ZLLALAoGAFfXY
+JOCek2rDsnG8NSrmum+CVE/b/8WlgYotUfoAQYiPpJWlVXnqX2vS2QRxbs+C9DQC
+KOi+eEmS1xmmIQKJlf/dp5oBJQSxpc4UEvUWk29ldJyCAhHj0GpxcixXQ05Ppji0
+XHxwtL2eCnB7636YLuiCt15R1RWVeQXKGT9Ne6kCgYEAmSB4S39KENeSerOvAXZW
+gwy35zT/I55V/GeJG2QkDM6VPXnMfcY1LUWm75TnjduvlSoBgJwY4wIUAHPiEvXR
+fescUmGFyEhz3TRFOdYCeAxargz5PwPnoq4Ju2fNTnme03x1XEVXH6nwKnG6dZWz
+i8D8B4JE4L4Mpi+YCDklVN8=
+-----END PRIVATE KEY-----"""
+            
+            # Embedded public key
+            public_key_content = """-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt2eaCrickieAdVeZjupD
+vtxdRryikZ42GiTjB3zmHmFcxN5RRDfI0f3PxCmX38FhpgnJM9G/QdZeXn9MrgsW
+Xu3h9i9oDDQ07H1I9WAqxtCte5QbA+dx+ZsEz6dvL7FSb4tjjZxQ9K2DzAZJigFT
+/mcisjvFoC10HTJ+x3qhE+jptd+ULrpo0gzhyttYpaeV4cmjeNPNVefjKITWQDVl
+G39A+q4z+U3JUukKyqXa4CE62cTHGqPof+zLq4EdUp5pGE7RWKXqvr3AX2jTx4TZ
+n7rQY1FWdNgVTVoI/C06lz9lYPGaXTEFJDwlZl1AiwTa0zLE4QLiIyqPG+m6X9Dl
+CwIDAQAB
+-----END PUBLIC KEY-----"""
+            
+            # Write keys to files
+            with open("keys/7taps_private_key.pem", "w") as f:
+                f.write(private_key_content)
+            with open("keys/7taps_public_key.pem", "w") as f:
+                f.write(public_key_content)
+            
+            # Set permissions
+            os.chmod("keys/7taps_private_key.pem", 0o600)
+            
+            # Update existence flags
+            private_exists = True
+            public_exists = True
         
         # Get key information
         key_info = {
