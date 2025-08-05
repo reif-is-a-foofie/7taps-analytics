@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 import os
+from app.config import settings
 
 app = FastAPI(
     title="7taps Analytics ETL",
