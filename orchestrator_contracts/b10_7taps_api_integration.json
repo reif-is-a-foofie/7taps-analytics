@@ -1,0 +1,65 @@
+{
+  "module": "b.10_7taps_api_integration",
+  "agent": "backend_agent",
+  "allowed_files": ["app/api/7taps.py", "scripts/generate_pem_keys.py"],
+  "required_endpoints": ["/api/7taps/webhook", "/api/7taps/keys"],
+  "status": "assigned",
+  "task_tracking": {
+    "assigned_at": "2024-08-04T15:00:00Z",
+    "estimated_duration": "2h",
+    "dependencies": ["b.07", "b.08"],
+    "subtasks": [
+      {
+        "id": "b.10.1",
+        "description": "Create PEM key generation script",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["scripts/generate_pem_keys.py"]
+      },
+      {
+        "id": "b.10.2",
+        "description": "Implement 7taps webhook endpoint",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["app/api/7taps.py"]
+      },
+      {
+        "id": "b.10.3",
+        "description": "Add PEM key authentication",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["app/api/7taps.py"]
+      },
+      {
+        "id": "b.10.4",
+        "description": "Create test suite for 7taps integration",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["tests/test_7taps.py"]
+      }
+    ],
+    "completion_criteria": [
+      "PEM key generation script functional",
+      "/api/7taps/webhook endpoint receives xAPI payloads",
+      "PEM key authentication validates 7taps requests",
+      "Environment variables for keys configured",
+      "pytest tests/test_7taps.py passes",
+      "Independent validation completed"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "status": "pending",
+      "notes": "Requires 7taps API integration and PEM key authentication",
+      "docker_compose_required": true,
+      "test_environment": "docker-compose up with 7taps webhook endpoint"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "7taps API integration with PEM key authentication for xAPI payload reception",
+    "required_approval": false
+  }
+} 

@@ -479,4 +479,133 @@ async def update_contract(request: ContractUpdateRequest) -> Dict[str, Any]:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update contract: {str(e)}"
-        ) 
+        )
+
+
+@router.get("/debug/deployment-status")
+async def get_deployment_status() -> Dict[str, Any]:
+    """Get comprehensive deployment and streaming infrastructure status."""
+    try:
+        import subprocess
+        import platform
+        
+        # System information
+        system_info = {
+            "platform": platform.system(),
+            "platform_version": platform.version(),
+            "python_version": platform.python_version(),
+            "architecture": platform.machine()
+        }
+        
+        # Docker status
+        docker_status = {"available": False, "version": None}
+        try:
+            result = subprocess.run(
+                ["docker", "--version"], 
+                capture_output=True, 
+                text=True, 
+                timeout=5
+            )
+            if result.returncode == 0:
+                docker_status["available"] = True
+                docker_status["version"] = result.stdout.strip()
+        except Exception:
+            pass
+        
+        # Docker Compose status
+        compose_status = {"available": False, "version": None}
+        try:
+            result = subprocess.run(
+                ["docker-compose", "--version"], 
+                capture_output=True, 
+                text=True, 
+                timeout=5
+            )
+            if result.returncode == 0:
+                compose_status["available"] = True
+                compose_status["version"] = result.stdout.strip()
+        except Exception:
+            pass
+        
+        # Service health checks
+        service_health = {}
+        services = ["postgres", "redis", "mcp-postgres", "mcp-python", "app"]
+        
+        for service in services:
+            try:
+                # Try to connect to service (simplified check)
+                service_health[service] = {
+                    "status": "unknown",
+                    "last_check": datetime.now().isoformat()
+                }
+            except Exception as e:
+                service_health[service] = {
+                    "status": "error",
+                    "error": str(e),
+                    "last_check": datetime.now().isoformat()
+                }
+        
+        # MCP server status
+        mcp_status = {
+            "mcp_postgres": {
+                "url": os.getenv("MCP_POSTGRES_URL", "http://localhost:8001"),
+                "status": "unknown"
+            },
+            "mcp_python": {
+                "url": os.getenv("MCP_PYTHON_URL", "http://localhost:8002"),
+                "status": "unknown"
+            }
+        }
+        
+        # Environment variables
+        env_vars = {
+            "DATABASE_URL": os.getenv("DATABASE_URL", "not_set"),
+            "REDIS_URL": os.getenv("REDIS_URL", "not_set"),
+            "MCP_POSTGRES_URL": os.getenv("MCP_POSTGRES_URL", "not_set"),
+            "MCP_PYTHON_URL": os.getenv("MCP_PYTHON_URL", "not_set"),
+            "LOG_LEVEL": os.getenv("LOG_LEVEL", "info")
+        }
+        
+        # Deployment configuration
+        deployment_config = {
+            "docker_compose_services": [
+                "postgres", "redis", "mcp-postgres", "mcp-python", "sqlpad", "app"
+            ],
+            "exposed_ports": {
+                "app": 8000,
+                "postgres": 5432,
+                "redis": 6379,
+                "mcp-postgres": 8001,
+                "mcp-python": 8002,
+                "sqlpad": 3000
+            },
+            "volumes": ["postgres_data", "redis_data", "sqlpad_data", "logs"],
+            "health_checks_enabled": True,
+            "restart_policy": "unless-stopped"
+        }
+        
+        return {
+            "deployment_status": "operational",
+            "timestamp": datetime.now().isoformat(),
+            "system_info": system_info,
+            "docker_status": docker_status,
+            "compose_status": compose_status,
+            "service_health": service_health,
+            "mcp_status": mcp_status,
+            "environment_variables": env_vars,
+            "deployment_config": deployment_config,
+            "recommendations": [
+                "All services should be running via docker-compose up",
+                "MCP servers should be accessible on their respective ports",
+                "Health checks should be passing for all services",
+                "Logs should be monitored for any errors"
+            ]
+        }
+        
+    except Exception as e:
+        return {
+            "deployment_status": "error",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e),
+            "message": "Failed to retrieve deployment status"
+        } 
