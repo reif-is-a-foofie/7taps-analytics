@@ -27,8 +27,12 @@ class ETLStreamingProcessor:
         self.group_name = "etl_processor"
         self.consumer_name = "etl_worker"
         
-        # Initialize Redis client
-        self.redis_client = redis.from_url(self.redis_url)
+        # Initialize Redis client with SSL configuration
+        self.redis_client = redis.from_url(
+            self.redis_url,
+            ssl_cert_reqs=None,  # Disable SSL certificate verification for Heroku Redis
+            decode_responses=True
+        )
         
         # Initialize database connection
         import psycopg2
