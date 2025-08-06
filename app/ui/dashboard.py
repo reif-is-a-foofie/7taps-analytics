@@ -154,8 +154,157 @@ class EnhancedDashboard:
             logger.error("Failed to get sync timeline", error=e)
             return {"error": str(e)}
 
+    async def get_basic_metrics(self) -> Dict[str, Any]:
+        """Get basic dashboard metrics from real database data."""
+        try:
+            # Get real data from database
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            import os
+            
+            database_url = os.getenv("DATABASE_URL")
+            if not database_url:
+                return {"error": "Database not configured"}
+            
+            conn = psycopg2.connect(database_url)
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Get total statements count
+                    cursor.execute("SELECT COUNT(*) as total FROM statements_flat")
+                    total_statements = cursor.fetchone()['total']
+                    
+                    # Get unique users count
+                    cursor.execute("SELECT COUNT(DISTINCT actor_id) as total FROM statements_flat WHERE actor_id IS NOT NULL")
+                    total_users = cursor.fetchone()['total']
+                    
+                    # Get completion rate (statements with 'completed' verb)
+                    cursor.execute("SELECT COUNT(*) as completed FROM statements_flat WHERE verb_id LIKE '%completed%'")
+                    completed_count = cursor.fetchone()['completed']
+                    completion_rate = (completed_count / total_statements * 100) if total_statements > 0 else 0
+                    
+                    # Get active users in last 7 days
+                    cursor.execute("""
+                        SELECT COUNT(DISTINCT actor_id) as active_7d 
+                        FROM statements_flat 
+                        WHERE actor_id IS NOT NULL 
+                        AND processed_at >= NOW() - INTERVAL '7 days'
+                    """)
+                    active_users_7d = cursor.fetchone()['active_7d']
+                    
+                    # Get active users in last 30 days
+                    cursor.execute("""
+                        SELECT COUNT(DISTINCT actor_id) as active_30d 
+                        FROM statements_flat 
+                        WHERE actor_id IS NOT NULL 
+                        AND processed_at >= NOW() - INTERVAL '30 days'
+                    """)
+                    active_users_30d = cursor.fetchone()['active_30d']
+                    
+                    # Get top verbs
+                    cursor.execute("""
+                        SELECT verb_id, COUNT(*) as count 
+                        FROM statements_flat 
+                        GROUP BY verb_id 
+                        ORDER BY count DESC 
+                        LIMIT 5
+                    """)
+                    top_verbs = [{"verb": row['verb_id'], "count": row['count']} for row in cursor.fetchall()]
+                    
+                    # Get daily activity for last 7 days
+                    cursor.execute("""
+                        SELECT 
+                            DATE(processed_at) as date,
+                            COUNT(DISTINCT actor_id) as active_users,
+                            COUNT(*) as total_statements
+                        FROM statements_flat 
+                        WHERE processed_at >= NOW() - INTERVAL '7 days'
+                        GROUP BY DATE(processed_at)
+                        ORDER BY date
+                    """)
+                    daily_activity = []
+                    for row in cursor.fetchall():
+                        daily_activity.append({
+                            "date": row['date'].strftime("%Y-%m-%d"),
+                            "active_users": row['active_users'],
+                            "total_statements": row['total_statements']
+                        })
+                    
+                    # Get recent real 7taps statements
+                    cursor.execute("""
+                        SELECT statement_id, actor_id, verb_id, object_id, timestamp, processed_at
+                        FROM statements_flat 
+                        WHERE object_id LIKE '%7taps.com%'
+                        ORDER BY processed_at DESC 
+                        LIMIT 10
+                    """)
+                    recent_7taps_statements = []
+                    for row in cursor.fetchall():
+                        recent_7taps_statements.append({
+                            "statement_id": row['statement_id'],
+                            "actor_id": row['actor_id'],
+                            "verb_id": row['verb_id'],
+                            "object_id": row['object_id'],
+                            "timestamp": row['timestamp'].isoformat() if row['timestamp'] else None,
+                            "processed_at": row['processed_at'].isoformat() if row['processed_at'] else None
+                        })
+                    
+                    return {
+                        "total_users": total_users,
+                        "total_statements": total_statements,
+                        "completion_rate": round(completion_rate, 1),
+                        "active_users_7d": active_users_7d,
+                        "active_users_30d": active_users_30d,
+                        "top_verbs": top_verbs,
+                        "daily_activity": daily_activity,
+                        "recent_7taps_statements": recent_7taps_statements,
+                        "cohort_completion": [
+                            {"cohort_name": "Real 7taps Data", "completion_rate": completion_rate}
+                        ]
+                    }
+                    
+            finally:
+                conn.close()
+                
+        except Exception as e:
+            logger.error(f"Failed to get real metrics: {e}")
+            return {"error": str(e)}
+
 # Global dashboard instance
 dashboard = EnhancedDashboard()
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    """Basic analytics dashboard page."""
+    try:
+        # Get basic metrics
+        metrics = await dashboard.get_basic_metrics()
+        
+        context = {
+            "request": request,
+            "metrics": metrics,
+            "last_updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "refresh_interval": 300  # 5 minutes
+        }
+        
+        return templates.TemplateResponse("dashboard.html", context)
+        
+    except Exception as e:
+        logger.error("Failed to render dashboard", error=e)
+        raise HTTPException(status_code=500, detail=f"Dashboard error: {str(e)}")
+
+@router.get("/api/dashboard/metrics")
+async def get_dashboard_metrics():
+    """API endpoint for dashboard metrics."""
+    try:
+        metrics = await dashboard.get_basic_metrics()
+        return {
+            "metrics": metrics,
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error("Failed to get dashboard metrics", error=e)
+        raise HTTPException(status_code=500, detail=f"API error: {str(e)}")
 
 @router.get("/enhanced-dashboard", response_class=HTMLResponse)
 async def enhanced_dashboard_page(request: Request):
@@ -237,4 +386,22 @@ async def get_real_time_dashboard_data():
         }
     except Exception as e:
         logger.error("Failed to get real-time dashboard data", error=e)
+        raise HTTPException(status_code=500, detail=f"API error: {str(e)}") 
+
+@router.get("/api/dashboard/recent-7taps-statements")
+async def get_recent_7taps_statements():
+    """API endpoint for recent 7taps xAPI statements."""
+    try:
+        metrics = await dashboard.get_basic_metrics()
+        if "error" in metrics:
+            return {"error": metrics["error"]}
+        
+        return {
+            "recent_7taps_statements": metrics.get("recent_7taps_statements", []),
+            "total_7taps_statements": len(metrics.get("recent_7taps_statements", [])),
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error("Failed to get recent 7taps statements", error=e)
         raise HTTPException(status_code=500, detail=f"API error: {str(e)}") 
