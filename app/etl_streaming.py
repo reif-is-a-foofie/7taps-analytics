@@ -22,8 +22,7 @@ class ETLStreamingProcessor:
     
     def __init__(self):
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        self.mcp_python_url = os.getenv("MCP_PYTHON_URL", "http://localhost:8002")
-        self.mcp_postgres_url = os.getenv("MCP_POSTGRES_URL", "http://localhost:8001")
+        self.database_url = os.getenv("DATABASE_URL", "postgresql://analytics_user:analytics_pass@localhost:5432/7taps_analytics")
         self.stream_name = "xapi_statements"
         self.group_name = "etl_processor"
         self.consumer_name = "etl_worker"
@@ -31,8 +30,9 @@ class ETLStreamingProcessor:
         # Initialize Redis client
         self.redis_client = redis.from_url(self.redis_url)
         
-        # Initialize HTTP client for MCP servers
-        self._http_client = httpx.AsyncClient(timeout=30.0)
+        # Initialize database connection
+        import psycopg2
+        self.db_connection = psycopg2.connect(self.database_url)
         
         # Track last processed statement
         self.last_processed_statement = None
@@ -41,18 +41,13 @@ class ETLStreamingProcessor:
         """Get Redis client instance."""
         return self.redis_client
         
-    def mcp_db_client(self):
-        """Get MCP DB client instance."""
-        return self._http_client
+    def redis_client(self):
+        """Get Redis client instance."""
+        return self.redis_client
         
-    def mcp_python_client(self):
-        """Get MCP Python client instance."""
-        return self._http_client
-        
-    @property
-    def http_client(self):
-        """Get HTTP client for MCP operations."""
-        return self._http_client
+    def db_client(self):
+        """Get database client instance."""
+        return self.db_connection
         
     async def process_statement(self, statement: Dict[str, Any]) -> Dict[str, Any]:
         """Process a single xAPI statement."""
@@ -78,54 +73,29 @@ class ETLStreamingProcessor:
                 raise
                 
     async def process_xapi_statement(self, statement: Dict[str, Any]) -> Dict[str, Any]:
-        """Process a single xAPI statement using MCP Python."""
-        
-        # MCP Python script to flatten xAPI statement
-        python_script = f"""
-import json
-import datetime
-
-def flatten_xapi_statement(statement):
-    \"\"\"Flatten xAPI statement for database storage.\"\"\"
-    flattened = {{
-        'statement_id': statement.get('id'),
-        'actor_id': statement.get('actor', {{}}).get('account', {{}}).get('name'),
-        'verb_id': statement.get('verb', {{}}).get('id'),
-        'object_id': statement.get('object', {{}}).get('id'),
-        'object_type': statement.get('object', {{}}).get('objectType'),
-        'timestamp': statement.get('timestamp'),
-        'raw_statement': json.dumps(statement),
-        'processed_at': datetime.datetime.utcnow().isoformat()
-    }}
-    return flattened
-
-# Process the statement
-statement = {json.dumps(statement)}
-result = flatten_xapi_statement(statement)
-print(json.dumps(result))
-"""
+        """Process a single xAPI statement directly."""
         
         try:
-            # Execute script via MCP Python
-            response = await self._http_client.post(
-                f"{self.mcp_python_url}/execute",
-                json={"script": python_script}
-            )
-            await response.raise_for_status()
+            # Flatten xAPI statement for database storage
+            flattened = {
+                'statement_id': statement.get('id'),
+                'actor_id': statement.get('actor', {}).get('account', {}).get('name'),
+                'verb_id': statement.get('verb', {}).get('id'),
+                'object_id': statement.get('object', {}).get('id'),
+                'object_type': statement.get('object', {}).get('objectType'),
+                'timestamp': statement.get('timestamp'),
+                'raw_statement': json.dumps(statement),
+                'processed_at': datetime.utcnow().isoformat()
+            }
             
-            # Parse result
-            result = await response.json()
-            if "output" in result:
-                return json.loads(result["output"])
-            else:
-                raise Exception(f"MCP Python execution failed: {result}")
+            return flattened
                 
         except Exception as e:
-            logger.error(f"Error processing statement via MCP Python: {e}")
+            logger.error(f"Error processing statement: {e}")
             raise
             
     async def write_to_postgres(self, flattened_data: Dict[str, Any]):
-        """Write flattened data to Postgres via MCP DB server."""
+        """Write flattened data to Postgres directly."""
         
         # SQL to insert flattened statement
         sql = """
@@ -149,20 +119,16 @@ print(json.dumps(result))
         )
         
         try:
-            # Execute via MCP DB server
-            response = await self._http_client.post(
-                f"{self.mcp_postgres_url}/execute",
-                json={
-                    "sql": sql,
-                    "params": params
-                }
-            )
-            await response.raise_for_status()
+            # Execute directly via psycopg2
+            cursor = self.db_connection.cursor()
+            cursor.execute(sql, params)
+            self.db_connection.commit()
+            cursor.close()
             
             logger.info(f"Successfully wrote statement {flattened_data.get('statement_id')} to Postgres")
             
         except Exception as e:
-            logger.error(f"Error writing to Postgres via MCP DB: {e}")
+            logger.error(f"Error writing to Postgres: {e}")
             raise
             
     async def create_statements_table(self):
@@ -183,11 +149,10 @@ print(json.dumps(result))
         """
         
         try:
-            response = await self._http_client.post(
-                f"{self.mcp_postgres_url}/execute",
-                json={"sql": create_table_sql}
-            )
-            await response.raise_for_status()
+            cursor = self.db_connection.cursor()
+            cursor.execute(create_table_sql)
+            self.db_connection.commit()
+            cursor.close()
             logger.info("Statements table created/verified")
             
         except Exception as e:
@@ -257,8 +222,9 @@ print(json.dumps(result))
         return self.last_processed_statement
         
     async def close(self):
-        """Close HTTP client."""
-        await self._http_client.aclose()
+        """Close database connection."""
+        if self.db_connection:
+            self.db_connection.close()
 
 # Global processor instance
 etl_processor = ETLStreamingProcessor() 

@@ -233,15 +233,58 @@ async def receive_7taps_webhook(request: Request):
             # Log the xAPI statement (simplest milestone)
             print(f"🎉 FIRST xAPI EVENT RECEIVED: {xapi_data}")
             
-            webhook_stats["successful_requests"] += 1
-            
-            return {
-                "success": True,
-                "message": "xAPI statement received successfully",
-                "statement_id": xapi_data.get("id", "unknown"),
-                "timestamp": datetime.utcnow().isoformat(),
-                "milestone": "First xAPI webhook event received!"
-            }
+            # Queue xAPI statement to Redis Streams for ETL processing
+            try:
+                import redis
+                import uuid
+                
+                # Get Redis client
+                redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+                redis_client = redis.from_url(redis_url)
+                
+                # Prepare statement data for Redis
+                statement_data = {
+                    "id": xapi_data.get("id", str(uuid.uuid4())),
+                    "actor": xapi_data.get("actor", {}),
+                    "verb": xapi_data.get("verb", {}),
+                    "object": xapi_data.get("object", {}),
+                    "timestamp": xapi_data.get("timestamp", datetime.utcnow().isoformat()),
+                    "webhook_source": "7taps",
+                    "ingested_at": datetime.utcnow().isoformat()
+                }
+                
+                # Add to Redis Stream
+                stream_name = "xapi_statements"
+                message_id = redis_client.xadd(
+                    stream_name,
+                    {"data": json.dumps(statement_data)},
+                    maxlen=10000  # Keep last 10k messages
+                )
+                
+                print(f"✅ xAPI statement queued to Redis Stream: {message_id}")
+                
+                webhook_stats["successful_requests"] += 1
+                
+                return {
+                    "success": True,
+                    "message": "xAPI statement received and queued for ETL processing",
+                    "statement_id": statement_data["id"],
+                    "redis_message_id": message_id,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "milestone": "First xAPI webhook event received and queued!"
+                }
+                
+            except Exception as e:
+                print(f"❌ Error queuing to Redis: {e}")
+                webhook_stats["failed_requests"] += 1
+                
+                return {
+                    "success": False,
+                    "message": "xAPI statement received but failed to queue for ETL",
+                    "statement_id": xapi_data.get("id", "unknown"),
+                    "error": str(e),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
         
         # Handle other event types
         webhook_stats["successful_requests"] += 1
