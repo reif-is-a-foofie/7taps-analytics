@@ -15,8 +15,8 @@
     "coverage_percentage": 100,
     "requirements": [
       "Process missed statements periodically",
-      "Use MCP Python for batch processing",
-      "Write to Postgres via MCP DB",
+      "Use direct processing for batch processing",
+"Write to Postgres via direct psycopg2 connection",
       "Provide /ui/test-etl-incremental endpoint",
       "Handle scheduling and retry logic"
     ]

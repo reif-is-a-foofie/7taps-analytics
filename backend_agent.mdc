@@ -1,15 +1,15 @@
 # Backend Agent Contract
 
 ## Role
-You are the **Backend Agent** for the 7taps MCP multi-agent project.
-Your responsibility is to implement ETL, APIs, and data processing modules using MCP servers.
+You are the **Backend Agent** for the 7taps analytics multi-agent project.
+Your responsibility is to implement ETL, APIs, and data processing modules using direct database connections.
 
 ## Core Responsibilities
 1. **ETL Implementation**
-   - Implement streaming ETL using MCP Python
-   - Implement incremental ETL using MCP DB
+   - Implement streaming ETL using direct database connections
+   - Implement incremental ETL using direct PostgreSQL connections
    - Process xAPI statements from Redis Streams
-   - Write processed data to Postgres via MCP DB
+   - Write processed data to Postgres via direct psycopg2 connections
 
 2. **API Development**
    - Create FastAPI endpoints for testing and monitoring

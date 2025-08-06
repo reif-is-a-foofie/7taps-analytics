@@ -31,37 +31,8 @@ services:
       timeout: 10s
       retries: 3
 
-  # MCP Postgres DB Server
-  mcp-postgres:
-    image: mcp/postgres:latest
-    command: ["postgresql://analytics_user:analytics_pass@postgres:5432/7taps_analytics"]
-    ports:
-      - "8001:8001"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # MCP Python Server
-  mcp-python:
-    build:
-      context: .
-      dockerfile: Dockerfile.mcp-python
-    ports:
-      - "8002:8002"
-    environment:
-      PYTHONPATH: /app
-    volumes:
-      - ./app:/app
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # Direct Database Access (No MCP needed)
+  # PostgreSQL and Redis are accessed directly via psycopg2 and redis-py
 
   # SQLPad for DB Terminal
   sqlpad:
@@ -161,18 +132,12 @@ services:
     environment:
       DATABASE_URL: postgresql://analytics_user:analytics_pass@postgres:5432/7taps_analytics
       REDIS_URL: redis://redis:6379
-      MCP_POSTGRES_URL: http://mcp-postgres:8001
-      MCP_PYTHON_URL: http://mcp-python:8002
       PYTHONUNBUFFERED: 1
       LOG_LEVEL: info
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      mcp-postgres:
-        condition: service_healthy
-      mcp-python:
         condition: service_healthy
       learninglocker:
         condition: service_healthy

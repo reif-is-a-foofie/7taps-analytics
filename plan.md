@@ -1,48 +1,45 @@
-# Plan (v3 MCP-Optimized)
+# Plan (v3 Simplified Architecture)
 
 ## Overview
 
-This plan replaces the previous roadmap with an MCP-first architecture. Model
-Context Protocol (MCP) servers handle database access, Python execution,
-analytics dashboards, and optional browser automation, minimizing custom code.
+This plan replaces the previous roadmap with a simplified architecture using direct database connections. Direct PostgreSQL and Redis connections handle database access, data processing, analytics dashboards, and optional browser automation, minimizing complexity.
 
 ### Module Replacement Map
 
 | Previous Module | v3 Approach | Notes |
 | --- | --- | --- |
-| a.02 Data Models & Schemas | Use `bytebase/dbhub` or `supabase-mcp-server` for schema inspection and read-only queries. | Remove local SQLAlchemy models and migrations. |
+| a.02 Data Models & Schemas | Use direct psycopg2 connections for schema inspection and read-only queries. | Remove local SQLAlchemy models and migrations. |
 | a.03 Signup API | Leverage existing 7taps auth; custom signup module removed. | |
-| a.04 xAPI Ingestion Endpoint | FastAPI proxies statements to Redis/Kafka; ETL handled by `pydantic-ai/mcp-run-python`. | |
-| a.05 Streaming Worker ETL | Replace Dramatiq worker with MCP Python script consuming Redis Streams. | |
-| a.06 Daily Reminder Job & Scheduler | Replace custom job with MCP Python + SMTP MCP server. | |
-| a.07 Reporting APIs | Use SQLPad or Superset via MCP DB server for analytics. | |
+| a.04 xAPI Ingestion Endpoint | FastAPI proxies statements to Redis/Kafka; ETL handled by direct database connections. | |
+| a.05 Streaming Worker ETL | Replace Dramatiq worker with direct ETL script consuming Redis Streams. | |
+| a.06 Daily Reminder Job & Scheduler | Replace custom job with direct database operations. | |
+| a.07 Reporting APIs | Use SQLPad or Superset with direct database connections for analytics. | |
 | a.07b Admin/UI DB Terminal | Provide read-only DB terminal via SQLPad/Superset embed. | |
-| a.07c Orchestrator Contracts & Progress APIs | Module remains, extended to track MCP server usage. | |
-| a.08 Deployment & Streaming Infra | Docker Compose now includes MCP servers; remove custom worker images. | |
+| a.07c Orchestrator Contracts & Progress APIs | Module remains, extended to track direct connection usage. | |
+| a.08 Deployment & Streaming Infra | Docker Compose simplified without MCP servers; remove custom worker images. | |
 
 ## v3 Development Plan
 
 Implement modules in order, ensuring each exposes test endpoints and is covered
 by orchestrator contracts.
 
-### b.01 Attach MCP Servers
+### b.01 Simplified Architecture Setup
 
 **Files**
 - `docker-compose.yml`
 - `orchestrator_contracts/b01_attach_mcp_servers.json`
 
 **Steps**
-1. Add services for Postgres DB MCP, `pydantic-ai/mcp-run-python`, and
-   SQLPad/Superset.
+1. Configure direct PostgreSQL and Redis connections.
 2. Create contract `b01_attach_mcp_servers.json` specifying allowed files and
    `/health` endpoint.
-3. Verify each MCP server responds to `/health` or equivalent.
+3. Verify direct database connections work properly.
 
 **Tests**
 - `docker compose build`
 - `pytest` (placeholder until code exists)
 
-### b.02 Streaming ETL via MCP Python
+### b.02 Streaming ETL via Direct Connections
 
 **Files**
 - `app/etl_streaming.py`
@@ -50,8 +47,8 @@ by orchestrator contracts.
 - `orchestrator_contracts/b02_streaming_etl.json`
 
 **Steps**
-1. Implement ETL script invoked through MCP Python, consuming Redis Streams and
-   writing to Postgres via MCP DB.
+1. Implement ETL script using direct connections, consuming Redis Streams and
+   writing to Postgres via direct psycopg2.
 2. Add `/ui/test-etl-streaming` JSON endpoint for last processed statement.
 3. Record contract in `b02_streaming_etl.json`.
 
@@ -66,14 +63,14 @@ by orchestrator contracts.
 - `orchestrator_contracts/b03_incremental_etl.json`
 
 **Steps**
-1. Use MCP Python for periodic catch-up ETL.
+1. Use direct database connections for periodic catch-up ETL.
 2. Expose `/ui/test-etl-incremental` endpoint.
 3. Contract `b03_incremental_etl.json` defines allowed files.
 
 **Tests**
 - `pytest tests/test_etl_incremental.py`
 
-### b.04 Orchestrator MCP Integration
+### b.04 Orchestrator Integration
 
 **Files**
 - `app/api/orchestrator.py`
@@ -81,7 +78,7 @@ by orchestrator contracts.
 - `tests/test_orchestrator.py`
 
 **Steps**
-1. Extend orchestrator APIs to log active MCP calls and test results.
+1. Extend orchestrator APIs to log active database calls and test results.
 2. Provide `/api/debug/progress`, `/api/debug/test-report`, and
    `/api/debug/active-agents`.
 
@@ -96,7 +93,7 @@ by orchestrator contracts.
 - `orchestrator_contracts/b05_nlp_query.json`
 
 **Steps**
-1. Use LangChain or LlamaIndex with MCP DB to translate natural language into
+1. Use LangChain or LlamaIndex with direct database connections to translate natural language into
    SQL.
 2. Implement `/ui/nlp-query` endpoint.
 
