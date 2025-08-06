@@ -186,7 +186,7 @@ async def root():
                 
                 <div class="card">
                     <h2>🔗 7taps Integration</h2>
-                    <p>Webhook endpoint for 7taps integration with Basic authentication using username and password.</p>
+                    <p>Standard xAPI /statements endpoint for 7taps integration with Basic authentication using username and password.</p>
                     <a href="/api/7taps/keys" class="btn">View Auth Info</a>
                 </div>
                 
@@ -207,7 +207,7 @@ async def root():
                 <h3>🔧 Key API Endpoints</h3>
                 <div class="api-endpoint">GET /health - Health check</div>
                 <div class="api-endpoint">POST /api/xapi/ingest - xAPI statement ingestion</div>
-                <div class="api-endpoint">POST /api/7taps/webhook - 7taps webhook endpoint</div>
+                <div class="api-endpoint">POST /statements - 7taps xAPI statements endpoint</div>
                 <div class="api-endpoint">GET /api/dashboard/metrics - Dashboard metrics</div>
                 <div class="api-endpoint">POST /api/ui/nlp-query - NLP query processing</div>
                 <div class="api-endpoint">GET /ui/dashboard - Analytics dashboard</div>
@@ -233,7 +233,7 @@ async def root():
             "api_docs": "/docs",
             "health": "/health",
             "xapi_ingestion": "/api/xapi/ingest",
-            "7taps_webhook": "/api/7taps/webhook"
+            "7taps_statements": "/statements"
         },
         "services": {
             "fastapi": "running",
