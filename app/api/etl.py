@@ -51,9 +51,8 @@ async def get_etl_status() -> Dict[str, Any]:
             "status": "active",
             "module": "b.02_streaming_etl",
             "last_processed_statement": last_statement,
-            "mcp_servers": {
-                "python": etl_processor.mcp_python_url,
-                "postgres": etl_processor.mcp_postgres_url
+            "database": {
+                "url": etl_processor.database_url.split("@")[-1] if etl_processor.database_url else "not_configured"
             },
             "redis_stream": etl_processor.stream_name
         }
@@ -104,9 +103,8 @@ async def get_incremental_status() -> Dict[str, Any]:
             "status": "active",
             "module": "b.03_incremental_etl",
             "processing_stats": stats,
-            "mcp_servers": {
-                "python": incremental_processor.mcp_python_url,
-                "postgres": incremental_processor.mcp_postgres_url
+            "database": {
+                "url": incremental_processor.database_url.split("@")[-1] if hasattr(incremental_processor, 'database_url') and incremental_processor.database_url else "not_configured"
             },
             "redis_stream": incremental_processor.stream_name
         }
