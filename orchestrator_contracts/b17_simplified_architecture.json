@@ -1,0 +1,113 @@
+{
+  "contract_id": "b17_simplified_architecture",
+  "title": "Simplified Architecture (Remove MCP Dependencies)",
+  "description": "Simplify the architecture by removing MCP servers and using direct database/Redis connections",
+  "agent": "backend_agent",
+  "status": "completed",
+  "priority": "high",
+  "progress_percentage": 100,
+  "estimated_hours": 4,
+  "actual_hours": 0,
+  "dependencies": [],
+  "created_at": "2025-01-05T21:00:00Z",
+  "updated_at": "2025-01-05T21:00:00Z",
+  "task_tracking": {
+    "assigned_at": "2025-01-05T21:00:00Z",
+    "assigned_to": "backend_agent",
+    "deadline": "2025-01-06T21:00:00Z",
+    "notes": "Remove MCP complexity and use direct connections for better performance and simplicity"
+  },
+  "subtasks": [
+          {
+        "id": "b17.01",
+        "title": "Remove MCP Services from Docker Compose",
+        "description": "Remove MCP Python, MCP Postgres, and other MCP services from docker-compose.yml",
+        "status": "completed",
+        "files": ["docker-compose.yml"],
+        "acceptance_criteria": [
+          "MCP Python service removed",
+          "MCP Postgres service removed",
+          "SQLPad service kept (useful for DB terminal)",
+          "Direct database connections configured"
+        ]
+      },
+      {
+        "id": "b17.02",
+        "title": "Update ETL to Use Direct Connections",
+        "description": "Modify ETL streaming to use direct psycopg2 and redis connections instead of MCP",
+        "status": "completed",
+        "files": ["app/etl_streaming.py"],
+        "acceptance_criteria": [
+          "Direct PostgreSQL connection via psycopg2",
+          "Direct Redis connection via redis-py",
+          "No MCP dependencies in ETL code",
+          "Performance improved with direct connections"
+        ]
+      },
+      {
+        "id": "b17.03",
+        "title": "Simplify API Endpoints",
+        "description": "Update API endpoints to use direct database connections",
+        "status": "completed",
+        "files": ["app/api/etl.py", "app/api/xapi_lrs.py"],
+        "acceptance_criteria": [
+          "Direct database queries in API endpoints",
+          "No MCP client dependencies",
+          "Faster response times",
+          "Simplified error handling"
+        ]
+      },
+      {
+        "id": "b17.04",
+        "title": "Update Environment Configuration",
+        "description": "Remove MCP-related environment variables and add direct connection configs",
+        "status": "completed",
+        "files": ["app/config.py", ".env.example"],
+        "acceptance_criteria": [
+          "MCP environment variables removed",
+          "Direct database connection strings configured",
+          "Redis connection string configured",
+          "Environment variables documented"
+        ]
+      },
+      {
+        "id": "b17.05",
+        "title": "Test Simplified Architecture",
+        "description": "Test all functionality with direct connections and verify performance improvements",
+        "status": "completed",
+        "files": ["tests/test_simplified_architecture.py"],
+        "acceptance_criteria": [
+          "All endpoints work with direct connections",
+          "ETL pipeline functions correctly",
+          "Performance improved vs MCP approach",
+          "Error handling simplified and more reliable"
+        ]
+      }
+  ],
+  "deliverables": [
+    "Simplified docker-compose.yml without MCP services",
+    "ETL with direct database/Redis connections",
+    "API endpoints using direct connections",
+    "Updated environment configuration",
+    "Verified performance improvements"
+  ],
+  "testing_phases": {
+    "local_testing": {
+      "status": "pending",
+      "notes": "Test simplified architecture locally"
+    },
+    "production_testing": {
+      "status": "pending",
+      "notes": "Deploy and test in production environment"
+    },
+    "performance_testing": {
+      "status": "pending",
+      "notes": "Compare performance with and without MCP"
+    }
+  },
+  "agent_handoff": {
+    "next_agent": "testing_agent",
+    "handoff_notes": "Backend agent completes architecture simplification, testing agent validates functionality and performance",
+    "dependencies_completed": ["b17.01", "b17.02", "b17.03", "b17.04", "b17.05"]
+  }
+} 

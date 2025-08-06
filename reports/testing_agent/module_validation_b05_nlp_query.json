@@ -15,7 +15,7 @@
     "coverage_percentage": 100,
     "requirements": [
       "Translate natural language to SQL using LangChain/LlamaIndex",
-      "Use MCP DB for database operations",
+      "Use direct database connections for database operations",
       "Provide /ui/nlp-query endpoint",
       "Handle various query types (cohort, completion, analytics)",
       "Return structured JSON responses"

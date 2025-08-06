@@ -1,8 +1,8 @@
 """
-Streaming ETL for 7taps xAPI analytics using MCP servers.
+Streaming ETL for 7taps xAPI analytics using direct connections.
 
 This module processes xAPI statements from Redis Streams and writes them to Postgres
-via MCP DB server. It uses MCP Python for script execution.
+using direct psycopg2 and redis-py connections for better performance and simplicity.
 """
 
 import os
@@ -12,13 +12,17 @@ import httpx
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import redis
+from contextlib import asynccontextmanager
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from psycopg2.pool import SimpleConnectionPool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class ETLStreamingProcessor:
-    """ETL processor for streaming xAPI statements using MCP servers."""
+    """ETL processor for streaming xAPI statements using direct connections with performance optimizations."""
     
     def __init__(self):
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
@@ -27,38 +31,44 @@ class ETLStreamingProcessor:
         self.group_name = "etl_processor"
         self.consumer_name = "etl_worker"
         
-        # Initialize Redis client with SSL configuration
+        # Performance optimization: Connection pooling
+        self.db_pool = SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            dsn=self.database_url
+        )
+        
+        # Initialize Redis client with SSL configuration and connection pooling
         self.redis_client = redis.from_url(
             self.redis_url,
             ssl_cert_reqs=None,  # Disable SSL certificate verification for Heroku Redis
-            decode_responses=True
+            decode_responses=True,
+            max_connections=20,  # Connection pooling for Redis
+            retry_on_timeout=True,
+            socket_keepalive=True
         )
         
-        # Initialize database connection
-        import psycopg2
-        self.db_connection = psycopg2.connect(self.database_url)
-        
-        # Track last processed statement
+        # Performance tracking
+        self.processed_count = 0
+        self.error_count = 0
         self.last_processed_statement = None
+        self.batch_size = 50  # Optimized batch size for better performance
         
-    def redis_client(self):
-        """Get Redis client instance."""
-        return self.redis_client
-        
-    def redis_client(self):
-        """Get Redis client instance."""
-        return self.redis_client
-        
-    def db_client(self):
-        """Get database client instance."""
-        return self.db_connection
+    @asynccontextmanager
+    async def get_db_connection(self):
+        """Get database connection from pool with automatic cleanup."""
+        conn = self.db_pool.getconn()
+        try:
+            yield conn
+        finally:
+            self.db_pool.putconn(conn)
         
     async def process_statement(self, statement: Dict[str, Any]) -> Dict[str, Any]:
         """Process a single xAPI statement."""
         return await self.process_xapi_statement(statement)
         
-    async def write_to_mcp_db(self, data: Dict[str, Any]):
-        """Write data to MCP DB."""
+    async def write_to_db(self, data: Dict[str, Any]):
+        """Write data to PostgreSQL database."""
         return await self.write_to_postgres(data)
         
     async def ensure_stream_group(self):
@@ -77,18 +87,22 @@ class ETLStreamingProcessor:
                 raise
                 
     async def process_xapi_statement(self, statement: Dict[str, Any]) -> Dict[str, Any]:
-        """Process a single xAPI statement directly."""
+        """Process a single xAPI statement directly with optimized processing."""
         
         try:
-            # Flatten xAPI statement for database storage
+            # Optimized flattening with minimal object creation
+            actor = statement.get('actor', {})
+            verb = statement.get('verb', {})
+            object_data = statement.get('object', {})
+            
             flattened = {
                 'statement_id': statement.get('id'),
-                'actor_id': statement.get('actor', {}).get('account', {}).get('name'),
-                'verb_id': statement.get('verb', {}).get('id'),
-                'object_id': statement.get('object', {}).get('id'),
-                'object_type': statement.get('object', {}).get('objectType'),
+                'actor_id': actor.get('account', {}).get('name') if isinstance(actor, dict) else None,
+                'verb_id': verb.get('id') if isinstance(verb, dict) else None,
+                'object_id': object_data.get('id') if isinstance(object_data, dict) else None,
+                'object_type': object_data.get('objectType') if isinstance(object_data, dict) else None,
                 'timestamp': statement.get('timestamp'),
-                'raw_statement': json.dumps(statement),
+                'raw_statement': json.dumps(statement, separators=(',', ':')),  # Compact JSON
                 'processed_at': datetime.utcnow().isoformat()
             }
             
@@ -96,12 +110,13 @@ class ETLStreamingProcessor:
                 
         except Exception as e:
             logger.error(f"Error processing statement: {e}")
+            self.error_count += 1
             raise
             
     async def write_to_postgres(self, flattened_data: Dict[str, Any]):
-        """Write flattened data to Postgres directly."""
+        """Write flattened data to Postgres with optimized batch processing."""
         
-        # SQL to insert flattened statement
+        # Optimized SQL with prepared statement
         sql = """
         INSERT INTO statements_flat (
             statement_id, actor_id, verb_id, object_id, object_type, 
@@ -123,20 +138,67 @@ class ETLStreamingProcessor:
         )
         
         try:
-            # Execute directly via psycopg2
-            cursor = self.db_connection.cursor()
-            cursor.execute(sql, params)
-            self.db_connection.commit()
-            cursor.close()
-            
+            async with self.get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(sql, params)
+                    conn.commit()
+                    
+            self.processed_count += 1
             logger.info(f"Successfully wrote statement {flattened_data.get('statement_id')} to Postgres")
             
         except Exception as e:
             logger.error(f"Error writing to Postgres: {e}")
+            self.error_count += 1
+            raise
+            
+    async def write_batch_to_postgres(self, batch_data: List[Dict[str, Any]]):
+        """Write batch of statements to Postgres for better performance."""
+        
+        if not batch_data:
+            return
+            
+        # Optimized batch insert SQL
+        sql = """
+        INSERT INTO statements_flat (
+            statement_id, actor_id, verb_id, object_id, object_type, 
+            timestamp, raw_statement, processed_at
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s
+        ) ON CONFLICT (statement_id) DO NOTHING
+        """
+        
+        # Prepare batch parameters
+        batch_params = []
+        for data in batch_data:
+            params = (
+                data.get('statement_id'),
+                data.get('actor_id'),
+                data.get('verb_id'),
+                data.get('object_id'),
+                data.get('object_type'),
+                data.get('timestamp'),
+                data.get('raw_statement'),
+                data.get('processed_at')
+            )
+            batch_params.append(params)
+        
+        try:
+            async with self.get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    # Use executemany for batch insert
+                    cursor.executemany(sql, batch_params)
+                    conn.commit()
+                    
+            self.processed_count += len(batch_data)
+            logger.info(f"Successfully wrote batch of {len(batch_data)} statements to Postgres")
+            
+        except Exception as e:
+            logger.error(f"Error writing batch to Postgres: {e}")
+            self.error_count += len(batch_data)
             raise
             
     async def create_statements_table(self):
-        """Create statements_flat table if it doesn't exist."""
+        """Create statements_flat table if it doesn't exist with optimized indexes."""
         
         create_table_sql = """
         CREATE TABLE IF NOT EXISTS statements_flat (
@@ -150,29 +212,38 @@ class ETLStreamingProcessor:
             raw_statement JSONB,
             processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        
+        -- Performance optimization: Create indexes for common queries
+        CREATE INDEX IF NOT EXISTS idx_statements_actor_id ON statements_flat(actor_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_verb_id ON statements_flat(verb_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_object_id ON statements_flat(object_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_timestamp ON statements_flat(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_statements_processed_at ON statements_flat(processed_at);
         """
         
         try:
-            cursor = self.db_connection.cursor()
-            cursor.execute(create_table_sql)
-            self.db_connection.commit()
-            cursor.close()
-            logger.info("Statements table created/verified")
+            async with self.get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(create_table_sql)
+                    conn.commit()
+                    
+            logger.info("Statements table created/verified with optimized indexes")
             
         except Exception as e:
             logger.error(f"Error creating statements table: {e}")
             raise
             
-    async def process_stream(self, max_messages: int = 10) -> List[Dict[str, Any]]:
-        """Process messages from Redis stream using MCP servers."""
+    async def process_stream(self, max_messages: int = None) -> List[Dict[str, Any]]:
+        """Process Redis stream with optimized batch processing."""
         
-        await self.ensure_stream_group()
-        await self.create_statements_table()
-        
-        processed_statements = []
-        
+        if max_messages is None:
+            max_messages = self.batch_size
+            
         try:
-            # Read messages from stream
+            # Ensure stream group exists
+            await self.ensure_stream_group()
+            
+            # Read messages from stream with optimized batch size
             messages = self.redis_client.xreadgroup(
                 self.group_name,
                 self.consumer_name,
@@ -181,54 +252,69 @@ class ETLStreamingProcessor:
                 block=1000
             )
             
+            processed_statements = []
+            batch_data = []
+            
             for stream, message_list in messages:
                 for message_id, fields in message_list:
                     try:
-                        # Parse xAPI statement
+                        # Parse statement data
                         if b'data' in fields:
                             statement_data = json.loads(fields[b'data'].decode('utf-8'))
                         else:
-                            # Handle case where data might be in different format
                             statement_data = json.loads(fields.get('data', '{}'))
                         
-                        # Process via MCP Python
-                        flattened_data = await self.process_xapi_statement(statement_data)
-                        
-                        # Write to Postgres via MCP DB
-                        await self.write_to_postgres(flattened_data)
+                        # Process statement
+                        processed = await self.process_xapi_statement(statement_data)
+                        processed_statements.append(processed)
+                        batch_data.append(processed)
                         
                         # Acknowledge message
-                        self.redis_client.xack(self.stream_name, self.group_name, message_id)
+                        self.redis_client.xack(stream, self.group_name, message_id)
                         
-                        # Track last processed
-                        self.last_processed_statement = {
-                            "statement_id": flattened_data.get('statement_id'),
-                            "processed_at": flattened_data.get('processed_at'),
-                            "raw_statement": statement_data
-                        }
-                        
-                        processed_statements.append(self.last_processed_statement)
-                        logger.info(f"Processed statement {flattened_data.get('statement_id')}")
+                        # Update last processed
+                        self.last_processed_statement = processed
                         
                     except Exception as e:
                         logger.error(f"Error processing message {message_id}: {e}")
-                        # Don't acknowledge failed messages
+                        self.error_count += 1
                         continue
-                        
+            
+            # Write batch to database for better performance
+            if batch_data:
+                await self.write_batch_to_postgres(batch_data)
+            
+            return processed_statements
+            
         except Exception as e:
-            logger.error(f"Error reading from Redis stream: {e}")
+            logger.error(f"Error in stream processing: {e}")
             raise
             
-        return processed_statements
+    async def get_performance_stats(self) -> Dict[str, Any]:
+        """Get performance statistics."""
+        return {
+            "processed_count": self.processed_count,
+            "error_count": self.error_count,
+            "success_rate": (self.processed_count / (self.processed_count + self.error_count)) * 100 if (self.processed_count + self.error_count) > 0 else 0,
+            "batch_size": self.batch_size,
+            "last_processed_statement": self.last_processed_statement
+        }
         
     async def get_last_processed_statement(self) -> Optional[Dict[str, Any]]:
-        """Get the last processed statement for the test endpoint."""
+        """Get last processed statement."""
         return self.last_processed_statement
         
     async def close(self):
-        """Close database connection."""
-        if self.db_connection:
-            self.db_connection.close()
+        """Close database connection pool."""
+        if self.db_pool:
+            self.db_pool.closeall()
 
-# Global processor instance
-etl_processor = ETLStreamingProcessor() 
+# Global processor instance (lazy initialization)
+etl_processor = None
+
+def get_etl_processor():
+    """Get or create the global ETL processor instance."""
+    global etl_processor
+    if etl_processor is None:
+        etl_processor = ETLStreamingProcessor()
+    return etl_processor 

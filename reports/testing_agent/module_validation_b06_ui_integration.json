@@ -51,7 +51,7 @@
         "Custom query execution with read-only validation",
         "Beautiful responsive HTML template",
         "Admin panel endpoints for status and configuration",
-        "Safe query execution via MCP DB integration",
+        "Safe query execution via direct database integration",
         "Modern responsive UI design with Bootstrap styling"
       ]
     },

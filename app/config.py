@@ -12,9 +12,8 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
     
-    # MCP Servers
-    MCP_POSTGRES_URL: str = "http://localhost:8001"
-    MCP_PYTHON_URL: str = "http://localhost:8000"
+    # Direct Database Connections (No MCP needed)
+    # PostgreSQL and Redis are accessed directly via psycopg2 and redis-py
     
     # 7taps Configuration
     SEVENTAPS_PRIVATE_KEY_PATH: str = "keys/7taps_private_key.pem"

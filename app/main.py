@@ -255,6 +255,7 @@ from app.api.xapi import router as xapi_router
 from app.api.seventaps import router as seventaps_router
 from app.api.xapi_lrs import router as xapi_lrs_router
 from app.api.learninglocker_sync import router as learninglocker_sync_router
+from app.api.health import router as health_router
 from app.ui.admin import router as admin_router
 from app.ui.dashboard import router as dashboard_router
 
@@ -265,6 +266,7 @@ app.include_router(xapi_router, tags=["xAPI"])
 app.include_router(seventaps_router, tags=["7taps"])
 app.include_router(xapi_lrs_router, tags=["xAPI LRS"])
 app.include_router(learninglocker_sync_router, prefix="/api", tags=["Learning Locker"])
+app.include_router(health_router, tags=["Health"])
 app.include_router(admin_router, tags=["Admin"])
 app.include_router(dashboard_router, tags=["Dashboard"])
 

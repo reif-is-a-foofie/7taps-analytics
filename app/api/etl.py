@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any, List
 import asyncio
 
-from app.etl_streaming import etl_processor
+from app.etl_streaming import get_etl_processor
 from app.etl_incremental import incremental_processor
 
 router = APIRouter()
@@ -19,6 +19,7 @@ async def test_etl_streaming() -> Dict[str, Any]:
     Returns the last processed xAPI statement and triggers a new processing cycle.
     """
     try:
+        etl_processor = get_etl_processor()
         # Process up to 5 messages from the stream
         processed_statements = await etl_processor.process_stream(max_messages=5)
         
@@ -45,6 +46,7 @@ async def get_etl_status() -> Dict[str, Any]:
     Get current ETL processing status.
     """
     try:
+        etl_processor = get_etl_processor()
         last_statement = await etl_processor.get_last_processed_statement()
         
         return {
