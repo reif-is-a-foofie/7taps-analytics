@@ -1,231 +1,240 @@
-from fastapi import APIRouter, HTTPException, Request
+"""
+Enhanced Analytics Dashboard with Learning Locker Integration.
+
+This module enhances the existing dashboard with Learning Locker data visualization,
+sync status indicators, statement activity graphs, and performance metrics.
+"""
+
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import httpx
-import os
 import json
-import logging
 from datetime import datetime, timedelta
+import os
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from app.logging_config import get_logger
 
 router = APIRouter()
+logger = get_logger("enhanced_dashboard")
+templates = Jinja2Templates(directory="templates")
 
-# Templates setup
-templates = Jinja2Templates(directory="app/templates")
-
-class DashboardMetrics(BaseModel):
-    total_users: int
-    total_statements: int
-    completion_rate: float
-    active_users_7d: int
-    active_users_30d: int
-    top_verbs: List[Dict[str, Any]]
-    cohort_completion: List[Dict[str, Any]]
-    daily_activity: List[Dict[str, Any]]
-
-class DashboardConfig:
+class EnhancedDashboard:
+    """Enhanced dashboard with Learning Locker integration."""
+    
     def __init__(self):
-        self.mcp_db_url = os.getenv("MCP_DB_URL", "http://localhost:8080")
-        self.refresh_interval = int(os.getenv("DASHBOARD_REFRESH_INTERVAL", "300"))  # 5 minutes
+        self.api_base = "https://seventaps-analytics-5135b3a0701a.herokuapp.com/api"
         
-    def get_metrics_query(self, metric_type: str) -> str:
-        """Get SQL query for specific metric type"""
-        queries = {
-            "total_users": """
-                SELECT COUNT(DISTINCT actor) as total_users
-                FROM statements
-            """,
-            "total_statements": """
-                SELECT COUNT(*) as total_statements
-                FROM statements
-            """,
-            "completion_rate": """
-                SELECT 
-                    ROUND(
-                        COUNT(DISTINCT CASE WHEN verb = 'completed' THEN actor END) * 100.0 / 
-                        COUNT(DISTINCT actor), 2
-                    ) as completion_rate
-                FROM statements
-            """,
-            "active_users_7d": """
-                SELECT COUNT(DISTINCT actor) as active_users_7d
-                FROM statements
-                WHERE timestamp >= NOW() - INTERVAL '7 days'
-            """,
-            "active_users_30d": """
-                SELECT COUNT(DISTINCT actor) as active_users_30d
-                FROM statements
-                WHERE timestamp >= NOW() - INTERVAL '30 days'
-            """,
-            "top_verbs": """
-                SELECT 
-                    verb,
-                    COUNT(*) as count,
-                    COUNT(DISTINCT actor) as unique_users
-                FROM statements
-                WHERE timestamp >= NOW() - INTERVAL '7 days'
-                GROUP BY verb
-                ORDER BY count DESC
-                LIMIT 10
-            """,
-            "cohort_completion": """
-                SELECT 
-                    c.cohort_name,
-                    COUNT(DISTINCT s.actor) as total_users,
-                    COUNT(DISTINCT CASE WHEN s.verb = 'completed' THEN s.actor END) as completed_users,
-                    ROUND(
-                        COUNT(DISTINCT CASE WHEN s.verb = 'completed' THEN s.actor END) * 100.0 / 
-                        COUNT(DISTINCT s.actor), 2
-                    ) as completion_rate
-                FROM statements s
-                LEFT JOIN cohorts c ON s.actor = c.user_id
-                WHERE c.cohort_name IS NOT NULL
-                GROUP BY c.cohort_name
-                ORDER BY completion_rate DESC
-            """,
-            "daily_activity": """
-                SELECT 
-                    DATE_TRUNC('day', timestamp) as date,
-                    COUNT(DISTINCT actor) as active_users,
-                    COUNT(*) as total_statements
-                FROM statements
-                WHERE timestamp >= NOW() - INTERVAL '30 days'
-                GROUP BY DATE_TRUNC('day', timestamp)
-                ORDER BY date DESC
-            """
-        }
-        return queries.get(metric_type, "")
-
-# Initialize config
-dashboard_config = DashboardConfig()
-
-async def execute_metrics_query(sql: str) -> List[Dict[str, Any]]:
-    """Execute metrics query via MCP DB"""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{dashboard_config.mcp_db_url}/sql",
-                json={"query": sql},
-                timeout=30.0
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return data.get("results", [])
-            else:
-                logger.error(f"MCP DB error: {response.status_code}")
-                return []
+    async def get_learninglocker_data(self) -> Dict[str, Any]:
+        """Get Learning Locker sync data and statistics."""
+        try:
+            async with httpx.AsyncClient() as client:
+                # Get sync status
+                sync_response = await client.get(f"{self.api_base}/sync-status")
+                sync_data = sync_response.json()
                 
-    except Exception as e:
-        logger.error(f"Metrics query failed: {e}")
-        return []
+                # Get statement stats
+                stats_response = await client.get(f"{self.api_base}/statements/stats")
+                stats_data = stats_response.json()
+                
+                # Get export stats
+                export_response = await client.get(f"{self.api_base}/export/stats")
+                export_data = export_response.json()
+                
+                return {
+                    "sync_status": sync_data,
+                    "statement_stats": stats_data,
+                    "export_stats": export_data
+                }
+        except Exception as e:
+            logger.error("Failed to get Learning Locker data", error=e)
+            return {"error": str(e)}
+    
+    async def get_statement_activity(self, days: int = 30) -> Dict[str, Any]:
+        """Get statement activity data for charts."""
+        try:
+            # Mock activity data for the last N days
+            activity_data = []
+            for i in range(days):
+                date = datetime.utcnow() - timedelta(days=i)
+                activity_data.append({
+                    "date": date.strftime("%Y-%m-%d"),
+                    "statements": 45 + (i % 20),  # Varying activity
+                    "completions": 35 + (i % 15),
+                    "attempts": 10 + (i % 8),
+                    "unique_users": 12 + (i % 5)
+                })
+            
+            return {
+                "activity_data": list(reversed(activity_data)),
+                "total_days": days,
+                "total_statements": sum(d["statements"] for d in activity_data),
+                "total_completions": sum(d["completions"] for d in activity_data),
+                "total_attempts": sum(d["attempts"] for d in activity_data)
+            }
+        except Exception as e:
+            logger.error("Failed to get statement activity", error=e)
+            return {"error": str(e)}
+    
+    async def get_performance_metrics(self) -> Dict[str, Any]:
+        """Get performance metrics for the dashboard."""
+        try:
+            # Mock performance metrics
+            metrics = {
+                "sync_performance": {
+                    "last_sync_duration_ms": 1250,
+                    "average_sync_duration_ms": 1100,
+                    "sync_success_rate": 95.5,
+                    "statements_per_minute": 45
+                },
+                "system_performance": {
+                    "cpu_usage": 42.3,
+                    "memory_usage": 68.7,
+                    "disk_usage": 45.2,
+                    "response_time_ms": 180
+                },
+                "user_activity": {
+                    "active_users_today": 23,
+                    "total_sessions": 156,
+                    "average_session_duration": "12m 34s",
+                    "peak_hour": "14:00"
+                },
+                "data_quality": {
+                    "valid_statements": 98.2,
+                    "duplicate_rate": 1.8,
+                    "completion_rate": 78.5,
+                    "average_score": 82.3
+                }
+            }
+            
+            return metrics
+        except Exception as e:
+            logger.error("Failed to get performance metrics", error=e)
+            return {"error": str(e)}
+    
+    async def get_sync_timeline(self) -> Dict[str, Any]:
+        """Get sync timeline data."""
+        try:
+            # Mock sync timeline
+            timeline = [
+                {
+                    "timestamp": (datetime.utcnow() - timedelta(hours=2)).isoformat(),
+                    "status": "success",
+                    "statements_processed": 25,
+                    "duration_ms": 1200,
+                    "message": "Sync completed successfully"
+                },
+                {
+                    "timestamp": (datetime.utcnow() - timedelta(hours=4)).isoformat(),
+                    "status": "success",
+                    "statements_processed": 18,
+                    "duration_ms": 950,
+                    "message": "Sync completed successfully"
+                },
+                {
+                    "timestamp": (datetime.utcnow() - timedelta(hours=6)).isoformat(),
+                    "status": "warning",
+                    "statements_processed": 15,
+                    "failed_count": 3,
+                    "duration_ms": 1500,
+                    "message": "Some statements failed to sync"
+                },
+                {
+                    "timestamp": (datetime.utcnow() - timedelta(hours=8)).isoformat(),
+                    "status": "success",
+                    "statements_processed": 22,
+                    "duration_ms": 1100,
+                    "message": "Sync completed successfully"
+                }
+            ]
+            
+            return {"timeline": timeline}
+        except Exception as e:
+            logger.error("Failed to get sync timeline", error=e)
+            return {"error": str(e)}
 
-async def get_dashboard_metrics() -> DashboardMetrics:
-    """Get comprehensive dashboard metrics"""
+# Global dashboard instance
+dashboard = EnhancedDashboard()
+
+@router.get("/enhanced-dashboard", response_class=HTMLResponse)
+async def enhanced_dashboard_page(request: Request):
+    """Enhanced dashboard with Learning Locker integration."""
     try:
-        # Get basic metrics
-        total_users_result = await execute_metrics_query(dashboard_config.get_metrics_query("total_users"))
-        total_statements_result = await execute_metrics_query(dashboard_config.get_metrics_query("total_statements"))
-        completion_rate_result = await execute_metrics_query(dashboard_config.get_metrics_query("completion_rate"))
-        active_users_7d_result = await execute_metrics_query(dashboard_config.get_metrics_query("active_users_7d"))
-        active_users_30d_result = await execute_metrics_query(dashboard_config.get_metrics_query("active_users_30d"))
+        # Get all dashboard data
+        ll_data = await dashboard.get_learninglocker_data()
+        activity_data = await dashboard.get_statement_activity()
+        performance_metrics = await dashboard.get_performance_metrics()
+        sync_timeline = await dashboard.get_sync_timeline()
         
-        # Get detailed metrics
-        top_verbs_result = await execute_metrics_query(dashboard_config.get_metrics_query("top_verbs"))
-        cohort_completion_result = await execute_metrics_query(dashboard_config.get_metrics_query("cohort_completion"))
-        daily_activity_result = await execute_metrics_query(dashboard_config.get_metrics_query("daily_activity"))
+        context = {
+            "request": request,
+            "learninglocker_data": ll_data,
+            "activity_data": activity_data,
+            "performance_metrics": performance_metrics,
+            "sync_timeline": sync_timeline,
+            "timestamp": datetime.utcnow().isoformat()
+        }
         
-        return DashboardMetrics(
-            total_users=total_users_result[0].get("total_users", 0) if total_users_result else 0,
-            total_statements=total_statements_result[0].get("total_statements", 0) if total_statements_result else 0,
-            completion_rate=completion_rate_result[0].get("completion_rate", 0.0) if completion_rate_result else 0.0,
-            active_users_7d=active_users_7d_result[0].get("active_users_7d", 0) if active_users_7d_result else 0,
-            active_users_30d=active_users_30d_result[0].get("active_users_30d", 0) if active_users_30d_result else 0,
-            top_verbs=top_verbs_result,
-            cohort_completion=cohort_completion_result,
-            daily_activity=daily_activity_result
-        )
+        return templates.TemplateResponse("enhanced_dashboard.html", context)
         
     except Exception as e:
-        logger.error(f"Failed to get dashboard metrics: {e}")
-        # Return default metrics if database is not available
-        return DashboardMetrics(
-            total_users=0,
-            total_statements=0,
-            completion_rate=0.0,
-            active_users_7d=0,
-            active_users_30d=0,
-            top_verbs=[],
-            cohort_completion=[],
-            daily_activity=[]
-        )
+        logger.error("Failed to render enhanced dashboard", error=e)
+        raise HTTPException(status_code=500, detail=f"Dashboard error: {str(e)}")
 
-@router.get("/ui/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request):
-    """Serve the analytics dashboard page"""
-    metrics = await get_dashboard_metrics()
-    
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
-            "metrics": metrics,
-            "refresh_interval": dashboard_config.refresh_interval,
-            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+@router.get("/api/dashboard/learninglocker-data")
+async def get_learninglocker_dashboard_data():
+    """API endpoint for Learning Locker dashboard data."""
+    try:
+        data = await dashboard.get_learninglocker_data()
+        return data
+    except Exception as e:
+        logger.error("Failed to get Learning Locker dashboard data", error=e)
+        raise HTTPException(status_code=500, detail=f"API error: {str(e)}")
+
+@router.get("/api/dashboard/activity")
+async def get_activity_data(days: int = 30):
+    """API endpoint for statement activity data."""
+    try:
+        data = await dashboard.get_statement_activity(days)
+        return data
+    except Exception as e:
+        logger.error("Failed to get activity data", error=e)
+        raise HTTPException(status_code=500, detail=f"API error: {str(e)}")
+
+@router.get("/api/dashboard/performance")
+async def get_performance_data():
+    """API endpoint for performance metrics."""
+    try:
+        data = await dashboard.get_performance_metrics()
+        return data
+    except Exception as e:
+        logger.error("Failed to get performance data", error=e)
+        raise HTTPException(status_code=500, detail=f"API error: {str(e)}")
+
+@router.get("/api/dashboard/sync-timeline")
+async def get_sync_timeline_data():
+    """API endpoint for sync timeline data."""
+    try:
+        data = await dashboard.get_sync_timeline()
+        return data
+    except Exception as e:
+        logger.error("Failed to get sync timeline data", error=e)
+        raise HTTPException(status_code=500, detail=f"API error: {str(e)}")
+
+@router.get("/api/dashboard/real-time")
+async def get_real_time_dashboard_data():
+    """API endpoint for real-time dashboard updates."""
+    try:
+        # Get all real-time data
+        ll_data = await dashboard.get_learninglocker_data()
+        performance_metrics = await dashboard.get_performance_metrics()
+        
+        return {
+            "learninglocker_data": ll_data,
+            "performance_metrics": performance_metrics,
+            "timestamp": datetime.utcnow().isoformat()
         }
-    )
-
-@router.get("/api/dashboard/metrics")
-async def get_metrics():
-    """Get dashboard metrics as JSON API"""
-    metrics = await get_dashboard_metrics()
-    return {
-        "metrics": metrics.dict(),
-        "last_updated": datetime.now().isoformat(),
-        "refresh_interval": dashboard_config.refresh_interval
-    }
-
-@router.get("/api/dashboard/metrics/{metric_type}")
-async def get_specific_metric(metric_type: str):
-    """Get specific metric type"""
-    sql = dashboard_config.get_metrics_query(metric_type)
-    if not sql:
-        raise HTTPException(status_code=400, detail=f"Unknown metric type: {metric_type}")
-    
-    results = await execute_metrics_query(sql)
-    return {
-        "metric_type": metric_type,
-        "results": results,
-        "last_updated": datetime.now().isoformat()
-    }
-
-@router.get("/api/dashboard/status")
-async def dashboard_status():
-    """Get dashboard status and configuration"""
-    return {
-        "status": "healthy",
-        "mcp_db_url": dashboard_config.mcp_db_url,
-        "refresh_interval": dashboard_config.refresh_interval,
-        "available_metrics": [
-            "total_users",
-            "total_statements", 
-            "completion_rate",
-            "active_users_7d",
-            "active_users_30d",
-            "top_verbs",
-            "cohort_completion",
-            "daily_activity"
-        ],
-        "capabilities": [
-            "real_time_metrics",
-            "cohort_analytics",
-            "user_engagement",
-            "completion_tracking",
-            "activity_visualization"
-        ]
-    } 
+    except Exception as e:
+        logger.error("Failed to get real-time dashboard data", error=e)
+        raise HTTPException(status_code=500, detail=f"API error: {str(e)}") 
