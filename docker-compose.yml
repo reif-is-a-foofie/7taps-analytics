@@ -84,6 +84,75 @@ services:
       timeout: 10s
       retries: 3
 
+  # Learning Locker (xAPI LRS)
+  learninglocker:
+    image: learninglocker/learninglocker:latest
+    ports:
+      - "8080:80"
+    environment:
+      # Database configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: learninglocker
+      DB_USERNAME: analytics_user
+      DB_PASSWORD: analytics_pass
+      
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # App configuration
+      APP_URL: http://localhost:8080
+      APP_DEBUG: "false"
+      APP_ENV: production
+      
+      # Queue configuration
+      QUEUE_CONNECTION: redis
+      QUEUE_DRIVER: redis
+      
+      # Cache configuration
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      
+      # Mail configuration (optional)
+      MAIL_MAILER: log
+      
+      # Learning Locker specific
+      LL_APP_NAME: "7taps Analytics LRS"
+      LL_APP_URL: http://localhost:8080
+      LL_APP_ENV: production
+      LL_APP_DEBUG: "false"
+      LL_APP_KEY: base64:your-app-key-here
+      LL_APP_CIPHER: AES-256-CBC
+      
+      # xAPI configuration
+      LL_XAPI_STATEMENTS_ENDPOINT: http://localhost:8080/data/xAPI/statements
+      LL_XAPI_ACTIVITIES_ENDPOINT: http://localhost:8080/data/xAPI/activities
+      LL_XAPI_AGENTS_ENDPOINT: http://localhost:8080/data/xAPI/agents
+      
+      # Auth configuration
+      LL_AUTH_ADMIN_EMAIL: admin@7taps.com
+      LL_AUTH_ADMIN_PASSWORD: admin123
+      LL_AUTH_ADMIN_NAME: "7taps Admin"
+      
+      # Database setup
+      LL_DB_SETUP: "true"
+      LL_DB_SEED: "true"
+      
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - learninglocker_data:/var/www/html/storage
+      - learninglocker_logs:/var/www/html/storage/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # FastAPI Application
   app:
     build: .
@@ -105,7 +174,8 @@ services:
         condition: service_healthy
       mcp-python:
         condition: service_healthy
-
+      learninglocker:
+        condition: service_healthy
     volumes:
       - ./app:/app
       - ./logs:/app/logs
@@ -118,14 +188,13 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '1.0'
-        reservations:
           memory: 512M
-          cpus: '0.5'
+        reservations:
+          memory: 256M
 
 volumes:
   postgres_data:
   redis_data:
   sqlpad_data:
-  logs: 
+  learninglocker_data:
+  learninglocker_logs: 
