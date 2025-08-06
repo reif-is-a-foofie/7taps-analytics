@@ -238,9 +238,13 @@ async def receive_7taps_webhook(request: Request):
                 import redis
                 import uuid
                 
-                # Get Redis client
+                # Get Redis client with SSL configuration
                 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-                redis_client = redis.from_url(redis_url)
+                redis_client = redis.from_url(
+                    redis_url,
+                    ssl_cert_reqs=None,  # Disable SSL certificate verification for Heroku Redis
+                    decode_responses=True
+                )
                 
                 # Prepare statement data for Redis
                 statement_data = {

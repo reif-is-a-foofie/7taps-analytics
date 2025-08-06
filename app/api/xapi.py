@@ -36,7 +36,11 @@ def get_redis_client():
     global redis_client
     if redis_client is None:
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        redis_client = redis.from_url(redis_url)
+        redis_client = redis.from_url(
+            redis_url,
+            ssl_cert_reqs=None,  # Disable SSL certificate verification for Heroku Redis
+            decode_responses=True
+        )
     return redis_client
 
 
