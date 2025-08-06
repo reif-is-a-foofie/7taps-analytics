@@ -164,7 +164,7 @@ def verify_webhook_secret(request_body: str, signature: str) -> bool:
 
 async def authenticate_7taps_request(request: Request) -> bool:
     """
-    Authenticate 7taps webhook request.
+    Authenticate 7taps webhook request using RSA signature verification.
     
     Args:
         request: FastAPI request object
@@ -183,15 +183,15 @@ async def authenticate_7taps_request(request: Request) -> bool:
             webhook_stats["authentication_failures"] += 1
             return False
         
-        # Verify webhook secret first
-        if not verify_webhook_secret(body_str, signature):
-            webhook_stats["authentication_failures"] += 1
-            return False
-        
-        # Verify RSA signature if enabled
+        # Verify RSA signature (primary authentication method)
         verify_rsa = os.getenv("SEVENTAPS_VERIFY_SIGNATURE", "true").lower() == "true"
         if verify_rsa:
             if not verify_7taps_signature(body, signature):
+                webhook_stats["authentication_failures"] += 1
+                return False
+        else:
+            # Fallback to HMAC if RSA is disabled
+            if not verify_webhook_secret(body_str, signature):
                 webhook_stats["authentication_failures"] += 1
                 return False
         
@@ -355,15 +355,15 @@ fescUmGFyEhz3TRFOdYCeAxargz5PwPnoq4Ju2fNTnme03x1XEVXH6nwKnG6dZWz
 i8D8B4JE4L4Mpi+YCDklVN8=
 -----END PRIVATE KEY-----"""
             
-            # Embedded public key
+            # Embedded public key (updated to match the one sent to Ezra)
             public_key_content = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt2eaCrickieAdVeZjupD
-vtxdRryikZ42GiTjB3zmHmFcxN5RRDfI0f3PxCmX38FhpgnJM9G/QdZeXn9MrgsW
-Xu3h9i9oDDQ07H1I9WAqxtCte5QbA+dx+ZsEz6dvL7FSb4tjjZxQ9K2DzAZJigFT
-/mcisjvFoC10HTJ+x3qhE+jptd+ULrpo0gzhyttYpaeV4cmjeNPNVefjKITWQDVl
-G39A+q4z+U3JUukKyqXa4CE62cTHGqPof+zLq4EdUp5pGE7RWKXqvr3AX2jTx4TZ
-n7rQY1FWdNgVTVoI/C06lz9lYPGaXTEFJDwlZl1AiwTa0zLE4QLiIyqPG+m6X9Dl
-CwIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5BEcHejfnHrBmyVL/JSQ
+HmIPwup9xQYOosCLofxB46fVB0I3MGc5z6dj73xJ3wktU575xCw+KqAtBD0BMj23
+kmoI4BQwuCIJoAshl9irgWtEDw2CsvmW+QtZz7tH+JLTbGi6d5ofsMOPgf0Yrj2T
+Kvdqd0jqopIqRAQNwpV26KzYTpadCoN8ZExzdnPMRqw2elkGa7fJD97MqI3qToJw
+C+9g61dqZFnZA7b9qXkEHCRLAP7EOVV2CFdePZ9xshCDaHyDkqSQYYU8f3749bfs
+bCjD8zCjM3oKbzm9B+ixZBrf8pJ8As8PWZ4cNXDjA6Kc/OcVRkt4W0KOeSa1oD91
+KQIDAQAB
 -----END PUBLIC KEY-----"""
             
             # Write keys to files
