@@ -23,7 +23,7 @@ from app.models import (
 router = APIRouter()
 
 # Global Redis client
-redis_client = None
+redis_client_instance = None
 ingestion_stats = {
     "total_statements": 0,
     "error_count": 0,
@@ -33,15 +33,15 @@ ingestion_stats = {
 
 def get_redis_client():
     """Get Redis client instance."""
-    global redis_client
-    if redis_client is None:
+    global redis_client_instance
+    if redis_client_instance is None:
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        redis_client = redis.from_url(
+        redis_client_instance = redis.from_url(
             redis_url,
             ssl_cert_reqs=None,  # Disable SSL certificate verification for Heroku Redis
             decode_responses=True
         )
-    return redis_client
+    return redis_client_instance
 
 
 def validate_xapi_statement(statement_data: Dict[str, Any]) -> xAPIStatement:
@@ -261,7 +261,7 @@ async def get_statement_status(statement_id: str):
 
 
 # Helper functions for Testing Agent
-def redis_client():
+def get_redis_client_helper():
     """Get Redis client instance."""
     return get_redis_client()
 
