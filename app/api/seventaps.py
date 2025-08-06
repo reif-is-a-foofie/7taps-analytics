@@ -133,10 +133,10 @@ async def authenticate_7taps_request(request: Request) -> bool:
         return False
 
 
-@router.post("/api/7taps/webhook")
+@router.post("/statements")
 async def receive_7taps_webhook(request: Request):
     """
-    Receive webhook from 7taps with xAPI statements.
+    Receive xAPI statements from 7taps via POST to /statements endpoint.
     
     Authenticates the request using Basic Authentication and
     processes xAPI statements for ETL processing.
@@ -155,14 +155,24 @@ async def receive_7taps_webhook(request: Request):
         
         # Parse request body
         body = await request.json()
-        webhook_payload = SevenTapsWebhookPayload(**body)
         
-        # Process xAPI statement if present
-        if webhook_payload.event_type == "xapi_statement":
-            xapi_data = webhook_payload.data
-            
-            # Log the xAPI statement (simplest milestone)
-            print(f"🎉 FIRST xAPI EVENT RECEIVED: {xapi_data}")
+        # Handle both single statement and array of statements
+        if isinstance(body, list):
+            statements = body
+        else:
+            # Single statement or webhook payload
+            if "event_type" in body and body.get("event_type") == "xapi_statement":
+                # Webhook format
+                statements = [body.get("data", {})]
+            else:
+                # Direct xAPI statement
+                statements = [body]
+        
+        processed_statements = []
+        
+        for statement_data in statements:
+            # Log the xAPI statement
+            print(f"🎉 xAPI STATEMENT RECEIVED: {statement_data}")
             
             # Queue xAPI statement to Redis Streams for ETL processing
             try:
@@ -178,15 +188,12 @@ async def receive_7taps_webhook(request: Request):
                 )
                 
                 # Prepare statement data for Redis
-                statement_data = {
-                    "id": xapi_data.get("id", str(uuid.uuid4())),
-                    "actor": xapi_data.get("actor", {}),
-                    "verb": xapi_data.get("verb", {}),
-                    "object": xapi_data.get("object", {}),
-                    "timestamp": xapi_data.get("timestamp", datetime.utcnow().isoformat()),
-                    "webhook_source": "7taps",
-                    "ingested_at": datetime.utcnow().isoformat()
-                }
+                statement_id = statement_data.get("id", str(uuid.uuid4()))
+                statement_data["id"] = statement_id
+                
+                # Add metadata
+                statement_data["webhook_source"] = "7taps"
+                statement_data["ingested_at"] = datetime.utcnow().isoformat()
                 
                 # Add to Redis Stream
                 stream_name = "xapi_statements"
@@ -198,34 +205,26 @@ async def receive_7taps_webhook(request: Request):
                 
                 print(f"✅ xAPI statement queued to Redis Stream: {message_id}")
                 
-                webhook_stats["successful_requests"] += 1
-                
-                return {
-                    "success": True,
-                    "message": "xAPI statement received and queued for ETL processing",
-                    "statement_id": statement_data["id"],
-                    "redis_message_id": message_id,
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "milestone": "First xAPI webhook event received and queued!"
-                }
+                processed_statements.append({
+                    "statement_id": statement_id,
+                    "message_id": message_id,
+                    "timestamp": statement_data.get("timestamp", datetime.utcnow().isoformat())
+                })
                 
             except Exception as e:
                 print(f"❌ Error queuing to Redis: {e}")
-                webhook_stats["failed_requests"] += 1
-                
-                return {
-                    "success": False,
-                    "message": "xAPI statement received but failed to queue for ETL",
-                    "statement_id": xapi_data.get("id", "unknown"),
-                    "error": str(e),
-                    "timestamp": datetime.utcnow().isoformat()
-                }
+                processed_statements.append({
+                    "statement_id": statement_data.get("id", "unknown"),
+                    "error": str(e)
+                })
         
-        # Handle other event types
         webhook_stats["successful_requests"] += 1
+        
         return {
-            "success": True,
-            "message": f"Event {webhook_payload.event_type} received",
+            "status": "success",
+            "processed_count": len(processed_statements),
+            "statements": processed_statements,
+            "message": f"Successfully queued {len(processed_statements)} xAPI statements from 7taps",
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -235,7 +234,7 @@ async def receive_7taps_webhook(request: Request):
         webhook_stats["failed_requests"] += 1
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to process webhook: {str(e)}"
+            detail=f"Failed to process statements: {str(e)}"
         )
 
 
