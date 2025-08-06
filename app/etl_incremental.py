@@ -1,8 +1,8 @@
 """
-Incremental ETL for 7taps xAPI analytics using MCP servers.
+Incremental ETL for 7taps xAPI analytics using direct database connections.
 
-This module provides periodic catch-up ETL processing to handle missed statements
-and ensure data consistency. Uses MCP Python for processing and MCP DB for storage.
+This module handles incremental processing of xAPI statements
+and ensure data consistency. Uses direct PostgreSQL connections for storage.
 """
 
 import os
@@ -10,59 +10,128 @@ import json
 import logging
 import asyncio
 import httpx
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
 import redis
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from psycopg2.pool import SimpleConnectionPool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class IncrementalETLProcessor:
-    """Incremental ETL processor for catching up missed xAPI statements."""
+    """Incremental ETL processor using direct database connections."""
     
     def __init__(self):
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        self.mcp_python_url = os.getenv("MCP_PYTHON_URL", "http://localhost:8002")
-        self.mcp_postgres_url = os.getenv("MCP_POSTGRES_URL", "http://localhost:8001")
+        self.database_url = os.getenv("DATABASE_URL", "postgresql://analytics_user:analytics_pass@localhost:5432/7taps_analytics")
         self.stream_name = "xapi_statements"
-        self.group_name = "incremental_processor"
+        self.group_name = "incremental_etl"
         self.consumer_name = "incremental_worker"
         
         # Initialize Redis client
-        self.redis_client = redis.from_url(self.redis_url)
+        self.redis_client = redis.from_url(
+            self.redis_url,
+            ssl_cert_reqs=None,
+            decode_responses=True
+        )
         
-        # Initialize HTTP client for MCP servers
-        self._http_client = httpx.AsyncClient(timeout=30.0)
+        # Initialize database connection pool
+        self.db_pool = SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            dsn=self.database_url
+        )
         
-        # Track processing status
-        self.last_processed_timestamp = None
-        self.processing_stats = {
-            "total_processed": 0,
-            "last_run": None,
-            "errors": 0,
-            "successful_runs": 0
-        }
+        # Processing stats
+        self.processed_count = 0
+        self.error_count = 0
+        self.last_processed_time = None
         
-    def mcp_python_client(self):
-        """Get MCP Python client instance."""
-        return self.http_client
+    def get_db_connection(self):
+        """Get database connection from pool."""
+        return self.db_pool.getconn()
         
-    def mcp_db_client(self):
-        """Get MCP DB client instance."""
-        return self.http_client
+    def return_db_connection(self, conn):
+        """Return database connection to pool."""
+        self.db_pool.putconn(conn)
         
     async def process_missed_statements(self, statements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Process missed statements."""
         return await self.process_incremental_batch(statements)
         
-    async def process_batch_mcp_python(self, statements: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Process batch using MCP Python."""
-        return await self.process_incremental_batch(statements)
-        
-    async def write_batch_to_mcp_db(self, processed_statements: List[Dict[str, Any]]):
-        """Write batch to MCP DB."""
-        return await self.write_incremental_batch(processed_statements)
+    async def process_batch_direct(self, statements: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Process batch using direct database connections."""
+        try:
+            processed_statements = []
+            
+            for statement in statements:
+                # Process statement (flatten for database storage)
+                processed = {
+                    'statement_id': statement.get('id'),
+                    'actor_id': statement.get('actor', {}).get('name') if isinstance(statement.get('actor'), dict) else None,
+                    'verb_id': statement.get('verb', {}).get('id') if isinstance(statement.get('verb'), dict) else None,
+                    'object_id': statement.get('object', {}).get('id') if isinstance(statement.get('object'), dict) else None,
+                    'object_type': statement.get('object', {}).get('objectType') if isinstance(statement.get('object'), dict) else None,
+                    'timestamp': statement.get('timestamp'),
+                    'raw_statement': json.dumps(statement),
+                    'processed_at': datetime.utcnow().isoformat()
+                }
+                processed_statements.append(processed)
+            
+            return {
+                'processed_count': len(processed_statements),
+                'statements': processed_statements,
+                'success': True
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing batch directly: {e}")
+            return {
+                'processed_count': 0,
+                'error': str(e),
+                'success': False
+            }
+
+    async def write_batch_to_database(self, processed_statements: List[Dict[str, Any]]):
+        """Write processed incremental statements to Postgres directly."""
+        try:
+            conn = self.get_db_connection()
+            try:
+                with conn.cursor() as cursor:
+                    # Insert statements into statements_flat table
+                    sql = """
+                    INSERT INTO statements_flat (
+                        statement_id, actor_id, verb_id, object_id, object_type, 
+                        timestamp, raw_statement, processed_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s
+                    ) ON CONFLICT (statement_id) DO NOTHING
+                    """
+                    
+                    for statement in processed_statements:
+                        cursor.execute(sql, (
+                            statement.get('statement_id'),
+                            statement.get('actor_id'),
+                            statement.get('verb_id'),
+                            statement.get('object_id'),
+                            statement.get('object_type'),
+                            statement.get('timestamp'),
+                            statement.get('raw_statement'),
+                            statement.get('processed_at')
+                        ))
+                    
+                    conn.commit()
+                    logger.info(f"Successfully wrote {len(processed_statements)} incremental statements to database")
+                    
+            finally:
+                self.return_db_connection(conn)
+                
+        except Exception as e:
+            logger.error(f"Error writing incremental batch to database: {e}")
+            raise
         
     def scheduler(self):
         """Get scheduler instance."""
@@ -125,11 +194,11 @@ class IncrementalETLProcessor:
             logger.error(f"Error getting pending messages: {e}")
             return []
             
-    async def get_missed_statements(self, hours_back: int = 24) -> List[Dict[str, Any]]:
+    async def get_missed_statements(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         """Get statements that may have been missed in the last N hours."""
         try:
             # Calculate timestamp for lookback
-            lookback_time = datetime.utcnow() - timedelta(hours=hours_back)
+            lookback_time = start_time
             lookback_timestamp = int(lookback_time.timestamp() * 1000)
             
             # Read messages from the lookback time
@@ -280,94 +349,71 @@ print(json.dumps(result))
             logger.error(f"Error writing incremental batch to Postgres via MCP DB: {e}")
             raise
             
-    async def run_incremental_etl(self, hours_back: int = 24, max_batch_size: int = 50) -> Dict[str, Any]:
-        """Run incremental ETL to catch up missed statements."""
-        
-        start_time = datetime.utcnow()
-        logger.info(f"Starting incremental ETL for last {hours_back} hours")
-        
+    async def run_incremental_etl(self, hours_back: int = 24) -> Dict[str, Any]:
+        """Run incremental ETL for the specified time period."""
         try:
-            await self.ensure_stream_group()
+            # Calculate time range
+            end_time = datetime.utcnow()
+            start_time = end_time - timedelta(hours=hours_back)
             
-            # Get missed statements
-            missed_statements = await self.get_missed_statements(hours_back)
+            logger.info(f"Running incremental ETL from {start_time} to {end_time}")
+            
+            # Get missed statements from Redis
+            missed_statements = await self.get_missed_statements(start_time, end_time)
             
             if not missed_statements:
-                logger.info("No missed statements found")
+                logger.info("No missed statements found for incremental processing")
                 return {
-                    "status": "success",
-                    "processed": 0,
-                    "errors": 0,
-                    "duration_seconds": (datetime.utcnow() - start_time).total_seconds()
+                    'processed_count': 0,
+                    'missed_statements': 0,
+                    'success': True,
+                    'message': 'No missed statements found'
                 }
             
-            # Process in batches
-            total_processed = 0
-            total_errors = 0
+            logger.info(f"Found {len(missed_statements)} missed statements for processing")
             
-            for i in range(0, len(missed_statements), max_batch_size):
-                batch = missed_statements[i:i + max_batch_size]
+            # Process batch using direct database connections
+            result = await self.process_batch_direct(missed_statements)
+            
+            if result['success']:
+                # Write to database directly
+                await self.write_batch_to_database(result['statements'])
                 
-                # Process batch via MCP Python
-                batch_result = await self.process_incremental_batch(batch)
+                self.processed_count += result['processed_count']
+                self.last_processed_time = datetime.utcnow().isoformat()
                 
-                if batch_result.get('success', True):
-                    # Write to Postgres via MCP DB
-                    await self.write_incremental_batch(batch_result.get('processed', []))
-                    
-                    total_processed += len(batch_result.get('processed', []))
-                    total_errors += batch_result.get('errors', 0)
-                    
-                    # Acknowledge messages
-                    for stmt in batch:
-                        try:
-                            self.redis_client.xack(
-                                self.stream_name, 
-                                self.group_name, 
-                                stmt['message_id']
-                            )
-                        except Exception as e:
-                            logger.error(f"Error acknowledging message {stmt['message_id']}: {e}")
-                else:
-                    total_errors += len(batch)
-                    logger.error(f"Batch processing failed")
-            
-            # Update processing stats
-            self.processing_stats["total_processed"] += total_processed
-            self.processing_stats["last_run"] = datetime.utcnow().isoformat()
-            self.processing_stats["errors"] += total_errors
-            self.processing_stats["successful_runs"] += 1
-            
-            duration = (datetime.utcnow() - start_time).total_seconds()
-            
-            logger.info(f"Incremental ETL completed: {total_processed} processed, {total_errors} errors in {duration:.2f}s")
-            
-            return {
-                "status": "success",
-                "processed": total_processed,
-                "errors": total_errors,
-                "duration_seconds": duration,
-                "batch_size": max_batch_size,
-                "hours_back": hours_back
-            }
-            
+                return {
+                    'processed_count': result['processed_count'],
+                    'missed_statements': len(missed_statements),
+                    'success': True,
+                    'message': f"Successfully processed {result['processed_count']} incremental statements"
+                }
+            else:
+                self.error_count += 1
+                return {
+                    'processed_count': 0,
+                    'error': result.get('error', 'Unknown error'),
+                    'success': False
+                }
+                
         except Exception as e:
-            logger.error(f"Incremental ETL failed: {e}")
-            self.processing_stats["errors"] += 1
-            
+            logger.error(f"Error in incremental ETL: {e}")
+            self.error_count += 1
             return {
-                "status": "error",
-                "error": str(e),
-                "duration_seconds": (datetime.utcnow() - start_time).total_seconds()
+                'processed_count': 0,
+                'error': str(e),
+                'success': False
             }
             
     async def get_processing_stats(self) -> Dict[str, Any]:
-        """Get current processing statistics."""
+        """Get incremental ETL processing statistics."""
         return {
-            **self.processing_stats,
-            "last_processed_timestamp": self.last_processed_timestamp,
-            "stream_name": self.stream_name,
-            "group_name": self.group_name
+            "processed_count": self.processed_count,
+            "error_count": self.error_count,
+            "last_processed_time": self.last_processed_time,
+            "success_rate": (self.processed_count / (self.processed_count + self.error_count)) * 100 if (self.processed_count + self.error_count) > 0 else 0,
+            "database_url": self.database_url.split("@")[-1] if self.database_url else "not_configured",
+            "redis_stream": self.stream_name
         }
         
     async def schedule_incremental_etl(self, interval_hours: int = 6):

@@ -22,9 +22,32 @@ class OrchestratorTracker:
     def __init__(self):
         self.contracts_dir = "orchestrator_contracts"
         self.contracts = {}
-        self.mcp_call_log = []
+        self.database_call_log = []
         self.module_assignments = []
         self.test_results = []
+        self.module_status = {
+            'b.01_attach_mcp_servers': False,  # No longer needed - using direct connections
+            'b.02_streaming_etl': True,       # Needs Redis + direct database
+            'b.03_incremental_etl': True,     # Needs Redis + direct database
+            'b.04_orchestrator_mcp': False,   # Pure API, unit tests sufficient
+            'b.05_nlp_query': True,           # Needs direct database + LangChain
+            'b.06_ui': True,                  # Pure UI, no external dependencies
+            'b.07_xapi_ingestion': True,      # Needs Redis + direct database
+            'b.08_deployment_streaming': True, # Docker deployment
+            'b.09_analytics_dashboard': True,  # UI components
+            'b.10_7taps_api_integration': True # 7taps webhook integration
+        }
+        
+        self.module_dependencies = {
+            'b.01_attach_mcp_servers': 'No longer needed - using direct database connections',
+            'b.02_streaming_etl': 'Requires Redis Streams + direct PostgreSQL connections',
+            'b.03_incremental_etl': 'Requires Redis + direct database connections for ETL processing',
+            'b.05_nlp_query': 'Requires direct database + LangChain/LlamaIndex integration',
+            'b.07_xapi_ingestion': 'Requires Redis + direct database connections',
+            'b.08_deployment_streaming': 'Requires Docker Compose deployment',
+            'b.09_analytics_dashboard': 'Requires UI components and database',
+            'b.10_7taps_api_integration': 'Requires 7taps webhook configuration'
+        }
         self.load_contracts()
     
     def load_contracts(self):
@@ -145,17 +168,64 @@ class OrchestratorTracker:
         }
         return test_notes.get(module_name, 'Unit tests only')
     
-    def log_mcp_call(self, call_type: str, module: str, details: Dict[str, Any]) -> None:
-        """Log an MCP call for tracking and monitoring."""
-        mcp_call = {
-            'timestamp': datetime.utcnow().isoformat(),
-            'call_type': call_type,
-            'module': module,
-            'details': details,
-            'status': 'active'
+    def log_database_call(self, call_type: str, module: str, details: Dict[str, Any]) -> None:
+        """Log a database call for tracking and monitoring."""
+        db_call = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "call_type": call_type,
+            "module": module,
+            "details": details,
+            "status": "logged"
         }
-        self.mcp_call_log.append(mcp_call)
-        print(f"MCP Call Logged: {call_type} for {module}")
+        self.database_call_log.append(db_call)
+        print(f"Database Call Logged: {call_type} for {module}")
+
+    def log_database_call_and_test_result(self, call_type: str, module: str, test_result: Dict[str, Any]) -> None:
+        """Log database call with associated test result."""
+        combined_log = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "call_type": call_type,
+            "module": module,
+            "test_result": test_result,
+            "status": "logged_with_test"
+        }
+        self.database_call_log.append(combined_log)
+        print(f"Database Call + Test Result Logged: {call_type} for {module}")
+
+    def log_multiple_database_calls(self, calls: List[Dict[str, Any]]) -> None:
+        """Log multiple database calls in batch."""
+        for call in calls:
+            call["timestamp"] = datetime.utcnow().isoformat()
+            call["status"] = "logged_batch"
+        
+        self.database_call_log.extend(calls)
+        print(f"Multiple Database Calls Logged: {len(calls)} calls")
+
+    def integrate_database_call(self, call_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Integrate database call data with existing tracking."""
+        integrated_call = {
+            **call_data,
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": "integrated"
+        }
+        self.database_call_log.append(integrated_call)
+        return integrated_call
+
+    def integrate_test_result_with_database_calls(self, test_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Integrate test result with database call tracking."""
+        return {
+            **test_data,
+            'database_calls_related': self._get_related_database_calls(test_data.get('module', '')),
+            'total_database_calls': len(self.database_call_log)
+        }
+
+    def _get_related_database_calls(self, module: str) -> List[Dict[str, Any]]:
+        """Get database calls related to a specific module."""
+        related_calls = []
+        for call in self.database_call_log:
+            if call.get('module') == module:
+                related_calls.append(call)
+        return related_calls
     
     def track_module_assignment(self, module: str, agent: str, status: str) -> None:
         """Track module assignment and status changes."""
