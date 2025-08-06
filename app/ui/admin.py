@@ -38,7 +38,7 @@ class AdminPanelConfig:
     def __init__(self):
         self.sqlpad_url = os.getenv("SQLPAD_URL", "http://localhost:3000")
         self.superset_url = os.getenv("SUPERSET_URL", "http://localhost:8088")
-        self.mcp_db_url = os.getenv("MCP_DB_URL", "http://localhost:8080")
+        self.database_url = os.getenv("DATABASE_URL", "postgresql://localhost:5432/7taps_analytics")
         self.use_sqlpad = os.getenv("USE_SQLPAD", "true").lower() == "true"
         
     def get_db_terminal_url(self) -> str:
@@ -141,8 +141,12 @@ PREBUILT_QUERIES = [
 ]
 
 async def execute_safe_query(sql: str) -> DBQueryResponse:
-    """Execute a safe read-only query via MCP DB"""
+    """Execute a safe read-only query via direct database connection"""
     import time
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    import os
+    
     start_time = time.time()
     
     try:
@@ -151,31 +155,29 @@ async def execute_safe_query(sql: str) -> DBQueryResponse:
         if any(keyword in sql_upper for keyword in ['DELETE', 'DROP', 'UPDATE', 'INSERT', 'CREATE', 'ALTER', 'TRUNCATE']):
             raise HTTPException(status_code=400, detail="Only SELECT queries are allowed")
         
-        # Execute via MCP DB
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{admin_config.mcp_db_url}/sql",
-                json={"query": sql},
-                timeout=30.0
-            )
-            
-            execution_time = time.time() - start_time
-            
-            if response.status_code == 200:
-                data = response.json()
+        # Get database URL from environment
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise Exception("DATABASE_URL not configured")
+        
+        # Execute query directly
+        with psycopg2.connect(database_url) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                
+                # Convert to list of dicts
+                result_list = []
+                for row in results:
+                    result_list.append(dict(row))
+                
+                execution_time = time.time() - start_time
+                
                 return DBQueryResponse(
                     query=sql,
-                    results=data.get("results", []),
-                    row_count=len(data.get("results", [])),
+                    results=result_list,
+                    row_count=len(result_list),
                     execution_time=execution_time
-                )
-            else:
-                return DBQueryResponse(
-                    query=sql,
-                    results=[],
-                    row_count=0,
-                    execution_time=execution_time,
-                    error=f"MCP DB error: {response.status_code}"
                 )
                 
     except Exception as e:
@@ -226,7 +228,7 @@ async def db_terminal_status():
         "status": "healthy",
         "db_terminal_url": admin_config.get_db_terminal_url(),
         "use_sqlpad": admin_config.use_sqlpad,
-        "mcp_db_url": admin_config.mcp_db_url,
+        "database_url": admin_config.database_url,
         "prebuilt_queries_count": len(PREBUILT_QUERIES),
         "capabilities": [
             "read_only_queries",
