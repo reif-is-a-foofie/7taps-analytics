@@ -9,7 +9,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 import os
 import openai
-from psycopg2 import pool as SimpleConnectionPool
+from psycopg2.pool import SimpleConnectionPool
 from psycopg2.extras import RealDictCursor
 
 # Configure logging
