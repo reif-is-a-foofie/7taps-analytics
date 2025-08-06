@@ -1,14 +1,15 @@
 """
-7taps API Integration with PEM Key Authentication
+7taps API Integration with Basic Authentication
 
 This module provides webhook endpoints for receiving xAPI statements from 7taps
-with RSA signature verification for secure authentication.
+with Basic authentication using username and password.
 """
 
 import os
 import json
 import hashlib
 import hmac
+import base64
 from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Request, Depends
@@ -30,115 +31,49 @@ webhook_stats = {
     "authentication_failures": 0
 }
 
+# 7taps Basic Authentication credentials
+SEVENTAPS_USERNAME = os.getenv("SEVENTAPS_USERNAME", "7taps_user")
+SEVENTAPS_PASSWORD = os.getenv("SEVENTAPS_PASSWORD", "7taps_password_2025")
+
 
 class SevenTapsWebhookPayload(BaseModel):
     """7taps webhook payload model."""
     event_type: str = Field(..., description="Type of event (e.g., 'xapi_statement')")
     timestamp: datetime = Field(..., description="Event timestamp")
     data: Dict[str, Any] = Field(..., description="Event data payload")
-    signature: Optional[str] = Field(None, description="RSA signature for verification")
     webhook_id: Optional[str] = Field(None, description="7taps webhook identifier")
 
 
-class SevenTapsKeyInfo(BaseModel):
-    """7taps key information model."""
-    public_key_path: str = Field(..., description="Path to public key file")
-    private_key_path: str = Field(..., description="Path to private key file")
-    key_size: int = Field(..., description="RSA key size in bits")
-    generated_at: datetime = Field(..., description="Key generation timestamp")
-    is_valid: bool = Field(..., description="Key validity status")
-
-
-def get_private_key() -> bytes:
-    """Get private key from environment or file."""
-    # Try environment variable first (base64 encoded)
-    private_key_base64 = os.getenv("SEVENTAPS_PRIVATE_KEY_BASE64")
-    if private_key_base64:
-        import base64
-        return base64.b64decode(private_key_base64)
-    
-    # Fallback to file path
-    private_key_path = os.getenv("SEVENTAPS_PRIVATE_KEY_PATH", "keys/7taps_private_key.pem")
-    try:
-        with open(private_key_path, 'rb') as f:
-            return f.read()
-    except FileNotFoundError:
-        raise Exception(f"Private key not found at {private_key_path} and SEVENTAPS_PRIVATE_KEY_BASE64 not set")
-
-
-def get_public_key() -> bytes:
-    """Get public key from environment or file."""
-    # Try environment variable first (base64 encoded)
-    public_key_base64 = os.getenv("SEVENTAPS_PUBLIC_KEY_BASE64")
-    if public_key_base64:
-        import base64
-        return base64.b64decode(public_key_base64)
-    
-    # Fallback to file path
-    public_key_path = os.getenv("SEVENTAPS_PUBLIC_KEY_PATH", "keys/7taps_public_key.pem")
-    try:
-        with open(public_key_path, 'rb') as f:
-            return f.read()
-    except FileNotFoundError:
-        raise Exception(f"Public key not found at {public_key_path} and SEVENTAPS_PUBLIC_KEY_BASE64 not set")
-
-
-def get_private_key_path() -> str:
-    """Get private key path from environment (for backward compatibility)."""
-    return os.getenv("SEVENTAPS_PRIVATE_KEY_PATH", "keys/7taps_private_key.pem")
-
-
-def get_public_key_path() -> str:
-    """Get public key path from environment (for backward compatibility)."""
-    return os.getenv("SEVENTAPS_PUBLIC_KEY_PATH", "keys/7taps_public_key.pem")
-
-
-def verify_7taps_signature(payload: bytes, signature: str, public_key_path: str = None) -> bool:
+def verify_basic_auth(request: Request) -> bool:
     """
-    Verify 7taps webhook signature using RSA.
+    Verify Basic Authentication credentials for 7taps webhook.
     
     Args:
-        payload: Request payload bytes
-        signature: RSA signature to verify
-        public_key_path: Path to public key file (optional, uses environment if not provided)
+        request: FastAPI request object
         
     Returns:
-        True if signature is valid, False otherwise
+        True if authentication successful, False otherwise
     """
     try:
-        from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import padding
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Basic "):
+            return False
         
-        # Load public key from environment or file
-        if public_key_path:
-            with open(public_key_path, 'rb') as f:
-                public_key_data = f.read()
-        else:
-            public_key_data = get_public_key()
+        # Decode credentials
+        credentials = base64.b64decode(auth_header[6:]).decode('utf-8')
+        username, password = credentials.split(':', 1)
         
-        public_key = serialization.load_pem_public_key(public_key_data)
-        
-        # Decode base64 signature
-        import base64
-        signature_bytes = base64.b64decode(signature)
-        
-        # Verify signature
-        public_key.verify(
-            signature_bytes,
-            payload,
-            padding.PKCS1v15(),
-            hashes.SHA256()
-        )
-        return True
+        # Verify credentials
+        return username == SEVENTAPS_USERNAME and password == SEVENTAPS_PASSWORD
         
     except Exception as e:
-        print(f"Signature verification failed: {e}")
+        print(f"7taps authentication error: {e}")
         return False
 
 
 def verify_webhook_secret(request_body: str, signature: str) -> bool:
     """
-    Verify webhook secret using HMAC.
+    Verify webhook secret using HMAC (fallback method).
     
     Args:
         request_body: Request body as string
@@ -168,7 +103,7 @@ def verify_webhook_secret(request_body: str, signature: str) -> bool:
 
 async def authenticate_7taps_request(request: Request) -> bool:
     """
-    Authenticate 7taps webhook request using RSA signature verification.
+    Authenticate 7taps webhook request using Basic Authentication.
     
     Args:
         request: FastAPI request object
@@ -177,29 +112,20 @@ async def authenticate_7taps_request(request: Request) -> bool:
         True if authentication successful, False otherwise
     """
     try:
-        # Get request body
+        # Primary authentication: Basic Auth
+        if verify_basic_auth(request):
+            return True
+        
+        # Fallback: HMAC webhook secret (if configured)
         body = await request.body()
         body_str = body.decode('utf-8')
-        
-        # Get signature from headers
         signature = request.headers.get("X-7taps-Signature", "")
-        if not signature:
-            webhook_stats["authentication_failures"] += 1
-            return False
         
-        # Verify RSA signature (primary authentication method)
-        verify_rsa = os.getenv("SEVENTAPS_VERIFY_SIGNATURE", "true").lower() == "true"
-        if verify_rsa:
-            if not verify_7taps_signature(body, signature):
-                webhook_stats["authentication_failures"] += 1
-                return False
-        else:
-            # Fallback to HMAC if RSA is disabled
-            if not verify_webhook_secret(body_str, signature):
-                webhook_stats["authentication_failures"] += 1
-                return False
+        if signature and verify_webhook_secret(body_str, signature):
+            return True
         
-        return True
+        webhook_stats["authentication_failures"] += 1
+        return False
         
     except Exception as e:
         print(f"Authentication error: {e}")
@@ -212,7 +138,7 @@ async def receive_7taps_webhook(request: Request):
     """
     Receive webhook from 7taps with xAPI statements.
     
-    Authenticates the request using PEM key verification and
+    Authenticates the request using Basic Authentication and
     processes xAPI statements for ETL processing.
     """
     try:
@@ -223,7 +149,8 @@ async def receive_7taps_webhook(request: Request):
         if not await authenticate_7taps_request(request):
             raise HTTPException(
                 status_code=401,
-                detail="Invalid webhook signature"
+                detail="Invalid credentials",
+                headers={"WWW-Authenticate": "Basic"}
             )
         
         # Parse request body
@@ -313,118 +240,35 @@ async def receive_7taps_webhook(request: Request):
 
 
 @router.get("/api/7taps/keys")
-async def get_7taps_key_info():
+async def get_7taps_auth_info():
     """
-    Get 7taps key information and status.
+    Get 7taps authentication information and status.
     """
     try:
-        private_key_path = get_private_key_path()
-        public_key_path = get_public_key_path()
-        
-        # Check if keys exist (with fallback to embedded keys)
-        private_exists = os.path.exists(private_key_path)
-        public_exists = os.path.exists(public_key_path)
-        
-        # If keys don't exist, create them from embedded data
-        if not private_exists or not public_exists:
-            os.makedirs("keys", exist_ok=True)
-            
-            # Embedded private key
-            private_key_content = """-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC3Z5oKuJySJ4B1
-V5mO6kO+3F1GvKKRnjYaJOMHfOYeYVzE3lFEN8jR/c/EKZffwWGmCckz0b9B1l5e
-f0yuCxZe7eH2L2gMNDTsfUj1YCrG0K17lBsD53H5mwTPp28vsVJvi2ONnFD0rYPM
-BkmKAVP+ZyKyO8WgLXQdMn7HeqET6Om135QuumjSDOHK21ilp5XhyaN4081V5+Mo
-hNZANWUbf0D6rjP5TclS6QrKpdrgITrZxMcao+h/7MurgR1SnmkYTtFYpeq+vcBf
-aNPHhNmfutBjUVZ02BVNWgj8LTqXP2Vg8ZpdMQUkPCVmXUCLBNrTMsThAuIjKo8b
-6bpf0OULAgMBAAECggEAANfMZd4kSiEUYey9s+ILFdSMezRALpVBT8pzV8zI6KCy
-wsvfPkxEQ+G+kJD2odcVVyRdrG++1tw++33aLRZqw8ggY88Ewbb6tACzOCa/UfN2
-sgow1b8/fWGe4sxlE9W7t+Hib1hpF/w5UcX5xmnqBRrJ+uxUCp7VW1WUHkBJE8W2
-bsogC2aKUNLE5cw9Kv6LIN4MnQRvklI7Y29CxIbUM/YF8/pXjZmZ11PGO99JKO/D
-lXVC54JK5a07zIur98txoPY5z3jNguaPnswoN47sVdevpl8rrA0HXqm0ssXiPVJi
-CmNwi6U8hwPgwVPTMFrWJoycfTLDpeSE//mlJ2DtSQKBgQD0HlgsXaHnm5vVeB8j
-+CNrYa3ctOjEytiQHt3vBeD7V24niz2V4SXmujhAKNXP8XJLryJDXYeH0UZKXAfC
-3EKQODgwdKnAJXbm2OfgSTPoY0XtZ7xQrQYfulRJbUb+azafBuA5FniODFHIO+r/
-TBiy/0mwN26UfjdT5nSD6dyQowKBgQDAVMczTufh8LYuGMp9qQhKYfANNjwhTyxp
-ftlhlJX27Yg7ki4nlyw2Q+IyZw7+OBkIWJ5b/WD0Z2yBeH+hDaungwzPlHduUxY4
-TT54ZMTviyqGPgLkuv4g/PNUL4ipDjrt6h/+YqLz3b9X59wCaZBRlRzEZ+fCIHNy
-wJPCDs3YeQKBgFc2BAANj0rD3786g72A5350Tf2cL9AmO4n5TQYYTpDcYkEEUIMc
-BUNRYckiDYiVVGTPc2knn8SYsgjcqfUmZS1KuGAvPXmkqL693NDWthGebZvrxG35
-8kchdP0qagN4X/IeLbqXWYg9xHXJWiHMmMJRy4yFsR6hnLh/iz6ZLLALAoGAFfXY
-JOCek2rDsnG8NSrmum+CVE/b/8WlgYotUfoAQYiPpJWlVXnqX2vS2QRxbs+C9DQC
-KOi+eEmS1xmmIQKJlf/dp5oBJQSxpc4UEvUWk29ldJyCAhHj0GpxcixXQ05Ppji0
-XHxwtL2eCnB7636YLuiCt15R1RWVeQXKGT9Ne6kCgYEAmSB4S39KENeSerOvAXZW
-gwy35zT/I55V/GeJG2QkDM6VPXnMfcY1LUWm75TnjduvlSoBgJwY4wIUAHPiEvXR
-fescUmGFyEhz3TRFOdYCeAxargz5PwPnoq4Ju2fNTnme03x1XEVXH6nwKnG6dZWz
-i8D8B4JE4L4Mpi+YCDklVN8=
------END PRIVATE KEY-----"""
-            
-            # Embedded public key (updated to match the one sent to Ezra)
-            public_key_content = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5BEcHejfnHrBmyVL/JSQ
-HmIPwup9xQYOosCLofxB46fVB0I3MGc5z6dj73xJ3wktU575xCw+KqAtBD0BMj23
-kmoI4BQwuCIJoAshl9irgWtEDw2CsvmW+QtZz7tH+JLTbGi6d5ofsMOPgf0Yrj2T
-Kvdqd0jqopIqRAQNwpV26KzYTpadCoN8ZExzdnPMRqw2elkGa7fJD97MqI3qToJw
-C+9g61dqZFnZA7b9qXkEHCRLAP7EOVV2CFdePZ9xshCDaHyDkqSQYYU8f3749bfs
-bCjD8zCjM3oKbzm9B+ixZBrf8pJ8As8PWZ4cNXDjA6Kc/OcVRkt4W0KOeSa1oD91
-KQIDAQAB
------END PUBLIC KEY-----"""
-            
-            # Write keys to files
-            with open("keys/7taps_private_key.pem", "w") as f:
-                f.write(private_key_content)
-            with open("keys/7taps_public_key.pem", "w") as f:
-                f.write(public_key_content)
-            
-            # Set permissions
-            os.chmod("keys/7taps_private_key.pem", 0o600)
-            
-            # Update existence flags
-            private_exists = True
-            public_exists = True
-        
-        # Get key information
-        key_info = {
-            "private_key_path": private_key_path,
-            "public_key_path": public_key_path,
-            "private_key_exists": private_exists,
-            "public_key_exists": public_exists,
-            "authentication_enabled": os.getenv("SEVENTAPS_AUTH_ENABLED", "true").lower() == "true",
-            "signature_verification": os.getenv("SEVENTAPS_VERIFY_SIGNATURE", "true").lower() == "true",
+        auth_info = {
+            "authentication_method": "Basic Authentication",
+            "username": SEVENTAPS_USERNAME,
+            "password_configured": bool(SEVENTAPS_PASSWORD),
+            "authentication_enabled": True,
             "webhook_secret_configured": bool(os.getenv("SEVENTAPS_WEBHOOK_SECRET")),
             "environment_variables": {
-                "SEVENTAPS_PRIVATE_KEY_PATH": private_key_path,
-                "SEVENTAPS_PUBLIC_KEY_PATH": public_key_path,
-                "SEVENTAPS_WEBHOOK_SECRET": "configured" if os.getenv("SEVENTAPS_WEBHOOK_SECRET") else "not_set",
-                "SEVENTAPS_AUTH_ENABLED": os.getenv("SEVENTAPS_AUTH_ENABLED", "true"),
-                "SEVENTAPS_VERIFY_SIGNATURE": os.getenv("SEVENTAPS_VERIFY_SIGNATURE", "true")
-            }
+                "SEVENTAPS_USERNAME": SEVENTAPS_USERNAME,
+                "SEVENTAPS_PASSWORD": "configured" if SEVENTAPS_PASSWORD else "not_set",
+                "SEVENTAPS_WEBHOOK_SECRET": "configured" if os.getenv("SEVENTAPS_WEBHOOK_SECRET") else "not_set"
+            },
+            "authentication_headers": {
+                "Authorization": "Basic <base64-encoded-credentials>"
+            },
+            "fallback_method": "HMAC webhook secret (if configured)",
+            "message": "7taps webhook uses Basic Authentication with username/password"
         }
         
-        # Get key details if they exist
-        if private_exists and public_exists:
-            try:
-                from cryptography.hazmat.primitives import serialization
-                
-                # Load private key to get key size
-                with open(private_key_path, 'rb') as f:
-                    private_key = serialization.load_pem_private_key(f.read(), password=None)
-                    key_info["key_size"] = private_key.key_size
-                    key_info["key_type"] = "RSA"
-                    key_info["generated_at"] = datetime.fromtimestamp(
-                        os.path.getctime(private_key_path)
-                    ).isoformat()
-                    
-            except Exception as e:
-                key_info["key_size"] = "unknown"
-                key_info["error"] = str(e)
-        
-        return key_info
+        return auth_info
         
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get key information: {str(e)}"
+            detail=f"Failed to get authentication information: {str(e)}"
         )
 
 
@@ -444,15 +288,9 @@ async def get_webhook_stats():
 
 
 # Helper functions for Testing Agent
-def generate_key_pair(key_size: int = 2048) -> tuple:
-    """Generate RSA key pair for testing."""
-    from scripts.generate_pem_keys import generate_rsa_key_pair
-    return generate_rsa_key_pair(key_size)
-
-
-def verify_signature(payload: bytes, signature: str, public_key_path: str) -> bool:
-    """Verify signature for testing."""
-    return verify_7taps_signature(payload, signature, public_key_path)
+def verify_basic_auth_helper(request: Request) -> bool:
+    """Verify Basic Authentication for testing."""
+    return verify_basic_auth(request)
 
 
 def get_webhook_statistics() -> Dict[str, Any]:
