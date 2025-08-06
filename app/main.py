@@ -186,8 +186,8 @@ async def root():
                 
                 <div class="card">
                     <h2>🔗 7taps Integration</h2>
-                    <p>Webhook endpoint for 7taps integration with PEM key authentication and signature verification.</p>
-                    <a href="/api/7taps/keys" class="btn">View Keys</a>
+                    <p>Webhook endpoint for 7taps integration with Basic authentication using username and password.</p>
+                    <a href="/api/7taps/keys" class="btn">View Auth Info</a>
                 </div>
                 
                 <div class="card">
