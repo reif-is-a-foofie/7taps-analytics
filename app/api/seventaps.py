@@ -118,9 +118,13 @@ def verify_7taps_signature(payload: bytes, signature: str, public_key_path: str 
         
         public_key = serialization.load_pem_public_key(public_key_data)
         
+        # Decode base64 signature
+        import base64
+        signature_bytes = base64.b64decode(signature)
+        
         # Verify signature
         public_key.verify(
-            signature.encode(),
+            signature_bytes,
             payload,
             padding.PKCS1v15(),
             hashes.SHA256()
