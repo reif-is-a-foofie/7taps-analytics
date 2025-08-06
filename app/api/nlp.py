@@ -8,6 +8,9 @@ from langchain.llms import OpenAI
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 import os
+import openai
+from psycopg2 import pool as SimpleConnectionPool
+from psycopg2.extras import RealDictCursor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,28 +52,24 @@ Translate to SQL:
 """
 
 class NLPService:
+    """NLP service for translating natural language to SQL queries."""
+    
     def __init__(self):
-        self.llm = None
-        self.chain = None
-        self.mcp_db_url = os.getenv("MCP_DB_URL", "http://localhost:8080")
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        self.database_url = os.getenv("DATABASE_URL")
         
-        # Initialize LangChain if API key is available
-        api_key = os.getenv("OPENAI_API_KEY")
-        if api_key:
-            try:
-                self.llm = OpenAI(api_key=api_key, temperature=0.1)
-                prompt = PromptTemplate(
-                    input_variables=["query", "query_type"],
-                    template=SQL_TRANSLATION_PROMPT
-                )
-                self.chain = LLMChain(llm=self.llm, prompt=prompt)
-                logger.info("LangChain initialized successfully")
-            except Exception as e:
-                logger.warning(f"Failed to initialize LangChain: {e}")
-                self.chain = None
+        # Initialize OpenAI client
+        if self.openai_api_key:
+            self.openai_client = openai.OpenAI(api_key=self.openai_api_key)
         else:
-            logger.warning("OPENAI_API_KEY not found, using fallback SQL translation")
-            self.chain = None
+            self.openai_client = None
+            
+        # Initialize database connection
+        self.db_pool = SimpleConnectionPool(
+            minconn=1,
+            maxconn=5,
+            dsn=self.database_url
+        ) if self.database_url else None
 
     async def translate_to_sql(self, query: str, query_type: str) -> str:
         """Translate natural language to SQL using LangChain or fallback"""
@@ -161,26 +160,35 @@ class NLPService:
             ORDER BY count DESC
             """
 
-    async def execute_sql_via_mcp(self, sql: str) -> Dict[str, Any]:
-        """Execute SQL query via MCP DB server"""
+    async def execute_sql_direct(self, sql: str) -> Dict[str, Any]:
+        """Execute SQL query directly via database connection"""
         try:
-            async with httpx.AsyncClient() as client:
-                # MCP DB server endpoint for SQL execution
-                response = await client.post(
-                    f"{self.mcp_db_url}/sql",
-                    json={"query": sql},
-                    timeout=30.0
-                )
-                
-                if response.status_code == 200:
-                    return response.json()
-                else:
-                    logger.error(f"MCP DB error: {response.status_code} - {response.text}")
-                    return {"error": f"MCP DB error: {response.status_code}"}
+            if not self.db_pool:
+                return {"error": "Database connection not available"}
+            
+            conn = self.db_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute(sql)
+                    results = cursor.fetchall()
                     
+                    # Convert to list of dicts
+                    result_list = []
+                    for row in results:
+                        result_list.append(dict(row))
+                    
+                    return {
+                        "results": result_list,
+                        "row_count": len(result_list),
+                        "success": True
+                    }
+                    
+            finally:
+                self.db_pool.putconn(conn)
+                
         except Exception as e:
-            logger.error(f"Failed to execute SQL via MCP: {e}")
-            return {"error": f"SQL execution failed: {str(e)}"}
+            logger.error(f"Failed to execute SQL directly: {e}")
+            return {"error": f"Database error: {str(e)}"}
 
 # Initialize NLP service
 nlp_service = NLPService()
@@ -198,17 +206,20 @@ async def nlp_query(request: NLPQueryRequest):
         logger.info(f"Translated SQL: {translated_sql}")
         
         # Step 2: Execute SQL via MCP DB
-        results = await nlp_service.execute_sql_via_mcp(translated_sql)
+        results = await nlp_service.execute_sql_direct(translated_sql)
         
         # Step 3: Calculate confidence (simplified)
         confidence = 0.85 if nlp_service.chain else 0.65
         
-        return NLPQueryResponse(
-            original_query=request.query,
-            translated_sql=translated_sql,
-            results=results,
-            confidence=confidence
-        )
+        return {
+            "query": request.query,
+            "translated_sql": translated_sql,
+            "results": results.get("results", []),
+            "row_count": results.get("row_count", 0),
+            "confidence": confidence,
+            "database_url": nlp_service.database_url.split("@")[-1] if nlp_service.database_url else "not_configured",
+            "message": f"Processed NLP query: {request.query}"
+        }
         
     except Exception as e:
         logger.error(f"NLP query processing failed: {e}")

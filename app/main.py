@@ -6,7 +6,7 @@ from app.config import settings
 
 app = FastAPI(
     title="7taps Analytics ETL",
-    description="Streaming ETL for xAPI analytics using MCP servers",
+    description="Streaming ETL for xAPI analytics using direct database connections",
     version="1.0.0"
 )
 
@@ -142,7 +142,7 @@ async def root():
         <div class="container">
             <div class="header">
                 <h1>7taps Analytics ETL</h1>
-                <p>Streaming ETL for xAPI analytics using MCP servers</p>
+                <p>Streaming ETL for xAPI analytics using direct database connections</p>
             </div>
             
             <div class="status">
@@ -224,7 +224,7 @@ async def root():
     """Root endpoint with application information"""
     return {
         "title": "7taps Analytics ETL",
-        "description": "Streaming ETL for xAPI analytics using MCP servers",
+        "description": "Streaming ETL for xAPI analytics using direct database connections",
         "version": "1.0.0",
         "status": "running",
         "endpoints": {
