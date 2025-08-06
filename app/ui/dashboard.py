@@ -18,7 +18,7 @@ from app.logging_config import get_logger
 
 router = APIRouter()
 logger = get_logger("enhanced_dashboard")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 class EnhancedDashboard:
     """Enhanced dashboard with Learning Locker integration."""
