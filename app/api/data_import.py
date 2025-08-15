@@ -47,8 +47,15 @@ class ImportStats(BaseModel):
     errors: int
     timestamp: datetime = datetime.utcnow()
 
-# Global normalizer instance
-normalizer = DataNormalizer()
+# Global normalizer instance - lazy initialization
+normalizer = None
+
+def get_normalizer():
+    """Get or create normalizer instance."""
+    global normalizer
+    if normalizer is None:
+        normalizer = DataNormalizer()
+    return normalizer
 
 def parse_polls_csv(csv_data: str) -> List[Dict[str, Any]]:
     """Parse CSV polls data into structured format."""
@@ -239,7 +246,7 @@ async def import_polls_data(request: PollsDataImport):
                 statement = convert_poll_to_xapi_statement(poll_data)
                 
                 # Normalize using existing system
-                await normalizer.process_statement_normalization(statement)
+                await get_normalizer().process_statement_normalization(statement)
                 
                 imported_count += 1
                 logger.info(f"Successfully imported poll: {statement['id']}")
@@ -292,7 +299,7 @@ async def upload_audio_file(
         
         # Convert to xAPI statement and normalize
         statement = convert_audio_to_xapi_statement(audio_data)
-        await normalizer.process_statement_normalization(statement)
+        await get_normalizer().process_statement_normalization(statement)
         
         return AudioUploadResponse(
             success=True,
@@ -330,7 +337,7 @@ async def batch_import_data(
                 for poll_data in polls_data:
                     try:
                         statement = convert_poll_to_xapi_statement(poll_data)
-                        await normalizer.process_statement_normalization(statement)
+                        await get_normalizer().process_statement_normalization(statement)
                         polls_imported += 1
                         total_imported += 1
                     except Exception as e:
@@ -358,7 +365,7 @@ async def batch_import_data(
                 }
                 
                 statement = convert_audio_to_xapi_statement(audio_data)
-                await normalizer.process_statement_normalization(statement)
+                await get_normalizer().process_statement_normalization(statement)
                 
                 audio_imported += 1
                 total_imported += 1
@@ -420,7 +427,7 @@ async def get_import_statistics():
     """Get statistics about imported data."""
     try:
         # Get normalization stats
-        norm_stats = await normalizer.get_normalization_stats()
+        norm_stats = await get_normalizer().get_normalization_stats()
         
         return {
             "total_statements": norm_stats.get('statements', 0),

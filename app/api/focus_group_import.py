@@ -49,8 +49,15 @@ class CohortAnalytics(BaseModel):
     lesson_distribution: Dict[str, int]
     response_patterns: Dict[str, Any]
 
-# Global normalizer instance
-normalizer = DataNormalizer()
+# Global normalizer instance - lazy initialization
+normalizer = None
+
+def get_normalizer():
+    """Get or create normalizer instance."""
+    global normalizer
+    if normalizer is None:
+        normalizer = DataNormalizer()
+    return normalizer
 
 # Lesson URL mapping for focus group data
 LESSON_URL_MAPPING = {
@@ -219,7 +226,7 @@ async def import_focus_group_data(request: FocusGroupImportRequest) -> ImportRes
                 statement = convert_focus_group_to_xapi_statement(record, cohort_id)
                 
                 # Normalize using existing system
-                await normalizer.process_statement_normalization(statement)
+                await get_normalizer().process_statement_normalization(statement)
                 
                 imported_count += 1
                 logger.info(f"Successfully imported focus group record: {statement['id']}")
@@ -315,7 +322,7 @@ async def get_cohort_analytics():
     """Get analytics for all cohorts."""
     try:
         # Get cohort data from normalized tables
-        async with normalizer.get_db_connection() as conn:
+        async with get_normalizer().get_db_connection() as conn:
             with conn.cursor() as cursor:
                 # Get unique cohorts
                 cursor.execute("""
@@ -374,7 +381,7 @@ async def get_cohort_analytics():
 async def get_cohort_detail(cohort_id: str):
     """Get detailed analytics for a specific cohort."""
     try:
-        async with normalizer.get_db_connection() as conn:
+        async with get_normalizer().get_db_connection() as conn:
             with conn.cursor() as cursor:
                 # Get cohort statistics
                 cursor.execute("""
