@@ -201,6 +201,12 @@ async def root():
                     <p>Natural language processing for querying analytics data using conversational interfaces.</p>
                     <a href="/docs#/NLP" class="btn">Test NLP</a>
                 </div>
+                
+                <div class="card">
+                    <h2>📊 Data Normalization</h2>
+                    <p>Comprehensive data flattening and normalization for xAPI statements with structured analytics tables.</p>
+                    <a href="/docs#/Data-Normalization" class="btn">View Normalization</a>
+                </div>
             </div>
             
             <div class="api-section">
@@ -210,6 +216,8 @@ async def root():
                 <div class="api-endpoint">POST /statements - 7taps xAPI statements endpoint</div>
                 <div class="api-endpoint">GET /api/dashboard/metrics - Dashboard metrics</div>
                 <div class="api-endpoint">POST /api/ui/nlp-query - NLP query processing</div>
+                <div class="api-endpoint">POST /api/normalize/statement - Data normalization</div>
+                <div class="api-endpoint">GET /api/normalize/stats - Normalization statistics</div>
                 <div class="api-endpoint">GET /ui/dashboard - Analytics dashboard</div>
                 <div class="api-endpoint">GET /ui/admin - Admin panel</div>
             </div>
@@ -256,6 +264,7 @@ from app.api.seventaps import router as seventaps_router
 from app.api.xapi_lrs import router as xapi_lrs_router
 from app.api.learninglocker_sync import router as learninglocker_sync_router
 from app.api.health import router as health_router
+from app.api.data_normalization import router as data_normalization_router
 from app.ui.admin import router as admin_router
 from app.ui.dashboard import router as dashboard_router
 
@@ -266,6 +275,7 @@ app.include_router(xapi_router, tags=["xAPI"])
 app.include_router(seventaps_router, tags=["7taps"])
 app.include_router(xapi_lrs_router, tags=["xAPI LRS"])
 app.include_router(learninglocker_sync_router, prefix="/api", tags=["Learning Locker"])
+app.include_router(data_normalization_router, prefix="/api", tags=["Data Normalization"])
 app.include_router(health_router, tags=["Health"])
 app.include_router(admin_router, tags=["Admin"])
 app.include_router(dashboard_router, tags=["Dashboard"])
