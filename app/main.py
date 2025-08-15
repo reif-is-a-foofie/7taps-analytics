@@ -275,6 +275,7 @@ from app.api.learninglocker_sync import router as learninglocker_sync_router
 from app.api.health import router as health_router
 from app.api.data_normalization import router as data_normalization_router
 from app.api.data_import import router as data_import_router
+from app.api.migration import router as migration_router
 from app.ui.admin import router as admin_router
 from app.ui.dashboard import router as dashboard_router
 from app.ui.data_import import router as data_import_ui_router
@@ -288,6 +289,7 @@ app.include_router(xapi_lrs_router, tags=["xAPI LRS"])
 app.include_router(learninglocker_sync_router, prefix="/api", tags=["Learning Locker"])
 app.include_router(data_normalization_router, prefix="/api", tags=["Data Normalization"])
 app.include_router(data_import_router, prefix="/api", tags=["Data Import"])
+app.include_router(migration_router, prefix="/api", tags=["Migration"])
 app.include_router(health_router, tags=["Health"])
 app.include_router(admin_router, tags=["Admin"])
 app.include_router(dashboard_router, tags=["Dashboard"])

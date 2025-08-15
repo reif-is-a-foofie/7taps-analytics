@@ -17,6 +17,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import SimpleConnectionPool
 
+from app.data_normalization import DataNormalizer
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,6 +55,9 @@ class ETLStreamingProcessor:
         self.error_count = 0
         self.last_processed_statement = None
         self.batch_size = 50  # Optimized batch size for better performance
+        
+        # Initialize data normalizer for automatic normalization
+        self.normalizer = DataNormalizer()
         
     @asynccontextmanager
     async def get_db_connection(self):
@@ -152,12 +157,12 @@ class ETLStreamingProcessor:
             raise
             
     async def write_batch_to_postgres(self, batch_data: List[Dict[str, Any]]):
-        """Write batch of statements to Postgres for better performance."""
+        """Write batch of statements to Postgres for better performance and automatic normalization."""
         
         if not batch_data:
             return
             
-        # Optimized batch insert SQL
+        # Optimized batch insert SQL for flat table
         sql = """
         INSERT INTO statements_flat (
             statement_id, actor_id, verb_id, object_id, object_type, 
@@ -183,6 +188,7 @@ class ETLStreamingProcessor:
             batch_params.append(params)
         
         try:
+            # Write to flat table first
             async with self.get_db_connection() as conn:
                 with conn.cursor() as cursor:
                     # Use executemany for batch insert
@@ -191,6 +197,23 @@ class ETLStreamingProcessor:
                     
             self.processed_count += len(batch_data)
             logger.info(f"Successfully wrote batch of {len(batch_data)} statements to Postgres")
+            
+            # Now normalize each statement automatically
+            normalized_count = 0
+            for data in batch_data:
+                try:
+                    # Parse the raw statement for normalization
+                    raw_statement = json.loads(data.get('raw_statement', '{}'))
+                    
+                    # Normalize the statement
+                    await self.normalizer.process_statement_normalization(raw_statement)
+                    normalized_count += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error normalizing statement {data.get('statement_id')}: {e}")
+                    continue
+            
+            logger.info(f"Successfully normalized {normalized_count}/{len(batch_data)} statements")
             
         except Exception as e:
             logger.error(f"Error writing batch to Postgres: {e}")
