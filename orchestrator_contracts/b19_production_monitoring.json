@@ -1,0 +1,92 @@
+{
+  "module": "b.19_production_monitoring",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/monitoring.py",
+    "app/api/monitoring.py",
+    "app/ui/production_dashboard.py",
+    "templates/production_dashboard.html",
+    "tests/test_production_monitoring.py"
+  ],
+  "required_endpoints": [
+    "/api/monitoring/health",
+    "/api/monitoring/metrics",
+    "/api/monitoring/alerts",
+    "/ui/production-dashboard",
+    "/api/monitoring/performance"
+  ],
+  "status": "on_hold",
+  "task_tracking": {
+    "assigned_at": "2025-01-15T22:55:00Z",
+    "estimated_duration": "6h",
+    "dependencies": ["b.18"],
+    "subtasks": [
+      {
+        "id": "b.19.1",
+        "description": "Implement comprehensive production monitoring system",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/monitoring.py"]
+      },
+      {
+        "id": "b.19.2",
+        "description": "Create monitoring API endpoints for health, metrics, and alerts",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/api/monitoring.py"]
+      },
+      {
+        "id": "b.19.3",
+        "description": "Build production dashboard with real-time metrics",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/ui/production_dashboard.py", "templates/production_dashboard.html"]
+      },
+      {
+        "id": "b.19.4",
+        "description": "Integrate with data normalization for analytics insights",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/monitoring.py"]
+      },
+      {
+        "id": "b.19.5",
+        "description": "Create comprehensive test suite for monitoring",
+        "status": "not_started",
+        "agent": "testing_agent",
+        "files": ["tests/test_production_monitoring.py"]
+      }
+    ],
+    "completion_criteria": [
+      "Production monitoring system tracks system health, performance, and errors",
+      "Real-time metrics dashboard displays key performance indicators",
+      "Alert system notifies of critical issues",
+      "Integration with data normalization provides analytics insights",
+      "All monitoring endpoints functional and tested",
+      "Production dashboard accessible and responsive"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "status": "pending",
+      "notes": "Test monitoring system in production environment with live data",
+      "docker_compose_required": false,
+      "test_environment": "Heroku production environment",
+      "validation_notes": "Monitor system performance and data processing in real-time",
+      "testing_phases": [
+        "Phase 1: Deploy monitoring system to production",
+        "Phase 2: Test real-time metrics collection",
+        "Phase 3: Validate alert system functionality",
+        "Phase 4: Test dashboard with live data"
+      ],
+      "blocking_issues": []
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "b.19 Production Monitoring & Analytics module ON HOLD. Critical data gaps identified in xAPI collection (polls and audio data missing). b.20 Missing Data Integration takes priority to address these gaps.",
+    "required_approval": false
+  }
+}
