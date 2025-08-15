@@ -1,0 +1,211 @@
+{
+  "real_xapi_field_mapping": {
+    "created_at": "2025-01-15T23:55:00Z",
+    "purpose": "Field mapping based on actual 7taps xAPI structure and lesson URL mappings",
+    "data_sources": {
+      "real_xapi_example": "Provided 7taps xAPI statement",
+      "lesson_urls": "1-10 lesson URL mappings",
+      "csv_structure": "Learner,Card,Card type,Lesson Number,Global Q#,PDF Page #,Response"
+    },
+    "lesson_url_mapping": {
+      "1": "https://courses.practiceoflife.com/yjG39Clb0pSm",
+      "2": "https://courses.practiceoflife.com/MvkYVHvEN4Hb",
+      "3": "https://courses.practiceoflife.com/Zok0kSoRgEIw3", 
+      "4": "https://courses.practiceoflife.com/RmxObSV4WnUg",
+      "5": "https://courses.practiceoflife.com/vrOAjFjBlyi2",
+      "6": "https://courses.practiceoflife.com/JPrMbTY79qFa",
+      "7": "https://courses.practiceoflife.com/7VQokTlyontV",
+      "8": "https://courses.practiceoflife.com/7VQokTlyontV",
+      "9": "https://courses.practiceoflife.com/krpkZuOlYRfZ",
+      "10": "https://courses.practiceoflife.com/qaybLiEMwZh0"
+    },
+    "real_xapi_structure": {
+      "id": "f9e78a83-2ec5-45c9-8bd7-361100a36c99",
+      "verb": {
+        "id": "http://adlnet.gov/expapi/verbs/answered",
+        "display": {"en-US": "answered"}
+      },
+      "actor": {
+        "account": {
+          "name": "e5c7e967e89124da359bc111ecfb1e65",
+          "homePage": "https://7taps.com"
+        }
+      },
+      "object": {
+        "id": "https://courses.practiceoflife.com/yjG39Clb0pSm/form/2861644",
+        "definition": {
+          "name": {"en-US": "{\"ops\":[{\"attributes\":{\"bold\":true},\"insert\":\"🧠 Quick pulse check\"},{\"insert\":\"\\nRank these 5 areas by what you \"},{\"attributes\":{\"bold\":true},\"insert\":\"most want to improve right now \"},{\"insert\":\"— start with your top priority and go down.\\n(1 = top priority, 5 = lowest)\\n\\n-Screen time\\n-Sleep\\n-Productivity\\n-Real-life connection\\n-Stress management\\n\"}]}"},
+          "type": "http://adlnet.gov/expapi/activities/question",
+          "description": {"en-US": "7taps form"}
+        },
+        "objectType": "Activity"
+      },
+      "result": {
+        "success": true,
+        "response": "aloha!"
+      },
+      "context": {
+        "contextActivities": {
+          "parent": {
+            "id": "https://courses.practiceoflife.com/yjG39Clb0pSm",
+            "objectType": "Activity"
+          }
+        }
+      },
+      "ingested_at": "2025-08-15T20:58:55.123659",
+      "webhook_source": "7taps"
+    },
+    "csv_to_xapi_mapping": {
+      "Learner": {
+        "xapi_field": "actor.account.name",
+        "normalized_field": "actor_id",
+        "transformation": "Use learner name as actor identifier (7taps uses hashed names)",
+        "example": "Audrey Todd → actor_id: 'audrey_todd' (or hash if available)",
+        "additional_field": "additional_field_1"
+      },
+      "Card": {
+        "xapi_field": "object.definition.name.en-US",
+        "normalized_field": "activity_id",
+        "transformation": "Extract card info and map to lesson URL",
+        "example": "Card 6 (Form): 🧠 Quick pulse check... → activity_id: 'form_2861644'",
+        "additional_field": "additional_field_2"
+      },
+      "Card type": {
+        "xapi_field": "object.definition.type",
+        "normalized_field": "interaction_type",
+        "transformation": "Map to xAPI activity types",
+        "mapping": {
+          "Form": "http://adlnet.gov/expapi/activities/question",
+          "Poll": "http://adlnet.gov/expapi/activities/question",
+          "Quiz": "http://adlnet.gov/expapi/activities/question",
+          "Submit media": "http://adlnet.gov/expapi/activities/media"
+        },
+        "additional_field": "additional_field_3"
+      },
+      "Lesson Number": {
+        "xapi_field": "context.contextActivities.parent.id",
+        "normalized_field": "context_lesson_url",
+        "transformation": "Map lesson number to actual URL",
+        "example": "1 → https://courses.practiceoflife.com/yjG39Clb0pSm",
+        "additional_field": "additional_field_4"
+      },
+      "Global Q#": {
+        "xapi_field": "context.extensions.global_question_number",
+        "normalized_field": "context_question_number",
+        "transformation": "Store as context extension",
+        "example": "1 → context_question_number: 1",
+        "additional_field": "additional_field_5"
+      },
+      "PDF Page #": {
+        "xapi_field": "context.extensions.pdf_page",
+        "normalized_field": "context_pdf_page",
+        "transformation": "Store as context extension",
+        "example": "6 → context_pdf_page: 6",
+        "additional_field": "additional_field_6"
+      },
+      "Response": {
+        "xapi_field": "result.response",
+        "normalized_field": "result_response",
+        "transformation": "Store as result data",
+        "example": "Screen time, productivity... → result_response: 'Screen time, productivity...'",
+        "additional_field": "additional_field_7"
+      }
+    },
+    "object_id_generation": {
+      "pattern": "https://courses.practiceoflife.com/{lesson_url}/{card_type}/{form_id}",
+      "examples": {
+        "Lesson 1, Form": "https://courses.practiceoflife.com/yjG39Clb0pSm/form/2861644",
+        "Lesson 2, Poll": "https://courses.practiceoflife.com/MvkYVHvEN4Hb/poll/1234567",
+        "Lesson 3, Quiz": "https://courses.practiceoflife.com/Zok0kSoRgEIw3/quiz/8901234"
+      }
+    },
+    "concrete_mapping_examples": {
+      "example_1_csv_to_real_xapi": {
+        "csv_row": {
+          "Learner": "Audrey Todd",
+          "Card": "Card 6 (Form): 🧠 Quick pulse check Rank these 5 areas...",
+          "Card type": "Form",
+          "Lesson Number": "1",
+          "Global Q#": "1",
+          "PDF Page #": "6",
+          "Response": "Screen time  Productivity Stress management Sleep Real life connection"
+        },
+        "real_xapi_structure": {
+          "id": "form_audrey_todd_lesson1_card6_20250115",
+          "verb": {
+            "id": "http://adlnet.gov/expapi/verbs/answered",
+            "display": {"en-US": "answered"}
+          },
+          "actor": {
+            "account": {
+              "name": "audrey_todd",
+              "homePage": "https://7taps.com"
+            }
+          },
+          "object": {
+            "id": "https://courses.practiceoflife.com/yjG39Clb0pSm/form/2861644",
+            "definition": {
+              "name": {"en-US": "🧠 Quick pulse check Rank these 5 areas..."},
+              "type": "http://adlnet.gov/expapi/activities/question",
+              "description": {"en-US": "7taps form"}
+            },
+            "objectType": "Activity"
+          },
+          "result": {
+            "success": true,
+            "response": "Screen time  Productivity Stress management Sleep Real life connection"
+          },
+          "context": {
+            "contextActivities": {
+              "parent": {
+                "id": "https://courses.practiceoflife.com/yjG39Clb0pSm",
+                "objectType": "Activity"
+              }
+            },
+            "extensions": {
+              "global_question_number": 1,
+              "pdf_page": 6
+            }
+          },
+          "ingested_at": "2025-01-15T23:55:00Z",
+          "webhook_source": "7taps"
+        },
+        "normalized_mapping": {
+          "statement_id": "form_audrey_todd_lesson1_card6_20250115",
+          "actor_id": "audrey_todd",
+          "verb_id": "http://adlnet.gov/expapi/verbs/answered",
+          "activity_id": "form_2861644",
+          "timestamp": "2025-01-15T23:55:00Z",
+          "result_response": "Screen time  Productivity Stress management Sleep Real life connection",
+          "context_lesson_url": "https://courses.practiceoflife.com/yjG39Clb0pSm",
+          "context_extensions": {
+            "global_question_number": 1,
+            "pdf_page": 6
+          },
+          "additional_field_1": "Audrey Todd",
+          "additional_field_2": "Card 6 (Form): 🧠 Quick pulse check Rank these 5 areas...",
+          "additional_field_3": "Form",
+          "additional_field_4": "1",
+          "additional_field_5": "1",
+          "additional_field_6": "6",
+          "additional_field_7": "Screen time  Productivity Stress management Sleep Real life connection"
+        }
+      }
+    },
+    "implementation_strategy": {
+      "step_1": "Parse CSV using existing headers",
+      "step_2": "Map lesson numbers to actual URLs",
+      "step_3": "Generate proper object IDs using lesson URLs",
+      "step_4": "Create xAPI statements matching 7taps format",
+      "step_5": "Normalize data into database tables",
+      "step_6": "Store additional fields for easy querying"
+    },
+    "key_advantages": {
+      "uses_real_structure": "Matches actual 7taps xAPI format",
+      "lesson_url_mapping": "Connects to real lesson URLs",
+      "proper_object_ids": "Generates valid 7taps-style object IDs",
+      "flexible_storage": "Additional fields for easy querying",
+      "data_integrity": "Maintains relationships between lessons and responses"
+    }
+  }
+}

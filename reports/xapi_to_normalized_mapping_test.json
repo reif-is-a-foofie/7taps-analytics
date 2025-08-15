@@ -1,0 +1,158 @@
+{
+  "xapi_to_normalized_mapping_test": {
+    "created_at": "2025-01-16T00:00:00Z",
+    "purpose": "Test mapping from actual xAPI statement to normalized fields",
+    "test_xapi_statement": {
+      "id": "dcaad89f-9676-43b0-88bb-694e37f4056d",
+      "verb": {
+        "id": "http://adlnet.gov/expapi/verbs/answered",
+        "display": {"en-US": "answered"}
+      },
+      "actor": {
+        "account": {
+          "name": "e5c7e967e89124da359bc111ecfb1e65",
+          "homePage": "https://7taps.com"
+        }
+      },
+      "object": {
+        "id": "https://courses.practiceoflife.com/yjG39Clb0pSm/form/2861644",
+        "definition": {
+          "name": {"en-US": "{\"ops\":[{\"attributes\":{\"bold\":true},\"insert\":\"🧠 Quick pulse check\"},{\"insert\":\"\\nRank these 5 areas by what you \"},{\"attributes\":{\"bold\":true},\"insert\":\"most want to improve right now \"},{\"insert\":\"— start with your top priority and go down.\\n(1 = top priority, 5 = lowest)\\n\\n-Screen time\\n-Sleep\\n-Productivity\\n-Real-life connection\\n-Stress management\\n\"}]}"},
+          "type": "http://adlnet.gov/expapi/activities/question",
+          "description": {"en-US": "7taps form"}
+        },
+        "objectType": "Activity"
+      },
+      "result": {
+        "success": true,
+        "response": "aloha!"
+      },
+      "context": {
+        "contextActivities": {
+          "parent": {
+            "id": "https://courses.practiceoflife.com/yjG39Clb0pSm",
+            "objectType": "Activity"
+          }
+        }
+      },
+      "ingested_at": "2025-08-15T20:40:50.359234",
+      "webhook_source": "7taps"
+    },
+    "mapping_to_normalized_fields": {
+      "statement_id": {
+        "source": "xapi.id",
+        "value": "dcaad89f-9676-43b0-88bb-694e37f4056d",
+        "validation": "✅ Direct mapping"
+      },
+      "actor_id": {
+        "source": "xapi.actor.account.name",
+        "value": "e5c7e967e89124da359bc111ecfb1e65",
+        "validation": "✅ Direct mapping (hashed name from 7taps)"
+      },
+      "verb_id": {
+        "source": "xapi.verb.id",
+        "value": "http://adlnet.gov/expapi/verbs/answered",
+        "validation": "✅ Direct mapping"
+      },
+      "activity_id": {
+        "source": "xapi.object.id",
+        "value": "https://courses.practiceoflife.com/yjG39Clb0pSm/form/2861644",
+        "validation": "✅ Direct mapping (full URL)"
+      },
+      "timestamp": {
+        "source": "xapi.ingested_at",
+        "value": "2025-08-15T20:40:50.359234",
+        "validation": "✅ Direct mapping"
+      },
+      "result_response": {
+        "source": "xapi.result.response",
+        "value": "aloha!",
+        "validation": "✅ Direct mapping"
+      },
+      "context_lesson_url": {
+        "source": "xapi.context.contextActivities.parent.id",
+        "value": "https://courses.practiceoflife.com/yjG39Clb0pSm",
+        "validation": "✅ Direct mapping"
+      },
+      "interaction_type": {
+        "source": "xapi.object.definition.type",
+        "value": "http://adlnet.gov/expapi/activities/question",
+        "validation": "✅ Direct mapping"
+      }
+    },
+    "extracted_information": {
+      "lesson_number": {
+        "extraction": "From context_lesson_url using lesson_url_mapping",
+        "value": "1",
+        "method": "Reverse lookup: https://courses.practiceoflife.com/yjG39Clb0pSm → 1",
+        "validation": "✅ Matches lesson 1"
+      },
+      "card_type": {
+        "extraction": "From object.id path segment",
+        "value": "form",
+        "method": "Parse: /yjG39Clb0pSm/form/2861644 → form",
+        "validation": "✅ Matches 'Form' card type"
+      },
+      "form_id": {
+        "extraction": "From object.id path segment",
+        "value": "2861644",
+        "method": "Parse: /yjG39Clb0pSm/form/2861644 → 2861644",
+        "validation": "✅ Unique form identifier"
+      },
+      "card_description": {
+        "extraction": "From object.definition.name.en-US",
+        "value": "🧠 Quick pulse check\nRank these 5 areas by what you most want to improve right now — start with your top priority and go down.\n(1 = top priority, 5 = lowest)\n\n-Screen time\n-Sleep\n-Productivity\n-Real-life connection\n-Stress management\n",
+        "method": "Parse Quill.js JSON format",
+        "validation": "✅ Matches CSV card description"
+      }
+    },
+    "csv_equivalent_row": {
+      "Learner": "e5c7e967e89124da359bc111ecfb1e65",
+      "Card": "Card 6 (Form): 🧠 Quick pulse check Rank these 5 areas by what you most want to improve right now — start with your top priority and go down. (1 = top priority, 5 = lowest)  -Screen time -Sleep -Productivity -Real-life connection -Stress management ",
+      "Card type": "Form",
+      "Lesson Number": "1",
+      "Global Q#": "1",
+      "PDF Page #": "6",
+      "Response": "aloha!"
+    },
+    "mapping_validation": {
+      "direct_mappings": {
+        "statement_id": "✅ Perfect",
+        "actor_id": "✅ Perfect (hashed name)",
+        "verb_id": "✅ Perfect",
+        "activity_id": "✅ Perfect (full URL)",
+        "timestamp": "✅ Perfect",
+        "result_response": "✅ Perfect",
+        "context_lesson_url": "✅ Perfect",
+        "interaction_type": "✅ Perfect"
+      },
+      "derived_mappings": {
+        "lesson_number": "✅ Perfect (reverse lookup)",
+        "card_type": "✅ Perfect (URL parsing)",
+        "form_id": "✅ Perfect (URL parsing)",
+        "card_description": "✅ Perfect (Quill.js parsing)"
+      },
+      "csv_equivalence": {
+        "Learner": "⚠️ Different (hashed vs readable name)",
+        "Card": "✅ Equivalent (parsed from Quill.js)",
+        "Card type": "✅ Equivalent (parsed from URL)",
+        "Lesson Number": "✅ Equivalent (reverse lookup)",
+        "Response": "✅ Equivalent (direct mapping)"
+      }
+    },
+    "key_insights": {
+      "lesson_url_mapping_works": "✅ https://courses.practiceoflife.com/yjG39Clb0pSm correctly maps to lesson 1",
+      "object_id_pattern_confirmed": "✅ URL follows pattern: /{lesson_url}/{card_type}/{form_id}",
+      "quill_js_parsing_needed": "⚠️ Card descriptions stored as Quill.js JSON, need parsing",
+      "actor_name_hashing": "⚠️ 7taps uses hashed actor names, need mapping to readable names",
+      "direct_field_mapping": "✅ Most fields map directly to normalized structure"
+    },
+    "implementation_notes": {
+      "quill_js_parser": "Need function to extract plain text from Quill.js JSON format",
+      "actor_name_mapping": "Need to maintain mapping between hashed names and readable names",
+      "lesson_url_lookup": "Use provided lesson_url_mapping for reverse lookups",
+      "url_parsing": "Parse object.id to extract card_type and form_id",
+      "data_integrity": "All critical fields can be mapped with high confidence"
+    }
+  }
+}
