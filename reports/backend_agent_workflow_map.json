@@ -1,0 +1,181 @@
+{
+  "workflow_map": {
+    "created_at": "2025-01-15T23:20:00Z",
+    "orchestrator_agent": "Orchestrator Agent",
+    "target_agent": "backend_agent",
+    "priority_order": [
+      "b.21_data_migration_fix",
+      "b.20_missing_data_integration", 
+      "b.19_production_monitoring"
+    ],
+    "current_issue": {
+      "problem": "Data pipeline broken - 261 statements in flat table, only 1 normalized",
+      "impact": "Missing 260 statements for analytics and reporting",
+      "blocking": "All analytics and insights incomplete"
+    },
+    "workflow_steps": {
+      "step_1": {
+        "task": "Complete Migration Script",
+        "file": "app/migrate_flat_to_normalized.py",
+        "status": "partially_complete",
+        "description": "Script exists but needs completion and testing",
+        "requirements": [
+          "Handle all 261 statements from statements_flat",
+          "Extract actors, activities, verbs properly",
+          "Insert into normalized tables with proper relationships",
+          "Handle errors gracefully and provide logging"
+        ],
+        "validation": "All 261 statements successfully migrated"
+      },
+      "step_2": {
+        "task": "Create Migration API",
+        "file": "app/api/migration.py",
+        "status": "not_started",
+        "description": "API endpoints for triggering and monitoring migration",
+        "endpoints": [
+          "POST /api/migration/run - Trigger migration",
+          "GET /api/migration/status - Check migration status",
+          "GET /api/migration/stats - Get migration statistics",
+          "GET /api/migration/validate - Validate data integrity"
+        ],
+        "validation": "All endpoints functional and tested"
+      },
+      "step_3": {
+        "task": "Update ETL Streaming",
+        "file": "app/etl_streaming.py",
+        "status": "needs_update",
+        "description": "Add automatic normalization to streaming ETL",
+        "changes_required": [
+          "Import DataNormalizer class",
+          "Add normalization call after writing to flat table",
+          "Ensure new statements are automatically normalized",
+          "Maintain performance with connection pooling"
+        ],
+        "validation": "New statements automatically normalized"
+      },
+      "step_4": {
+        "task": "Update Incremental ETL",
+        "file": "app/etl_incremental.py",
+        "status": "needs_update",
+        "description": "Add normalization to incremental processing",
+        "changes_required": [
+          "Add normalization for missed statements",
+          "Handle backfill and catch-up processing",
+          "Ensure data consistency between flat and normalized"
+        ],
+        "validation": "Backfill normalization working"
+      },
+      "step_5": {
+        "task": "Create Test Suite",
+        "file": "tests/test_migration.py",
+        "status": "not_started",
+        "description": "Comprehensive testing for migration process",
+        "test_cases": [
+          "Test migration script with sample data",
+          "Test API endpoints functionality",
+          "Test ETL streaming with normalization",
+          "Test data integrity validation"
+        ],
+        "validation": "All tests passing"
+      }
+    },
+    "data_flow_diagram": {
+      "current_flow": {
+        "xapi_ingestion": "POST /api/xapi/ingest",
+        "redis_streams": "xAPI statements queued to Redis",
+        "etl_streaming": "ETL processes from Redis → statements_flat",
+        "problem": "❌ No normalization step",
+        "result": "261 statements in flat, 1 normalized"
+      },
+      "target_flow": {
+        "xapi_ingestion": "POST /api/xapi/ingest",
+        "redis_streams": "xAPI statements queued to Redis", 
+        "etl_streaming": "ETL processes from Redis → statements_flat",
+        "normalization": "✅ Automatic normalization step",
+        "result": "All statements in both flat and normalized tables"
+      }
+    },
+    "database_schema": {
+      "statements_flat": {
+        "purpose": "Raw flattened xAPI statements",
+        "current_count": 261,
+        "structure": "Simplified flat structure for quick access"
+      },
+      "statements_normalized": {
+        "purpose": "Normalized statements for analytics",
+        "current_count": 1,
+        "target_count": 261,
+        "structure": "Full normalized structure with relationships"
+      },
+      "actors": {
+        "purpose": "Unique user/learner data",
+        "current_count": 3,
+        "target_count": "All unique actors from 261 statements"
+      },
+      "activities": {
+        "purpose": "Unique lesson/course data", 
+        "current_count": 3,
+        "target_count": "All unique activities from 261 statements"
+      },
+      "verbs": {
+        "purpose": "Unique action types",
+        "current_count": 3,
+        "target_count": "All unique verbs from 261 statements"
+      }
+    },
+    "implementation_guide": {
+      "phase_1_migration": {
+        "priority": "CRITICAL",
+        "steps": [
+          "1. Complete migrate_flat_to_normalized.py script",
+          "2. Test migration with sample data locally",
+          "3. Deploy and run migration on production",
+          "4. Validate all 261 statements migrated"
+        ],
+        "estimated_time": "2 hours"
+      },
+      "phase_2_etl_update": {
+        "priority": "HIGH",
+        "steps": [
+          "1. Update etl_streaming.py with normalization",
+          "2. Update etl_incremental.py with normalization", 
+          "3. Test ETL with new statements",
+          "4. Verify automatic normalization working"
+        ],
+        "estimated_time": "1 hour"
+      },
+      "phase_3_api_creation": {
+        "priority": "MEDIUM",
+        "steps": [
+          "1. Create app/api/migration.py",
+          "2. Implement all required endpoints",
+          "3. Test API functionality",
+          "4. Deploy and validate"
+        ],
+        "estimated_time": "1 hour"
+      }
+    },
+    "success_criteria": {
+      "data_migration": [
+        "All 261 statements successfully migrated to normalized tables",
+        "All unique actors, activities, and verbs extracted",
+        "Data integrity maintained between flat and normalized tables"
+      ],
+      "etl_pipeline": [
+        "New statements automatically normalized",
+        "Incremental ETL handles backfill normalization",
+        "Performance maintained with connection pooling"
+      ],
+      "api_functionality": [
+        "Migration API endpoints functional",
+        "Status monitoring and validation working",
+        "Error handling and logging comprehensive"
+      ]
+    },
+    "next_steps": {
+      "immediate": "Complete b.21 Data Migration Fix",
+      "after_completion": "Resume b.20 Missing Data Integration",
+      "final": "Complete b.19 Production Monitoring"
+    }
+  }
+}

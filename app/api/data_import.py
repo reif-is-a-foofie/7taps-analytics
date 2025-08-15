@@ -90,11 +90,12 @@ def parse_polls_csv(csv_data: str) -> List[Dict[str, Any]]:
 def convert_poll_to_xapi_statement(poll_data: Dict[str, Any]) -> Dict[str, Any]:
     """Convert poll data to xAPI statement format for normalization."""
     
-    # Create xAPI statement structure
+    # Create xAPI statement structure with proper xAPI field mapping
     statement = {
         'id': f"poll_{poll_data['user_id']}_{poll_data['timestamp']}",
         'actor': {
             'objectType': 'Agent',
+            'id': f"https://7taps.com/users/{poll_data['user_id']}",  # Proper xAPI actor.id
             'name': f"User {poll_data['user_id']}",
             'account': {
                 'name': poll_data['user_id'],
@@ -169,6 +170,7 @@ def convert_audio_to_xapi_statement(audio_data: Dict[str, Any]) -> Dict[str, Any
         'id': f"audio_{audio_data['user_id']}_{audio_data['timestamp']}",
         'actor': {
             'objectType': 'Agent',
+            'id': f"https://7taps.com/users/{audio_data['user_id']}",  # Proper xAPI actor.id
             'name': f"User {audio_data['user_id']}",
             'account': {
                 'name': audio_data['user_id'],
@@ -389,6 +391,15 @@ async def get_polls_csv_template():
             "score",
             "metadata"
         ],
+        "xapi_field_mapping": {
+            "timestamp": "statement.timestamp",
+            "user_id": "actor.id (maps to https://7taps.com/users/{user_id})",
+            "card_type": "context.extensions.https://7taps.com/card-type",
+            "question": "object.definition.name.en-US",
+            "response": "result.response",
+            "score": "result.score.raw",
+            "metadata": "object.definition.extensions.https://7taps.com/poll-metadata"
+        },
         "example": [
             "2024-01-15T10:30:00Z",
             "user123",
@@ -399,7 +410,7 @@ async def get_polls_csv_template():
             '{"category": "satisfaction", "tags": ["service", "feedback"]}'
         ],
         "card_types": ["Poll", "Form", "Quiz", "Rate"],
-        "description": "Upload CSV file with polls data. All columns are required except score (can be null)."
+        "description": "Upload CSV file with polls data. All columns are required except score (can be null). User ID maps to xAPI actor.id for consistent querying."
     }
     
     return template_data
