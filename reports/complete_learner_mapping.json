@@ -1,0 +1,256 @@
+{
+  "complete_learner_mapping": {
+    "created_at": "2025-01-16T00:05:00Z",
+    "purpose": "Complete learner mapping incorporating learners_cleaned.csv data",
+    "data_sources": {
+      "learners_cleaned_csv": "Real learner data with names, emails, groups",
+      "response_data_csv": "Learner responses with readable names",
+      "xapi_statements": "7taps xAPI with hashed actor names",
+      "lesson_urls": "1-10 lesson URL mappings"
+    },
+    "learner_data_structure": {
+      "headers": ["Name", "Group", "Email", "Phone", "Extra"],
+      "groups": {
+        "Focus Group": "Primary research participants",
+        "Sacramento State": "University student participants"
+      },
+      "key_insights": {
+        "real_names": "Actual learner names (Audrey Todd, August Rinehart, etc.)",
+        "emails": "Contact information for each learner",
+        "course_progress": "Some have completion data (e.g., '24 courses, 2 paths')",
+        "phone_numbers": "Contact information available"
+      }
+    },
+    "actor_name_mapping_strategy": {
+      "problem": "xAPI uses hashed names, CSV uses readable names",
+      "solution": "Create mapping table between hashed and readable names",
+      "implementation": {
+        "step_1": "Extract unique learner names from response CSV",
+        "step_2": "Match with learners_cleaned.csv data",
+        "step_3": "Create hashed_name → readable_name mapping",
+        "step_4": "Store mapping in database for lookups"
+      }
+    },
+    "learner_name_mapping": {
+      "focus_group_learners": {
+        "Audrey Todd": {
+          "email": "audrey_todd@icloud.com",
+          "phone": "17205370382",
+          "group": "Focus Group",
+          "course_progress": "24 courses, 2 paths",
+          "xapi_hash": "e5c7e967e89124da359bc111ecfb1e65" // Assumed mapping
+        },
+        "August Rinehart": {
+          "email": "rinehartaugust@gmail.com",
+          "phone": "18028811790",
+          "group": "Focus Group",
+          "course_progress": "24 courses, 2 paths"
+        },
+        "Charlie Monaghan": {
+          "email": "charliemona4@gmail.com",
+          "phone": "13035793148",
+          "group": "Focus Group",
+          "course_progress": "24 courses, 2 paths"
+        },
+        "Devin Mulac": {
+          "email": "devin.mulac@gmail.com",
+          "phone": "18023555385",
+          "group": "Focus Group",
+          "course_progress": "26 courses, 2 paths"
+        },
+        "Fatima Bugaighis": {
+          "email": "fatimaabugaighis@gmail.com",
+          "phone": "17205140123",
+          "group": "Focus Group",
+          "course_progress": "24 courses, 2 paths"
+        },
+        "Hugo Crainich": {
+          "email": "crainich2005@gmail.com",
+          "phone": "18029990913",
+          "group": "Focus Group",
+          "course_progress": "25 courses, 2 paths"
+        },
+        "Keira Boyle": {
+          "email": "keiraboyle10@gmail.com",
+          "phone": "13038154061",
+          "group": "Focus Group",
+          "course_progress": "24 courses, 2 paths"
+        },
+        "Lucy Esquivel": {
+          "email": "lucyjesquivel@gmail.com",
+          "phone": "17204451323",
+          "group": "Focus Group",
+          "course_progress": "24 courses, 2 paths"
+        },
+        "Quinn Ledak": {
+          "email": "quinnledak@vastasports.com",
+          "phone": "18027357423",
+          "group": "Focus Group",
+          "course_progress": "24 courses, 2 paths"
+        }
+      },
+      "sacramento_state_learners": {
+        "Isabel Palmatier": {
+          "email": "ipalmatier@csus.edu",
+          "phone": "",
+          "group": "Sacramento State"
+        },
+        "Jeniece Harmon": {
+          "email": "jsalazar-harmon2@csus.edu",
+          "phone": "",
+          "group": "Sacramento State"
+        }
+        // ... additional Sacramento State learners
+      }
+    },
+    "enhanced_field_mapping": {
+      "csv_to_xapi_with_learner_data": {
+        "Learner": {
+          "xapi_field": "actor.account.name",
+          "normalized_field": "actor_id",
+          "learner_data": "Use learners_cleaned.csv for additional info",
+          "transformation": "Map readable name to hashed name for xAPI",
+          "additional_fields": {
+            "additional_field_1": "Readable learner name",
+            "additional_field_8": "Learner email",
+            "additional_field_9": "Learner group (Focus Group/Sacramento State)",
+            "additional_field_10": "Course progress info"
+          }
+        },
+        "Card": {
+          "xapi_field": "object.definition.name.en-US",
+          "normalized_field": "activity_id",
+          "transformation": "Extract card info and map to lesson URL",
+          "additional_field": "additional_field_2"
+        },
+        "Card type": {
+          "xapi_field": "object.definition.type",
+          "normalized_field": "interaction_type",
+          "transformation": "Map to xAPI activity types",
+          "additional_field": "additional_field_3"
+        },
+        "Lesson Number": {
+          "xapi_field": "context.contextActivities.parent.id",
+          "normalized_field": "context_lesson_url",
+          "transformation": "Map lesson number to actual URL",
+          "additional_field": "additional_field_4"
+        },
+        "Global Q#": {
+          "xapi_field": "context.extensions.global_question_number",
+          "normalized_field": "context_question_number",
+          "transformation": "Store as context extension",
+          "additional_field": "additional_field_5"
+        },
+        "PDF Page #": {
+          "xapi_field": "context.extensions.pdf_page",
+          "normalized_field": "context_pdf_page",
+          "transformation": "Store as context extension",
+          "additional_field": "additional_field_6"
+        },
+        "Response": {
+          "xapi_field": "result.response",
+          "normalized_field": "result_response",
+          "transformation": "Store as result data",
+          "additional_field": "additional_field_7"
+        }
+      }
+    },
+    "complete_mapping_example": {
+      "csv_row": {
+        "Learner": "Audrey Todd",
+        "Card": "Card 6 (Form): 🧠 Quick pulse check Rank these 5 areas...",
+        "Card type": "Form",
+        "Lesson Number": "1",
+        "Global Q#": "1",
+        "PDF Page #": "6",
+        "Response": "Screen time  Productivity Stress management Sleep Real life connection"
+      },
+      "learner_data": {
+        "name": "Audrey Todd",
+        "email": "audrey_todd@icloud.com",
+        "phone": "17205370382",
+        "group": "Focus Group",
+        "course_progress": "24 courses, 2 paths"
+      },
+      "xapi_statement": {
+        "id": "form_audrey_todd_lesson1_card6_20250115",
+        "actor": {
+          "account": {
+            "name": "e5c7e967e89124da359bc111ecfb1e65", // Hashed name
+            "homePage": "https://7taps.com"
+          }
+        },
+        "object": {
+          "id": "https://courses.practiceoflife.com/yjG39Clb0pSm/form/2861644",
+          "definition": {
+            "name": {"en-US": "🧠 Quick pulse check Rank these 5 areas..."},
+            "type": "http://adlnet.gov/expapi/activities/question"
+          }
+        },
+        "result": {
+          "response": "Screen time  Productivity Stress management Sleep Real life connection"
+        },
+        "context": {
+          "contextActivities": {
+            "parent": {
+              "id": "https://courses.practiceoflife.com/yjG39Clb0pSm"
+            }
+          }
+        }
+      },
+              "normalized_mapping": {
+          "statement_id": "form_audrey_todd_lesson1_card6_20250115",
+          "actor_id": "e5c7e967e89124da359bc111ecfb1e65",
+          "verb_id": "http://adlnet.gov/expapi/verbs/answered",
+          "activity_id": "https://courses.practiceoflife.com/yjG39Clb0pSm/form/2861644",
+          "timestamp": "2025-01-15T23:55:00Z",
+          "result_response": "Screen time  Productivity Stress management Sleep Real life connection",
+          "context_lesson_url": "https://courses.practiceoflife.com/yjG39Clb0pSm",
+          "cohort_id": "focus_group_2024",
+          "cohort_name": "Focus Group",
+          "cohort_type": "research_participants",
+          "learner_email": "audrey_todd@icloud.com",
+          "learner_phone": "17205370382",
+          "learner_group": "Focus Group",
+          "course_progress": "24 courses, 2 paths",
+          "additional_field_1": "Audrey Todd", // Readable name
+          "additional_field_2": "Card 6 (Form): 🧠 Quick pulse check Rank these 5 areas...",
+          "additional_field_3": "Form",
+          "additional_field_4": "1",
+          "additional_field_5": "1",
+          "additional_field_6": "6",
+          "additional_field_7": "Screen time  Productivity Stress management Sleep Real life connection",
+          "additional_field_8": "audrey_todd@icloud.com", // Email
+          "additional_field_9": "Focus Group", // Group
+          "additional_field_10": "24 courses, 2 paths" // Course progress
+        }
+    },
+    "implementation_requirements": {
+      "learner_mapping_table": {
+        "table_name": "learner_mappings",
+        "columns": [
+          "hashed_name VARCHAR(255) PRIMARY KEY",
+          "readable_name VARCHAR(255)",
+          "email VARCHAR(255)",
+          "phone VARCHAR(20)",
+          "group_name VARCHAR(100)",
+          "course_progress TEXT",
+          "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        ]
+      },
+      "data_enrichment_process": {
+        "step_1": "Load learners_cleaned.csv into learner_mappings table",
+        "step_2": "Create hashed_name → readable_name lookup function",
+        "step_3": "Enrich xAPI statements with learner data",
+        "step_4": "Store additional fields for easy querying"
+      }
+    },
+    "key_benefits": {
+      "complete_learner_profiles": "Email, phone, group, course progress available",
+      "data_enrichment": "xAPI statements enriched with learner metadata",
+      "analytics_capabilities": "Query by group, course progress, contact info",
+      "data_integrity": "Maintains both hashed and readable names",
+      "future_proof": "Can handle new learners and groups"
+    }
+  }
+}

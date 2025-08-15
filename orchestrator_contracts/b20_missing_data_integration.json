@@ -9,6 +9,7 @@
     "app/models/audio.py",
     "app/etl/polls_etl.py",
     "app/etl/audio_etl.py",
+    "app/csv_to_xapi_converter.py",
     "app/ui/polls_management.py",
     "app/ui/audio_management.py",
     "templates/polls_management.html",

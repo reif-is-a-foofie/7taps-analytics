@@ -1,0 +1,195 @@
+{
+  "corrected_field_mapping": {
+    "created_at": "2025-01-15T23:50:00Z",
+    "purpose": "Corrected field mapping addressing identified issues",
+    "issues_fixed": [
+      "Card parsing pattern for inconsistent formats",
+      "Activity ID generation conflicts",
+      "Verb mapping for submit media",
+      "Statement ID length optimization",
+      "Data type conversion handling"
+    ],
+    "corrected_mappings": {
+      "card_parsing_pattern": {
+        "original_pattern": "Card (\\d+) \\((\\w+)\\): (.+)",
+        "corrected_patterns": [
+          "Card (\\d+) \\((\\w+)\\): (.+)",
+          "Card (\\d+) \\((\\w+)\\) (.+)"
+        ],
+        "fallback_pattern": "Card (\\d+) \\((\\w+)\\)",
+        "examples": {
+          "Card 6 (Form): 🧠 Quick pulse check...": {
+            "card_number": "6",
+            "card_type": "Form",
+            "description": "🧠 Quick pulse check..."
+          },
+          "Card 13 (Submit media) Take a minute and sharean audio...": {
+            "card_number": "13", 
+            "card_type": "Submit media",
+            "description": "Take a minute and sharean audio..."
+          },
+          "Card 38 (Submit media): Snap a pic...": {
+            "card_number": "38",
+            "card_type": "Submit media", 
+            "description": "Snap a pic..."
+          }
+        }
+      },
+      "activity_id_generation": {
+        "original_format": "card_{number}_{type}",
+        "corrected_format": "card_{number}_{type}_{lesson}",
+        "reason": "Prevents conflicts when same card number appears in different lessons",
+        "examples": {
+          "Card 6 (Form) in Lesson 1": "card_6_form_1",
+          "Card 6 (Quiz) in Lesson 2": "card_6_quiz_2",
+          "Card 12 (Poll) in Lesson 1": "card_12_poll_1"
+        }
+      },
+      "verb_mapping_corrections": {
+        "Form": {
+          "verb_id": "http://adlnet.gov/expapi/verbs/completed",
+          "display_name": "completed",
+          "reason": "Learner completed a form submission"
+        },
+        "Poll": {
+          "verb_id": "http://adlnet.gov/expapi/verbs/answered", 
+          "display_name": "answered",
+          "reason": "Learner answered a poll question"
+        },
+        "Quiz": {
+          "verb_id": "http://adlnet.gov/expapi/verbs/answered",
+          "display_name": "answered", 
+          "reason": "Learner answered a quiz question"
+        },
+        "Submit media": {
+          "verb_id": "http://adlnet.gov/expapi/verbs/uploaded",
+          "display_name": "uploaded",
+          "reason": "Learner uploaded/submitted media content"
+        }
+      },
+      "statement_id_optimization": {
+        "original_format": "{card_type}_{actor_id}_{activity_id}_{timestamp}_{sequence}",
+        "corrected_format": "{timestamp}_{actor_id}_{card_number}_{sequence}",
+        "reason": "Shorter, more readable, still unique",
+        "examples": {
+          "form_audrey_todd_card_6_form_20250115_001": "20250115_audrey_todd_6_001",
+          "poll_august_rinehart_card_12_poll_20250115_001": "20250115_august_rinehart_12_001"
+        }
+      },
+      "data_type_conversions": {
+        "Lesson Number": {
+          "csv_type": "string",
+          "target_type": "integer",
+          "conversion": "int(csv_value)",
+          "validation": "Must be positive integer"
+        },
+        "Global Q#": {
+          "csv_type": "string", 
+          "target_type": "integer",
+          "conversion": "int(csv_value)",
+          "validation": "Must be positive integer"
+        },
+        "PDF Page #": {
+          "csv_type": "string",
+          "target_type": "integer", 
+          "conversion": "int(csv_value)",
+          "validation": "Must be positive integer"
+        }
+      }
+    },
+    "corrected_examples": {
+      "example_1_form_response_corrected": {
+        "csv_row": {
+          "Learner": "Audrey Todd",
+          "Card": "Card 6 (Form): 🧠 Quick pulse check Rank these 5 areas...",
+          "Card type": "Form",
+          "Lesson Number": "1",
+          "Global Q#": "1",
+          "PDF Page #": "6",
+          "Response": "Screen time  Productivity Stress management Sleep Real life connection"
+        },
+        "corrected_xapi_mapping": {
+          "statement_id": "20250115_audrey_todd_6_001",
+          "actor_id": "audrey_todd",
+          "verb_id": "http://adlnet.gov/expapi/verbs/completed",
+          "activity_id": "card_6_form_1",
+          "timestamp": "2025-01-15T23:50:00Z",
+          "result_response": "Screen time  Productivity Stress management Sleep Real life connection",
+          "context_extensions": {
+            "lesson_number": 1,
+            "global_question_number": 1,
+            "pdf_page": 6
+          },
+          "additional_field_1": "Audrey Todd",
+          "additional_field_2": "Card 6 (Form): 🧠 Quick pulse check Rank these 5 areas...",
+          "additional_field_3": "Form",
+          "additional_field_4": 1,
+          "additional_field_5": 1,
+          "additional_field_6": 6,
+          "additional_field_7": "Screen time  Productivity Stress management Sleep Real life connection"
+        }
+      },
+      "example_2_submit_media_corrected": {
+        "csv_row": {
+          "Learner": "August Rinehart",
+          "Card": "Card 13 (Submit media) Take a minute and sharean audio...",
+          "Card type": "Submit media",
+          "Lesson Number": "1",
+          "Global Q#": "3",
+          "PDF Page #": "13",
+          "Response": "Okay, there we go. Okay, aside from the basic statistics..."
+        },
+        "corrected_xapi_mapping": {
+          "statement_id": "20250115_august_rinehart_13_001",
+          "actor_id": "august_rinehart",
+          "verb_id": "http://adlnet.gov/expapi/verbs/uploaded",
+          "activity_id": "card_13_submit_media_1",
+          "timestamp": "2025-01-15T23:50:00Z",
+          "result_response": "Okay, there we go. Okay, aside from the basic statistics...",
+          "context_extensions": {
+            "lesson_number": 1,
+            "global_question_number": 3,
+            "pdf_page": 13
+          },
+          "additional_field_1": "August Rinehart",
+          "additional_field_2": "Card 13 (Submit media) Take a minute and sharean audio...",
+          "additional_field_3": "Submit media",
+          "additional_field_4": 1,
+          "additional_field_5": 3,
+          "additional_field_6": 13,
+          "additional_field_7": "Okay, there we go. Okay, aside from the basic statistics..."
+        }
+      }
+    },
+    "implementation_requirements": {
+      "card_parsing_function": {
+        "function_name": "parse_card_field()",
+        "logic": [
+          "Try primary pattern: Card (\\d+) \\((\\w+)\\): (.+)",
+          "Try secondary pattern: Card (\\d+) \\((\\w+)\\) (.+)", 
+          "Fallback to: Card (\\d+) \\((\\w+)\\)",
+          "Extract card_number, card_type, description"
+        ]
+      },
+      "data_validation": {
+        "required_fields": ["Learner", "Card", "Card type", "Response"],
+        "type_validations": [
+          "Lesson Number: must be positive integer",
+          "Global Q#: must be positive integer", 
+          "PDF Page #: must be positive integer"
+        ],
+        "error_handling": [
+          "Invalid card format: log error, skip row",
+          "Invalid number format: use default value 0",
+          "Empty response: use empty string"
+        ]
+      },
+      "performance_optimizations": {
+        "batch_processing": "Process CSV in chunks of 100 rows",
+        "connection_pooling": "Use existing database connection pool",
+        "indexing": "Create indexes on frequently queried fields",
+        "error_recovery": "Continue processing on individual row errors"
+      }
+    }
+  }
+}

@@ -114,7 +114,26 @@ class DataNormalizer:
                     context_extensions JSONB,
                     attachments JSONB,
                     raw_statement JSONB,
-                    processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    -- Cohort and learner analytics fields
+                    cohort_id VARCHAR(100),
+                    cohort_name VARCHAR(255),
+                    cohort_type VARCHAR(100),
+                    learner_email VARCHAR(255),
+                    learner_phone VARCHAR(20),
+                    learner_group VARCHAR(100),
+                    course_progress TEXT,
+                    -- Additional fields for flexible data storage
+                    additional_field_1 TEXT,
+                    additional_field_2 TEXT,
+                    additional_field_3 TEXT,
+                    additional_field_4 TEXT,
+                    additional_field_5 TEXT,
+                    additional_field_6 TEXT,
+                    additional_field_7 TEXT,
+                    additional_field_8 TEXT,
+                    additional_field_9 TEXT,
+                    additional_field_10 TEXT
                 )
             """,
             
@@ -122,6 +141,16 @@ class DataNormalizer:
                 CREATE INDEX IF NOT EXISTS idx_statements_timestamp ON statements_normalized (timestamp);
                 CREATE INDEX IF NOT EXISTS idx_statements_actor_verb ON statements_normalized (actor_id, verb_id);
                 CREATE INDEX IF NOT EXISTS idx_statements_activity ON statements_normalized (activity_id);
+                -- Cohort analytics indexes
+                CREATE INDEX IF NOT EXISTS idx_statements_cohort_id ON statements_normalized (cohort_id);
+                CREATE INDEX IF NOT EXISTS idx_statements_cohort_name ON statements_normalized (cohort_name);
+                CREATE INDEX IF NOT EXISTS idx_statements_cohort_type ON statements_normalized (cohort_type);
+                CREATE INDEX IF NOT EXISTS idx_statements_learner_group ON statements_normalized (learner_group);
+                CREATE INDEX IF NOT EXISTS idx_statements_learner_email ON statements_normalized (learner_email);
+                -- Composite indexes for common cohort queries
+                CREATE INDEX IF NOT EXISTS idx_statements_cohort_activity ON statements_normalized (cohort_id, activity_id);
+                CREATE INDEX IF NOT EXISTS idx_statements_cohort_timestamp ON statements_normalized (cohort_id, timestamp);
+                CREATE INDEX IF NOT EXISTS idx_statements_group_activity ON statements_normalized (learner_group, activity_id);
             """,
             
             'sessions': """
@@ -136,6 +165,29 @@ class DataNormalizer:
                     duration_seconds INTEGER,
                     statement_count INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """,
+            
+            'cohorts': """
+                CREATE TABLE IF NOT EXISTS cohorts (
+                    cohort_id VARCHAR(100) PRIMARY KEY,
+                    cohort_name VARCHAR(255) NOT NULL,
+                    cohort_type VARCHAR(100) NOT NULL,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    metadata JSONB
+                )
+            """,
+            
+            'cohort_members': """
+                CREATE TABLE IF NOT EXISTS cohort_members (
+                    cohort_id VARCHAR(100) REFERENCES cohorts(cohort_id),
+                    actor_id VARCHAR(255) REFERENCES actors(actor_id),
+                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    role VARCHAR(50) DEFAULT 'member',
+                    metadata JSONB,
+                    PRIMARY KEY (cohort_id, actor_id)
                 )
             """,
             
