@@ -114,11 +114,14 @@ class DataNormalizer:
                     context_extensions JSONB,
                     attachments JSONB,
                     raw_statement JSONB,
-                    processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_timestamp (timestamp),
-                    INDEX idx_actor_verb (actor_id, verb_id),
-                    INDEX idx_activity (activity_id)
+                    processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
+            """,
+            
+            'statements_normalized_indexes': """
+                CREATE INDEX IF NOT EXISTS idx_statements_timestamp ON statements_normalized (timestamp);
+                CREATE INDEX IF NOT EXISTS idx_statements_actor_verb ON statements_normalized (actor_id, verb_id);
+                CREATE INDEX IF NOT EXISTS idx_statements_activity ON statements_normalized (activity_id);
             """,
             
             'sessions': """
