@@ -146,6 +146,17 @@ async def data_import_page(request: Request):
                     <pre>timestamp,user_id,card_type,question,response,score,metadata
 2024-01-15T10:30:00Z,user123,Poll,How satisfied are you?,Very satisfied,100,{"category": "satisfaction"}
 2024-01-15T10:35:00Z,user124,Quiz,What is 2+2?,4,100,{"category": "math"}</pre>
+                    
+                    <strong>📋 xAPI Field Mapping:</strong>
+                    <ul style="font-size: 12px; margin-top: 10px;">
+                        <li><strong>user_id</strong> → actor.id (https://7taps.com/users/{user_id})</li>
+                        <li><strong>timestamp</strong> → statement.timestamp</li>
+                        <li><strong>card_type</strong> → context.extensions.card-type</li>
+                        <li><strong>question</strong> → object.definition.name.en-US</li>
+                        <li><strong>response</strong> → result.response</li>
+                        <li><strong>score</strong> → result.score.raw</li>
+                        <li><strong>metadata</strong> → object.definition.extensions.poll-metadata</li>
+                    </ul>
                 </div>
                 
                 <form id="pollsForm" enctype="multipart/form-data">

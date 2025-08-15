@@ -1,0 +1,129 @@
+{
+  "module": "b.21_data_migration_fix",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/migrate_flat_to_normalized.py",
+    "app/api/migration.py",
+    "app/etl_streaming.py",
+    "app/etl_incremental.py",
+    "tests/test_migration.py"
+  ],
+  "required_endpoints": [
+    "/api/migration/run",
+    "/api/migration/status",
+    "/api/migration/stats",
+    "/api/migration/validate"
+  ],
+  "status": "in_progress",
+  "task_tracking": {
+    "assigned_at": "2025-01-15T23:15:00Z",
+    "estimated_duration": "4h",
+    "dependencies": ["b.18"],
+    "subtasks": [
+      {
+        "id": "b.21.1",
+        "description": "Complete the migration script to move data from statements_flat to normalized tables",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/migrate_flat_to_normalized.py"]
+      },
+      {
+        "id": "b.21.2",
+        "description": "Create migration API endpoints for triggering and monitoring migration",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/api/migration.py"]
+      },
+      {
+        "id": "b.21.3",
+        "description": "Update ETL streaming to automatically normalize new statements",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/etl_streaming.py"]
+      },
+      {
+        "id": "b.21.4",
+        "description": "Update incremental ETL to handle normalization",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/etl_incremental.py"]
+      },
+      {
+        "id": "b.21.5",
+        "description": "Create comprehensive test suite for migration",
+        "status": "not_started",
+        "agent": "testing_agent",
+        "files": ["tests/test_migration.py"]
+      }
+    ],
+    "completion_criteria": [
+      "Migration script successfully moves all 261 statements from statements_flat to normalized tables",
+      "All actors, activities, and verbs properly extracted and stored",
+      "ETL streaming automatically normalizes new statements",
+      "Migration API endpoints functional for monitoring and triggering",
+      "Data integrity validated between flat and normalized tables",
+      "Performance optimized for large-scale data processing"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "status": "pending",
+      "notes": "Test migration with live 261 statements in production database",
+      "docker_compose_required": false,
+      "test_environment": "Heroku production environment",
+      "validation_notes": "Verify all 261 statements are properly migrated to normalized tables",
+      "testing_phases": [
+        "Phase 1: Run migration script on production data",
+        "Phase 2: Validate data integrity and completeness",
+        "Phase 3: Test ETL streaming with new normalization",
+        "Phase 4: Verify API endpoints and monitoring"
+      ],
+      "blocking_issues": []
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "CRITICAL: b.21 Data Migration Fix addresses the data pipeline issue where 261 statements are stuck in statements_flat but only 1 is normalized. Complete the migration script and update ETL to automatically normalize all future statements. This is blocking proper analytics.",
+    "required_approval": false
+  },
+  "data_issue_analysis": {
+    "problem": {
+      "description": "261 statements in statements_flat, only 1 in statements_normalized",
+      "root_cause": "ETL writes to flat table but doesn't trigger normalization process",
+      "impact": "Missing 260 statements for analytics and reporting"
+    },
+    "current_state": {
+      "statements_flat": 261,
+      "statements_normalized": 1,
+      "actors": 3,
+      "activities": 3,
+      "verbs": 3
+    },
+    "target_state": {
+      "statements_flat": 261,
+      "statements_normalized": 261,
+      "actors": "All unique actors from flat data",
+      "activities": "All unique activities from flat data", 
+      "verbs": "All unique verbs from flat data"
+    }
+  },
+  "migration_strategy": {
+    "phase_1": {
+      "task": "Migrate existing 261 statements",
+      "approach": "Use migrate_flat_to_normalized.py script",
+      "validation": "Verify all statements moved to normalized tables"
+    },
+    "phase_2": {
+      "task": "Update ETL streaming",
+      "approach": "Add automatic normalization to streaming ETL",
+      "validation": "New statements automatically normalized"
+    },
+    "phase_3": {
+      "task": "Update incremental ETL",
+      "approach": "Add normalization to incremental processing",
+      "validation": "Backfill and catch-up normalization working"
+    }
+  }
+}
