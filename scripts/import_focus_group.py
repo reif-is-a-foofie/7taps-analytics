@@ -19,7 +19,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent / "app"))
 
 from app.data_normalization import DataNormalizer
-from app.migrate_flat_to_normalized import migrate_flat_to_normalized
 
 # Heroku app URL
 HEROKU_URL = "https://seventaps-analytics-5135b3a0701a.herokuapp.com"
