@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 import asyncio
 
-from app.migrate_flat_to_normalized import migrate_flat_to_normalized, FlatToNormalizedMigrator
+from app.migrate_flat_to_normalized import FlatToNormalizedMigrator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -69,7 +69,8 @@ async def run_migration_background():
         logger.info("Starting background migration...")
         
         # Run migration
-        result = await migrate_flat_to_normalized()
+        migrator = FlatToNormalizedMigrator()
+        result = await migrator.run_migration()
         
         migration_state['migrated_count'] = result['migrated_count']
         migration_state['error_count'] = result['error_count']

@@ -388,6 +388,11 @@ async def batch_import_data(
         logger.error(f"Error in batch import: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/import/test")
+async def test_import_endpoint():
+    """Test endpoint to verify router is loaded."""
+    return {"status": "data_import_router_loaded", "message": "Data import router is working"}
+
 @router.get("/import/template/polls")
 async def get_polls_csv_template():
     """Get CSV template for polls data import."""
