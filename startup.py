@@ -159,19 +159,20 @@ def main():
         logger.info("✓ All startup checks passed!")
         logger.info("Starting FastAPI application...")
         
-        # Import and start the app
+        # Start the app using uvicorn with import string
         try:
-            from app.main import app
-            import uvicorn
-            
             port = int(os.getenv("PORT", 8000))
             logger.info(f"Starting server on port {port}")
             
+            # Use uvicorn.run with import string to avoid warnings
+            import uvicorn
+            
             uvicorn.run(
-                app,
+                "app.main:app",
                 host="0.0.0.0",
                 port=port,
-                log_level="info"
+                log_level="info",
+                access_log=True
             )
             
         except Exception as e:
