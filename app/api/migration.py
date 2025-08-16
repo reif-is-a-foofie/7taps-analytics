@@ -90,14 +90,14 @@ async def trigger_migration(request: MigrationRequest, background_tasks: Backgro
     try:
         if migration_state['is_running']:
             raise HTTPException(status_code=409, detail="Migration already in progress")
-        
-        # Get current stats
+        # Pre-check schema validation
         migrator = FlatToNormalizedMigrator()
+        if not await migrator.validate_schema():
+            raise HTTPException(status_code=500, detail="Schema validation failed. Required tables missing.")
+        # Get current stats
         flat_statements = await migrator.get_flat_statements()
         total_statements = len(flat_statements)
-        
         migration_state['total_statements'] = total_statements
-        
         if total_statements == 0:
             return MigrationStatus(
                 status="completed",
@@ -107,10 +107,8 @@ async def trigger_migration(request: MigrationRequest, background_tasks: Backgro
                 progress_percentage=100.0,
                 message="No statements to migrate"
             )
-        
         # Start background migration
         background_tasks.add_task(run_migration_background)
-        
         return MigrationStatus(
             status="started",
             migrated_count=0,
@@ -120,7 +118,8 @@ async def trigger_migration(request: MigrationRequest, background_tasks: Backgro
             start_time=datetime.utcnow(),
             message=f"Migration started for {total_statements} statements"
         )
-        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error triggering migration: {e}")
         raise HTTPException(status_code=500, detail=str(e))

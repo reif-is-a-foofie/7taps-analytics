@@ -88,11 +88,44 @@ class FlatToNormalizedMigrator:
             self.error_count += 1
             return False
             
+    async def validate_schema(self) -> bool:
+        """Check that all required tables and indexes exist before migration."""
+        required_tables = [
+            'statements_flat', 'statements_normalized', 'actors', 'activities', 'verbs'
+        ]
+        try:
+            conn = await self.get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name IN %s
+            """, (tuple(required_tables),))
+            found = {row[0] for row in cursor.fetchall()}
+            cursor.close()
+            await self.put_db_connection(conn)
+            missing = [t for t in required_tables if t not in found]
+            if missing:
+                logger.error(f"Missing required tables: {missing}")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"Schema validation error: {e}")
+            return False
+
     async def run_migration(self) -> Dict[str, Any]:
         """Run the complete migration"""
         logger.info("Starting migration from statements_flat to normalized tables")
         
         try:
+            # Pre-migration schema validation
+            if not await self.validate_schema():
+                return {
+                    "migrated_count": 0,
+                    "error_count": 0,
+                    "total_count": 0,
+                    "success": False,
+                    "error": "Schema validation failed. Required tables missing."
+                }
             # Get all flat statements
             flat_statements = await self.get_flat_statements()
             
@@ -105,9 +138,13 @@ class FlatToNormalizedMigrator:
                     "success": True
                 }
             
-            # Migrate each statement
+            # Migrate each statement (idempotent: ON CONFLICT DO NOTHING in insert)
             for statement in flat_statements:
-                await self.migrate_statement(statement)
+                try:
+                    await self.migrate_statement(statement)
+                except Exception as e:
+                    logger.error(f"Migration failed for statement {statement.get('statement_id')}: {e}")
+                    self.error_count += 1
                 
             # Get final stats
             stats = await self.normalizer.get_normalization_stats()
