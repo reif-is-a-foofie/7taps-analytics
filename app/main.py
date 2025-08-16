@@ -264,7 +264,7 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "7taps-analytics-etl"}
 
-# Import and include routers
+# Import and include routers - DEPLOYMENT FIX IN PROGRESS
 from app.api.etl import router as etl_router
 from app.api.orchestrator import router as orchestrator_router
 from app.api.nlp import router as nlp_router
@@ -275,7 +275,7 @@ from app.api.learninglocker_sync import router as learninglocker_sync_router
 from app.api.health import router as health_router
 from app.api.data_normalization import router as data_normalization_router
 from app.api.data_import import router as data_import_router
-# from app.api.migration import router as migration_router  # TEMPORARILY DISABLED
+# from app.api.migration import router as migration_router  # TEMPORARILY DISABLED - FIXING DEPLOYMENT CRASH
 # from app.api.focus_group_import import router as focus_group_import_router
 from app.ui.admin import router as admin_router
 from app.ui.dashboard import router as dashboard_router
