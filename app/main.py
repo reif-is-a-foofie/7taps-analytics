@@ -282,6 +282,8 @@ from app.ui.dashboard import router as dashboard_router
 from app.ui.data_import import router as data_import_ui_router
 # from app.api.monitoring import router as monitoring_router
 # from app.ui.production_dashboard import router as production_dashboard_router
+from app.api.sql_query import router as sql_query_router
+from app.ui.sql_query import router as sql_query_ui_router
 
 app.include_router(etl_router, prefix="/ui", tags=["ETL"])
 app.include_router(orchestrator_router, prefix="/api", tags=["Orchestrator"])
@@ -300,6 +302,8 @@ app.include_router(dashboard_router, tags=["Dashboard"])
 app.include_router(data_import_ui_router, tags=["Data Import UI"])
 # app.include_router(monitoring_router, prefix="/api", tags=["Monitoring"])
 # app.include_router(production_dashboard_router, tags=["Production Dashboard"])
+app.include_router(sql_query_router, prefix="/api", tags=["SQL Query"])
+app.include_router(sql_query_ui_router, tags=["SQL Query UI"])
 
 if __name__ == "__main__":
     import uvicorn
