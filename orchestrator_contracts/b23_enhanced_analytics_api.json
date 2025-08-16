@@ -1,0 +1,136 @@
+{
+  "module": "b.23_enhanced_analytics_api",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/api/analytics.py",
+    "app/models/analytics.py",
+    "app/services/analytics_service.py",
+    "app/database.py"
+  ],
+  "required_endpoints": [
+    "/api/analytics/cohorts",
+    "/api/analytics/activities",
+    "/api/analytics/learners",
+    "/api/analytics/performance",
+    "/api/analytics/trends",
+    "/api/analytics/export"
+  ],
+  "status": "in_progress",
+  "task_tracking": {
+    "assigned_at": "2025-01-16T00:30:00Z",
+    "estimated_duration": "4h",
+    "dependencies": ["b.18", "b.22"],
+    "subtasks": [
+      {
+        "id": "b.23.1",
+        "description": "Create analytics service with cohort-based queries",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/services/analytics_service.py"]
+      },
+      {
+        "id": "b.23.2",
+        "description": "Build analytics API endpoints for UI consumption",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/api/analytics.py"]
+      },
+      {
+        "id": "b.23.3",
+        "description": "Create analytics models and data structures",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/models/analytics.py"]
+      },
+      {
+        "id": "b.23.4",
+        "description": "Implement export functionality for analytics data",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/api/analytics.py"]
+      }
+    ],
+    "completion_criteria": [
+      "Analytics service provides cohort-based querying",
+      "API endpoints return structured analytics data",
+      "Performance metrics and trends available",
+      "Export functionality for CSV/JSON data",
+      "All endpoints functional and tested",
+      "Integration with normalized tables working"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "status": "pending",
+      "notes": "Test analytics API with normalized data from b.22",
+      "docker_compose_required": false,
+      "test_environment": "Heroku production environment",
+      "validation_notes": "Verify analytics endpoints return correct data from normalized tables",
+      "testing_phases": [
+        "Phase 1: Test analytics service with sample data",
+        "Phase 2: Validate API endpoints functionality",
+        "Phase 3: Test with real normalized data",
+        "Phase 4: Verify export functionality"
+      ],
+      "blocking_issues": []
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "Create enhanced analytics API endpoints for UI consumption. Build cohort-based analytics, performance metrics, trends, and export functionality. This will provide the data layer for the UI agent's enhanced dashboard.",
+    "required_approval": false
+  },
+  "analytics_requirements": {
+    "cohort_analytics": {
+      "endpoints": [
+        "GET /api/analytics/cohorts - List all cohorts",
+        "GET /api/analytics/cohorts/{cohort_id} - Cohort details",
+        "GET /api/analytics/cohorts/{cohort_id}/performance - Cohort performance",
+        "GET /api/analytics/cohorts/{cohort_id}/learners - Cohort learners"
+      ],
+      "data": [
+        "cohort_id, cohort_name, cohort_type",
+        "member_count, active_learners",
+        "engagement_metrics, progress_tracking"
+      ]
+    },
+    "activity_analytics": {
+      "endpoints": [
+        "GET /api/analytics/activities - Top activities",
+        "GET /api/analytics/activities/{activity_id} - Activity details",
+        "GET /api/analytics/activities/engagement - Engagement metrics"
+      ],
+      "data": [
+        "activity_id, activity_name, activity_type",
+        "engagement_count, completion_rate",
+        "average_score, time_spent"
+      ]
+    },
+    "learner_analytics": {
+      "endpoints": [
+        "GET /api/analytics/learners - Top learners",
+        "GET /api/analytics/learners/{learner_id} - Learner details",
+        "GET /api/analytics/learners/progress - Progress tracking"
+      ],
+      "data": [
+        "learner_id, learner_name, learner_email",
+        "activity_count, completion_rate",
+        "cohort_membership, progress_metrics"
+      ]
+    },
+    "performance_metrics": {
+      "endpoints": [
+        "GET /api/analytics/performance - System performance",
+        "GET /api/analytics/performance/trends - Performance trends",
+        "GET /api/analytics/performance/export - Export data"
+      ],
+      "data": [
+        "processing_rate, error_rate",
+        "normalization_ratio, data_quality",
+        "system_health, uptime_metrics"
+      ]
+    }
+  }
+}

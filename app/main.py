@@ -1,13 +1,127 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 import os
+import sys
+import traceback
+import time
+from contextlib import asynccontextmanager
 from app.config import settings
+from app.logging_config import get_logger, log_performance, error_tracker
+
+# Initialize logger
+logger = get_logger("main")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager with comprehensive logging."""
+    logger.info("application_starting", environment=settings.ENVIRONMENT)
+    
+    try:
+        # Log startup configuration
+        logger.info(
+            "startup_configuration",
+            database_url=get_database_url_safe(),
+            redis_url=get_redis_url_safe(),
+            debug=settings.DEBUG,
+            log_level=settings.LOG_LEVEL
+        )
+        
+        # Test database connections
+        await test_database_connections()
+        
+        logger.info("application_started_successfully")
+        yield
+        
+    except Exception as e:
+        logger.critical("application_startup_failed", error=str(e), traceback=traceback.format_exc())
+        raise
+    finally:
+        logger.info("application_shutting_down")
+
+def get_database_url_safe():
+    """Get database URL for logging (sanitized)."""
+    db_url = settings.DATABASE_URL
+    if db_url and '@' in db_url:
+        # Mask password in URL
+        parts = db_url.split('@')
+        if len(parts) == 2:
+            auth_part = parts[0]
+            if ':' in auth_part:
+                user_pass = auth_part.split(':')
+                if len(user_pass) >= 3:  # postgresql://user:pass@host
+                    return f"{user_pass[0]}:{user_pass[1]}:***@{parts[1]}"
+    return "***" if db_url else "not_set"
+
+def get_redis_url_safe():
+    """Get Redis URL for logging (sanitized)."""
+    redis_url = settings.REDIS_URL
+    if redis_url and '@' in redis_url:
+        # Mask password in URL
+        parts = redis_url.split('@')
+        if len(parts) == 2:
+            auth_part = parts[0]
+            if ':' in auth_part:
+                user_pass = auth_part.split(':')
+                if len(user_pass) >= 3:  # redis://user:pass@host
+                    return f"{user_pass[0]}:{user_pass[1]}:***@{parts[1]}"
+    return "***" if redis_url else "not_set"
+
+async def test_database_connections():
+    """Test database connections on startup."""
+    logger.info("testing_database_connections")
+    
+    # Test PostgreSQL connection
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        
+        db_url = settings.DATABASE_URL
+        if db_url:
+            parsed = urlparse(db_url)
+            conn = psycopg2.connect(
+                host=parsed.hostname,
+                port=parsed.port or 5432,
+                database=parsed.path[1:],
+                user=parsed.username,
+                password=parsed.password
+            )
+            conn.close()
+            logger.info("postgresql_connection_successful")
+        else:
+            logger.warning("postgresql_url_not_configured")
+    except Exception as e:
+        logger.error("postgresql_connection_failed", error=str(e))
+        # Don't fail startup for database connection issues in development
+    
+    # Test Redis connection
+    try:
+        import redis
+        from urllib.parse import urlparse
+        
+        redis_url = settings.REDIS_URL
+        if redis_url:
+            parsed = urlparse(redis_url)
+            r = redis.Redis(
+                host=parsed.hostname,
+                port=parsed.port or 6379,
+                password=parsed.password,
+                decode_responses=True
+            )
+            r.ping()
+            logger.info("redis_connection_successful")
+        else:
+            logger.warning("redis_url_not_configured")
+    except Exception as e:
+        logger.error("redis_connection_failed", error=str(e))
+        # Don't fail startup for Redis connection issues in development
 
 app = FastAPI(
     title="7taps Analytics ETL",
     description="Streaming ETL for xAPI analytics using direct database connections",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS middleware
@@ -19,9 +133,98 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all HTTP requests with performance metrics."""
+    start_time = time.time()
+    
+    # Log request
+    logger.info(
+        "request_started",
+        method=request.method,
+        url=str(request.url),
+        client_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent", "")
+    )
+    
+    try:
+        response = await call_next(request)
+        duration = time.time() - start_time
+        
+        # Log response
+        logger.info(
+            "request_completed",
+            method=request.method,
+            url=str(request.url),
+            status_code=response.status_code,
+            duration_ms=round(duration * 1000, 2)
+        )
+        
+        return response
+        
+    except Exception as e:
+        duration = time.time() - start_time
+        logger.error(
+            "request_failed",
+            method=request.method,
+            url=str(request.url),
+            error=str(e),
+            duration_ms=round(duration * 1000, 2)
+        )
+        raise
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler with comprehensive logging."""
+    error_tracker.track_error(exc, {
+        "method": request.method,
+        "url": str(request.url),
+        "client_ip": request.client.host if request.client else None
+    })
+    
+    logger.error(
+        "unhandled_exception",
+        method=request.method,
+        url=str(request.url),
+        error_type=type(exc).__name__,
+        error_message=str(exc),
+        traceback=traceback.format_exc()
+    )
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "detail": str(exc) if settings.DEBUG else "An unexpected error occurred"
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle request validation errors."""
+    logger.warning(
+        "validation_error",
+        method=request.method,
+        url=str(request.url),
+        errors=exc.errors()
+    )
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Validation error",
+            "detail": exc.errors()
+        }
+    )
+
 @app.get("/", response_class=HTMLResponse)
+@log_performance("root_endpoint")
 async def root():
     """Root endpoint with HTML landing page"""
+    logger.info("root_endpoint_accessed")
+    
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
@@ -99,42 +302,18 @@ async def root():
                 box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
             }
             .status {
-                background: rgba(255,255,255,0.1);
+                background: #f8f9fa;
                 border-radius: 8px;
                 padding: 20px;
                 margin-bottom: 30px;
-                color: white;
             }
             .status h3 {
+                color: #28a745;
                 margin: 0 0 10px 0;
-                font-size: 1.2em;
             }
-            .status-item {
-                display: flex;
-                justify-content: space-between;
+            .status p {
                 margin: 5px 0;
-            }
-            .status-ok {
-                color: #4CAF50;
-            }
-            .api-section {
-                background: rgba(255,255,255,0.1);
-                border-radius: 8px;
-                padding: 20px;
-                margin-bottom: 30px;
-                color: white;
-            }
-            .api-section h3 {
-                margin: 0 0 15px 0;
-                font-size: 1.2em;
-            }
-            .api-endpoint {
-                background: rgba(255,255,255,0.1);
-                border-radius: 4px;
-                padding: 10px;
-                margin: 5px 0;
-                font-family: monospace;
-                font-size: 0.9em;
+                color: #666;
             }
         </style>
     </head>
@@ -146,165 +325,184 @@ async def root():
             </div>
             
             <div class="status">
-                <h3>🚀 System Status</h3>
-                <div class="status-item">
-                    <span>FastAPI Application:</span>
-                    <span class="status-ok">✅ Running</span>
-                </div>
-                <div class="status-item">
-                    <span>PostgreSQL Database:</span>
-                    <span class="status-ok">✅ Running</span>
-                </div>
-                <div class="status-item">
-                    <span>Redis Cache:</span>
-                    <span class="status-ok">✅ Running</span>
-                </div>
-                <div class="status-item">
-                    <span>7taps Webhook:</span>
-                    <span class="status-ok">✅ Configured</span>
-                </div>
+                <h3>✅ System Status: Operational</h3>
+                <p><strong>Environment:</strong> """ + settings.ENVIRONMENT + """</p>
+                <p><strong>Version:</strong> 1.0.0</p>
+                <p><strong>Database:</strong> """ + ("Connected" if settings.DATABASE_URL else "Not Configured") + """</p>
+                <p><strong>Redis:</strong> """ + ("Connected" if settings.REDIS_URL else "Not Configured") + """</p>
             </div>
             
             <div class="grid">
                 <div class="card">
                     <h2>📊 Analytics Dashboard</h2>
-                    <p>Real-time metrics and insights for xAPI learning analytics with interactive charts and visualizations.</p>
+                    <p>View real-time analytics and insights from your xAPI data.</p>
                     <a href="/ui/dashboard" class="btn">Open Dashboard</a>
                 </div>
                 
                 <div class="card">
-                    <h2>⚙️ Admin Panel</h2>
-                    <p>System administration, database terminal, and configuration management for the analytics platform.</p>
-                    <a href="/ui/admin" class="btn">Open Admin Panel</a>
+                    <h2>🔍 SQL Query Terminal</h2>
+                    <p>Execute SQL queries directly against your analytics database.</p>
+                    <a href="/ui/sql-query" class="btn">Open Terminal</a>
                 </div>
                 
                 <div class="card">
-                    <h2>📚 API Documentation</h2>
-                    <p>Interactive API documentation with Swagger UI for testing endpoints and understanding the API structure.</p>
+                    <h2>📝 xAPI Statement Browser</h2>
+                    <p>Browse and search through xAPI statements in your system.</p>
+                    <a href="/ui/statement-browser" class="btn">Browse Statements</a>
+                </div>
+                
+                <div class="card">
+                    <h2>⚙️ System Health</h2>
+                    <p>Monitor system health, performance, and error rates.</p>
+                    <a href="/health" class="btn">Check Health</a>
+                </div>
+                
+                <div class="card">
+                    <h2>📈 ETL Monitoring</h2>
+                    <p>Monitor ETL processes and data pipeline status.</p>
+                    <a href="/ui/etl-monitoring" class="btn">Monitor ETL</a>
+                </div>
+                
+                <div class="card">
+                    <h2>🔧 API Documentation</h2>
+                    <p>Explore the API endpoints and test functionality.</p>
                     <a href="/docs" class="btn">View API Docs</a>
                 </div>
-                
-                <div class="card">
-                    <h2>🔗 7taps Integration</h2>
-                    <p>Standard xAPI /statements endpoint for 7taps integration with Basic authentication using username and password.</p>
-                    <a href="/api/7taps/keys" class="btn">View Auth Info</a>
-                </div>
-                
-                <div class="card">
-                    <h2>📥 xAPI Ingestion</h2>
-                    <p>Endpoint for receiving and processing xAPI statements with real-time ETL processing and analytics.</p>
-                    <a href="/docs#/xAPI" class="btn">Test xAPI</a>
-                </div>
-                
-                <div class="card">
-                    <h2>🧠 NLP Queries</h2>
-                    <p>Natural language processing for querying analytics data using conversational interfaces.</p>
-                    <a href="/docs#/NLP" class="btn">Test NLP</a>
-                </div>
-                
-                <div class="card">
-                    <h2>📊 Data Normalization</h2>
-                    <p>Comprehensive data flattening and normalization for xAPI statements with structured analytics tables.</p>
-                    <a href="/docs#/Data-Normalization" class="btn">View Normalization</a>
-                </div>
-                
-                <div class="card">
-                    <h2>📥 Data Import</h2>
-                    <p>Upload CSV polls data and audio files to integrate with your analytics system.</p>
-                    <a href="/data-import" class="btn">Import Data</a>
-                </div>
-            </div>
-            
-            <div class="api-section">
-                <h3>🔧 Key API Endpoints</h3>
-                <div class="api-endpoint">GET /health - Health check</div>
-                <div class="api-endpoint">POST /api/xapi/ingest - xAPI statement ingestion</div>
-                <div class="api-endpoint">POST /statements - 7taps xAPI statements endpoint</div>
-                <div class="api-endpoint">GET /api/dashboard/metrics - Dashboard metrics</div>
-                <div class="api-endpoint">POST /api/ui/nlp-query - NLP query processing</div>
-                <div class="api-endpoint">POST /api/normalize/statement - Data normalization</div>
-                <div class="api-endpoint">GET /api/normalize/stats - Normalization statistics</div>
-                <div class="api-endpoint">POST /api/import/polls - CSV polls import</div>
-                <div class="api-endpoint">POST /api/import/audio - Audio file upload</div>
-                <div class="api-endpoint">GET /data-import - Data import interface</div>
-                <div class="api-endpoint">GET /ui/dashboard - Analytics dashboard</div>
-                <div class="api-endpoint">GET /ui/admin - Admin panel</div>
             </div>
         </div>
     </body>
     </html>
     """
-    return html_content
-
-@app.get("/api")
-async def root():
-    """Root endpoint with application information"""
-    return {
-        "title": "7taps Analytics ETL",
-        "description": "Streaming ETL for xAPI analytics using direct database connections",
-        "version": "1.0.0",
-        "status": "running",
-        "endpoints": {
-            "dashboard": "/ui/dashboard",
-            "admin": "/ui/admin",
-            "api_docs": "/docs",
-            "health": "/health",
-            "xapi_ingestion": "/api/xapi/ingest",
-            "7taps_statements": "/statements"
-        },
-        "services": {
-            "fastapi": "running",
-            "postgresql": "running",
-            "redis": "running"
-        }
-    }
+    
+    return HTMLResponse(content=html_content)
 
 @app.get("/health")
+@log_performance("health_check")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "7taps-analytics-etl"}
+    """Comprehensive health check endpoint."""
+    logger.info("health_check_requested")
+    
+    health_status = {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "environment": settings.ENVIRONMENT,
+        "version": "1.0.0",
+        "services": {}
+    }
+    
+    # Check database connection
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        
+        db_url = settings.DATABASE_URL
+        if db_url:
+            parsed = urlparse(db_url)
+            conn = psycopg2.connect(
+                host=parsed.hostname,
+                port=parsed.port or 5432,
+                database=parsed.path[1:],
+                user=parsed.username,
+                password=parsed.password
+            )
+            conn.close()
+            health_status["services"]["database"] = "healthy"
+            logger.info("health_check_database_healthy")
+        else:
+            health_status["services"]["database"] = "not_configured"
+            logger.warning("health_check_database_not_configured")
+    except Exception as e:
+        health_status["services"]["database"] = "unhealthy"
+        health_status["status"] = "degraded"
+        logger.error("health_check_database_unhealthy", error=str(e))
+    
+    # Check Redis connection
+    try:
+        import redis
+        from urllib.parse import urlparse
+        
+        redis_url = settings.REDIS_URL
+        if redis_url:
+            parsed = urlparse(redis_url)
+            r = redis.Redis(
+                host=parsed.hostname,
+                port=parsed.port or 6379,
+                password=parsed.password,
+                decode_responses=True
+            )
+            r.ping()
+            health_status["services"]["redis"] = "healthy"
+            logger.info("health_check_redis_healthy")
+        else:
+            health_status["services"]["redis"] = "not_configured"
+            logger.warning("health_check_redis_not_configured")
+    except Exception as e:
+        health_status["services"]["redis"] = "unhealthy"
+        health_status["status"] = "degraded"
+        logger.error("health_check_redis_unhealthy", error=str(e))
+    
+    # Add error statistics
+    error_stats = error_tracker.get_error_stats()
+    health_status["error_stats"] = error_stats
+    
+    logger.info("health_check_completed", status=health_status["status"])
+    
+    return health_status
+
+@app.get("/debug/info")
+async def debug_info():
+    """Debug information endpoint (development only)."""
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="Debug endpoint not available in production")
+    
+    logger.info("debug_info_requested")
+    
+    debug_info = {
+        "environment": settings.ENVIRONMENT,
+        "debug": settings.DEBUG,
+        "log_level": settings.LOG_LEVEL,
+        "python_version": sys.version,
+        "environment_variables": {
+            "DATABASE_URL": "***" if settings.DATABASE_URL else None,
+            "REDIS_URL": "***" if settings.REDIS_URL else None,
+            "ENVIRONMENT": settings.ENVIRONMENT,
+            "DEBUG": settings.DEBUG
+        },
+        "error_stats": error_tracker.get_error_stats()
+    }
+    
+    return debug_info
 
 # Import and include routers - DEPLOYMENT FIX IN PROGRESS
-from app.api.etl import router as etl_router
-from app.api.orchestrator import router as orchestrator_router
-from app.api.nlp import router as nlp_router
-from app.api.xapi import router as xapi_router
-from app.api.seventaps import router as seventaps_router
-from app.api.xapi_lrs import router as xapi_lrs_router
-from app.api.learninglocker_sync import router as learninglocker_sync_router
-from app.api.health import router as health_router
-from app.api.data_normalization import router as data_normalization_router
-from app.api.data_import import router as data_import_router
-# from app.api.migration import router as migration_router  # TEMPORARILY DISABLED - FIXING DEPLOYMENT CRASH
-# from app.api.focus_group_import import router as focus_group_import_router
-from app.ui.admin import router as admin_router
-from app.ui.dashboard import router as dashboard_router
-from app.ui.data_import import router as data_import_ui_router
-# from app.api.monitoring import router as monitoring_router
-# from app.ui.production_dashboard import router as production_dashboard_router
-from app.api.sql_query import router as sql_query_router
-from app.ui.sql_query import router as sql_query_ui_router
-
-app.include_router(etl_router, prefix="/ui", tags=["ETL"])
-app.include_router(orchestrator_router, prefix="/api", tags=["Orchestrator"])
-app.include_router(nlp_router, prefix="/api", tags=["NLP"])
-app.include_router(xapi_router, tags=["xAPI"])
-app.include_router(seventaps_router, tags=["7taps"])
-app.include_router(xapi_lrs_router, tags=["xAPI LRS"])
-app.include_router(learninglocker_sync_router, prefix="/api", tags=["Learning Locker"])
-app.include_router(data_normalization_router, prefix="/api", tags=["Data Normalization"])
-app.include_router(data_import_router, prefix="/api", tags=["Data Import"])
-# app.include_router(migration_router, prefix="/api", tags=["Migration"])
-# app.include_router(focus_group_import_router, prefix="/api", tags=["Focus Group Import"])
-app.include_router(health_router, tags=["Health"])
-app.include_router(admin_router, tags=["Admin"])
-app.include_router(dashboard_router, tags=["Dashboard"])
-app.include_router(data_import_ui_router, tags=["Data Import UI"])
-# app.include_router(monitoring_router, prefix="/api", tags=["Monitoring"])
-# app.include_router(production_dashboard_router, tags=["Production Dashboard"])
-app.include_router(sql_query_router, prefix="/api", tags=["SQL Query"])
-app.include_router(sql_query_ui_router, tags=["SQL Query UI"])
+try:
+    from app.api import health, seventaps, xapi, orchestrator
+    from app.ui import dashboard, admin, data_export, data_import, enhanced_dashboard, learninglocker_admin, production_dashboard, sql_query, statement_browser, user_management
+    
+    # Include API routers
+    app.include_router(health.router, prefix="/api", tags=["Health"])
+    app.include_router(seventaps.router, prefix="/api/7taps", tags=["7taps"])
+    app.include_router(xapi.router, prefix="/api/xapi", tags=["xAPI"])
+    app.include_router(orchestrator.router, prefix="/api", tags=["Orchestrator"])
+    
+    # Include UI routers
+    app.include_router(dashboard.router, prefix="/ui", tags=["UI"])
+    app.include_router(admin.router, prefix="/ui", tags=["UI"])
+    app.include_router(data_export.router, prefix="/ui", tags=["UI"])
+    app.include_router(data_import.router, prefix="/ui", tags=["UI"])
+    app.include_router(enhanced_dashboard.router, prefix="/ui", tags=["UI"])
+    app.include_router(learninglocker_admin.router, prefix="/ui", tags=["UI"])
+    app.include_router(production_dashboard.router, prefix="/ui", tags=["UI"])
+    app.include_router(sql_query.router, prefix="/ui", tags=["UI"])
+    app.include_router(statement_browser.router, prefix="/ui", tags=["UI"])
+    app.include_router(user_management.router, prefix="/ui", tags=["UI"])
+    
+    logger.info("all_routers_loaded_successfully")
+    
+except ImportError as e:
+    logger.error("failed_to_import_router", router=str(e), traceback=traceback.format_exc())
+    # Continue without the router - this allows the app to start even if some modules are missing
 
 if __name__ == "__main__":
     import uvicorn
+    logger.info("starting_application_directly")
     uvicorn.run(app, host="0.0.0.0", port=8000) 

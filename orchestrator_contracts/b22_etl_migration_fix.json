@@ -1,0 +1,95 @@
+{
+  "module": "b.22_etl_migration_fix",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/migrate_flat_to_normalized.py",
+    "app/etl_streaming.py",
+    "app/etl_incremental.py",
+    "app/api/migration.py",
+    "app/data_normalization.py"
+  ],
+  "required_endpoints": [
+    "/api/migration/run",
+    "/api/migration/status",
+    "/api/migration/validate"
+  ],
+  "status": "in_progress",
+  "task_tracking": {
+    "assigned_at": "2025-01-16T00:30:00Z",
+    "estimated_duration": "3h",
+    "dependencies": ["b.18"],
+    "subtasks": [
+      {
+        "id": "b.22.1",
+        "description": "Fix application deployment crash",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/main.py", "requirements.txt"]
+      },
+      {
+        "id": "b.22.2",
+        "description": "Run migration script to move 261 statements from flat to normalized",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/migrate_flat_to_normalized.py"]
+      },
+      {
+        "id": "b.22.3",
+        "description": "Fix ETL streaming to automatically normalize new statements",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/etl_streaming.py"]
+      },
+      {
+        "id": "b.22.4",
+        "description": "Create migration API endpoints for monitoring",
+        "status": "not_started",
+        "agent": "backend_agent",
+        "files": ["app/api/migration.py"]
+      }
+    ],
+    "completion_criteria": [
+      "Application deployment successful and stable",
+      "Migration script successfully moves all 261 statements to normalized tables",
+      "ETL streaming automatically normalizes new statements",
+      "Migration API endpoints functional",
+      "Data integrity validated between flat and normalized tables",
+      "Normalization ratio reaches 100%"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "status": "pending",
+      "notes": "Test migration with live 261 statements in production database",
+      "docker_compose_required": false,
+      "test_environment": "Heroku production environment",
+      "validation_notes": "Verify all 261 statements are properly migrated and ETL works",
+      "testing_phases": [
+        "Phase 1: Fix application deployment",
+        "Phase 2: Run migration script on production data",
+        "Phase 3: Validate data integrity and completeness",
+        "Phase 4: Test ETL streaming with new normalization"
+      ],
+      "blocking_issues": []
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "CRITICAL: Fix application deployment crash and ETL migration. The app is currently crashing on Heroku. Fix the deployment, run the migration script to move 261 statements from statements_flat to normalized tables, and ensure ETL streaming automatically normalizes new statements.",
+    "required_approval": false
+  },
+  "data_issue_analysis": {
+    "problem": {
+      "description": "261 statements in statements_flat, only 1 in statements_normalized",
+      "root_cause": "ETL writes to flat table but doesn't trigger normalization process",
+      "impact": "Missing 260 statements for analytics and reporting"
+    },
+    "solution": {
+      "migration_script": "Use app/migrate_flat_to_normalized.py to process existing data",
+      "etl_fix": "Update app/etl_streaming.py to automatically normalize new statements",
+      "validation": "Ensure normalization ratio reaches 100%"
+    }
+  }
+}

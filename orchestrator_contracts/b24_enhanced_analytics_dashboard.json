@@ -1,0 +1,177 @@
+{
+  "module": "b.24_enhanced_analytics_dashboard",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "app/ui/enhanced_dashboard.py",
+    "templates/enhanced_dashboard.html",
+    "static/css/analytics.css",
+    "static/js/analytics.js",
+    "templates/components/cohort_analytics.html",
+    "templates/components/activity_analytics.html",
+    "templates/components/learner_analytics.html"
+  ],
+  "required_endpoints": [
+    "/ui/enhanced-dashboard",
+    "/ui/cohort-analytics",
+    "/ui/activity-analytics",
+    "/ui/learner-analytics"
+  ],
+  "status": "in_progress",
+  "task_tracking": {
+    "assigned_at": "2025-01-16T00:30:00Z",
+    "estimated_duration": "5h",
+    "dependencies": ["b.18", "b.23"],
+    "subtasks": [
+      {
+        "id": "b.24.1",
+        "description": "Create enhanced dashboard main interface",
+        "status": "not_started",
+        "agent": "ui_agent",
+        "files": ["app/ui/enhanced_dashboard.py", "templates/enhanced_dashboard.html"]
+      },
+      {
+        "id": "b.24.2",
+        "description": "Build cohort analytics visualization components",
+        "status": "not_started",
+        "agent": "ui_agent",
+        "files": ["templates/components/cohort_analytics.html", "static/js/analytics.js"]
+      },
+      {
+        "id": "b.24.3",
+        "description": "Create activity analytics dashboard",
+        "status": "not_started",
+        "agent": "ui_agent",
+        "files": ["templates/components/activity_analytics.html", "static/css/analytics.css"]
+      },
+      {
+        "id": "b.24.4",
+        "description": "Implement learner analytics and progress tracking",
+        "status": "not_started",
+        "agent": "ui_agent",
+        "files": ["templates/components/learner_analytics.html", "static/js/analytics.js"]
+      },
+      {
+        "id": "b.24.5",
+        "description": "Add interactive charts and data visualization",
+        "status": "not_started",
+        "agent": "ui_agent",
+        "files": ["static/js/analytics.js", "static/css/analytics.css"]
+      }
+    ],
+    "completion_criteria": [
+      "Enhanced dashboard displays cohort-based analytics",
+      "Interactive charts and visualizations for data insights",
+      "Activity analytics with engagement metrics",
+      "Learner progress tracking and performance",
+      "Responsive design for mobile and desktop",
+      "Real-time data updates from analytics API",
+      "Export functionality for reports and data"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "status": "pending",
+      "notes": "Test enhanced dashboard with real analytics data from b.23",
+      "docker_compose_required": false,
+      "test_environment": "Heroku production environment",
+      "validation_notes": "Verify dashboard displays correct data and interactions work properly",
+      "testing_phases": [
+        "Phase 1: Test dashboard with sample data",
+        "Phase 2: Validate API integration",
+        "Phase 3: Test with real analytics data",
+        "Phase 4: Verify responsive design and interactions"
+      ],
+      "blocking_issues": []
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "ui_agent",
+    "handoff_notes": "Create enhanced analytics dashboard that consumes the analytics API from b.23. Build interactive visualizations, cohort analytics, activity tracking, and learner progress monitoring. Focus on modern UI/UX with responsive design.",
+    "required_approval": false
+  },
+  "ui_requirements": {
+    "dashboard_layout": {
+      "main_dashboard": {
+        "url": "/ui/enhanced-dashboard",
+        "components": [
+          "Overview metrics cards",
+          "Cohort performance summary",
+          "Activity engagement charts",
+          "Learner progress overview",
+          "System health indicators"
+        ]
+      },
+      "cohort_analytics": {
+        "url": "/ui/cohort-analytics",
+        "components": [
+          "Cohort list with performance metrics",
+          "Cohort comparison charts",
+          "Member activity breakdown",
+          "Progress tracking over time",
+          "Cohort-specific insights"
+        ]
+      },
+      "activity_analytics": {
+        "url": "/ui/activity-analytics",
+        "components": [
+          "Top activities by engagement",
+          "Activity completion rates",
+          "Time spent analysis",
+          "Difficulty assessment",
+          "Activity recommendations"
+        ]
+      },
+      "learner_analytics": {
+        "url": "/ui/learner-analytics",
+        "components": [
+          "Learner performance rankings",
+          "Individual progress tracking",
+          "Cohort membership display",
+          "Activity history",
+          "Personalized insights"
+        ]
+      }
+    },
+    "visualization_requirements": {
+      "charts": [
+        "Bar charts for cohort comparison",
+        "Line charts for progress trends",
+        "Pie charts for activity distribution",
+        "Heat maps for engagement patterns",
+        "Gauge charts for completion rates"
+      ],
+      "interactivity": [
+        "Drill-down capabilities",
+        "Filter and sort options",
+        "Date range selection",
+        "Export functionality",
+        "Real-time updates"
+      ],
+      "responsive_design": [
+        "Mobile-friendly layout",
+        "Tablet optimization",
+        "Desktop enhancement",
+        "Touch-friendly interactions",
+        "Adaptive chart sizing"
+      ]
+    },
+    "api_integration": {
+      "endpoints": [
+        "GET /api/analytics/cohorts - Cohort data",
+        "GET /api/analytics/activities - Activity data",
+        "GET /api/analytics/learners - Learner data",
+        "GET /api/analytics/performance - Performance data",
+        "GET /api/analytics/export - Export data"
+      ],
+      "data_handling": [
+        "Real-time data fetching",
+        "Error handling and fallbacks",
+        "Loading states and indicators",
+        "Data caching for performance",
+        "Progressive loading for large datasets"
+      ]
+    }
+  }
+}
