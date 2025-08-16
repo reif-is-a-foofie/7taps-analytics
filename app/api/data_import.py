@@ -17,13 +17,14 @@ import pandas as pd
 from io import StringIO, BytesIO
 import asyncio
 
-from app.data_normalization import DataNormalizer
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Import DataNormalizer only when needed to avoid startup issues
+DataNormalizer = None
 
 class PollsDataImport(BaseModel):
     """Model for polls data import request."""
@@ -52,7 +53,9 @@ normalizer = None
 
 def get_normalizer():
     """Get or create normalizer instance."""
-    global normalizer
+    global normalizer, DataNormalizer
+    if DataNormalizer is None:
+        from app.data_normalization import DataNormalizer
     if normalizer is None:
         normalizer = DataNormalizer()
     return normalizer
