@@ -92,10 +92,10 @@ async def test_database_connections():
         else:
             logger.warning("postgresql_url_not_configured")
     except Exception as e:
-        logger.error("postgresql_connection_failed", error=str(e))
-        # Don't fail startup for database connection issues in development
+        logger.warning("postgresql_connection_failed", error=str(e))
+        # Don't fail startup for database connection issues
     
-    # Test Redis connection
+    # Test Redis connection - make this optional
     try:
         import redis
         from urllib.parse import urlparse
@@ -107,15 +107,17 @@ async def test_database_connections():
                 host=parsed.hostname,
                 port=parsed.port or 6379,
                 password=parsed.password,
-                decode_responses=True
+                decode_responses=True,
+                socket_connect_timeout=5,  # Short timeout
+                socket_timeout=5
             )
             r.ping()
             logger.info("redis_connection_successful")
         else:
             logger.warning("redis_url_not_configured")
     except Exception as e:
-        logger.error("redis_connection_failed", error=str(e))
-        # Don't fail startup for Redis connection issues in development
+        logger.warning("redis_connection_failed", error=str(e))
+        # Don't fail startup for Redis connection issues - it's optional for basic functionality
 
 app = FastAPI(
     title="7taps Analytics ETL",
@@ -428,7 +430,9 @@ async def health_check():
                 host=parsed.hostname,
                 port=parsed.port or 6379,
                 password=parsed.password,
-                decode_responses=True
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5
             )
             r.ping()
             health_status["services"]["redis"] = "healthy"
@@ -438,8 +442,8 @@ async def health_check():
             logger.warning("health_check_redis_not_configured")
     except Exception as e:
         health_status["services"]["redis"] = "unhealthy"
-        health_status["status"] = "degraded"
-        logger.error("health_check_redis_unhealthy", error=str(e))
+        # Don't mark overall status as degraded for Redis issues
+        logger.warning("health_check_redis_unhealthy", error=str(e))
     
     # Add error statistics
     error_stats = error_tracker.get_error_stats()
