@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.logging_config import get_logger
+from app.ui import templates
 
 router = APIRouter()
 logger = get_logger("enhanced_dashboard")
@@ -456,3 +457,16 @@ async def get_recent_7taps_statements():
     except Exception as e:
         logger.error("Failed to get recent 7taps statements", error=e)
         raise HTTPException(status_code=500, detail=f"API error: {str(e)}")
+
+
+@router.get("/ui/cohort-analytics", response_class=HTMLResponse)
+async def cohort_analytics_page(request: Request):
+    return templates.TemplateResponse("components/cohort_analytics.html", {"request": request})
+
+@router.get("/ui/activity-analytics", response_class=HTMLResponse)
+async def activity_analytics_page(request: Request):
+    return templates.TemplateResponse("components/activity_analytics.html", {"request": request})
+
+@router.get("/ui/learner-analytics", response_class=HTMLResponse)
+async def learner_analytics_page(request: Request):
+    return templates.TemplateResponse("components/learner_analytics.html", {"request": request})
