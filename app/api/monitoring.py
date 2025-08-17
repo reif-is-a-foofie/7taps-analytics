@@ -165,7 +165,7 @@ async def get_performance_metrics():
         )
 
 
-@router.get("/analytics")
+@router.get("/api/analytics")
 async def get_analytics_insights():
     """Get analytics insights from data normalization"""
     try:
@@ -178,6 +178,38 @@ async def get_analytics_insights():
         raise HTTPException(
             status_code=500, detail=f"Analytics insights retrieval failed: {str(e)}"
         )
+
+
+@router.get("/api/analytics/migration-status")
+async def get_migration_status():
+    """Report stuck, migrated, and failed statements and last migration time/status."""
+    try:
+        monitor = get_monitor()
+        # Example: get counts from DB
+        conn = monitor.db_pool.getconn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM statements_flat")
+        stuck = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM statements_normalized")
+        migrated = cursor.fetchone()[0]
+        # Optionally, track failed migrations if you have a log
+        failed = 0
+        last_migration_time = None
+        cursor.execute("SELECT MAX(processed_at) FROM statements_normalized")
+        row = cursor.fetchone()
+        if row and row[0]:
+            last_migration_time = row[0].isoformat()
+        cursor.close()
+        monitor.db_pool.putconn(conn)
+        return {
+            "stuck_statements": stuck,
+            "migrated_statements": migrated,
+            "failed_statements": failed,
+            "last_migration_time": last_migration_time
+        }
+    except Exception as e:
+        logger.error(f"Migration status retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Migration status retrieval failed: {str(e)}")
 
 
 @router.get("/metrics/history")

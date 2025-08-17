@@ -340,7 +340,7 @@ async def get_focus_group_template():
     return template_data
 
 
-@router.get("/analytics/cohorts")
+@router.get("/api/analytics/cohorts")
 async def get_cohort_analytics():
     """Get analytics for all cohorts."""
     try:
@@ -411,7 +411,7 @@ async def get_cohort_analytics():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/analytics/cohorts/{cohort_id}")
+@router.get("/api/analytics/cohorts/{cohort_id}")
 async def get_cohort_detail(cohort_id: str):
     """Get detailed analytics for a specific cohort."""
     try:
