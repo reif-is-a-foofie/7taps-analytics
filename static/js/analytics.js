@@ -59,42 +59,51 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSyncTimeline();
 });
 
-// Replace mock data with real API calls
+// Use new b.23 analytics API endpoints
 async function loadDashboardData() {
     try {
-        const response = await fetch('/metrics');
-        const data = await response.json();
+        const [performanceRes, cohortsRes, activitiesRes, learnersRes] = await Promise.all([
+            fetch('/api/analytics/performance'),
+            fetch('/api/analytics/cohorts'),
+            fetch('/api/analytics/activities'),
+            fetch('/api/analytics/learners')
+        ]);
+        const performance = await performanceRes.json();
+        const cohorts = await cohortsRes.json();
+        const activities = await activitiesRes.json();
+        const learners = await learnersRes.json();
+        // Example: update dashboard with new structure
         updateDashboard({
             learninglocker_data: {
                 sync_status: {
                     learninglocker_sync: {
-                        total_synced: data.data_metrics.statements_flat_count,
-                        last_sync_time: data.timestamp,
+                        total_synced: performance.total_synced || 0,
+                        last_sync_time: performance.last_sync_time || 'Never',
                     }
                 },
                 statement_stats: {
-                    total_statements: data.data_metrics.statements_flat_count,
-                    statements_today: 0, // Add if available
-                    unique_actors: data.data_metrics.actors_count,
-                    completion_rate: 0 // Add if available
+                    total_statements: performance.total_statements || 0,
+                    statements_today: performance.statements_today || 0,
+                    unique_actors: learners.total_learners || 0,
+                    completion_rate: learners.completion_rate || 0
                 }
             },
             performance_metrics: {
                 system_performance: {
-                    cpu_usage: data.system_health.cpu_percent,
-                    memory_usage: data.system_health.memory_percent,
-                    response_time_ms: 0 // Add if available
+                    cpu_usage: performance.cpu_usage || 0,
+                    memory_usage: performance.memory_usage || 0,
+                    response_time_ms: performance.response_time_ms || 0
                 },
                 user_activity: {
-                    total_sessions: 0 // Add if available
+                    total_sessions: performance.active_sessions || 0
                 },
                 sync_performance: {
-                    sync_success_rate: 0, // Add if available
-                    statements_per_minute: data.data_metrics.processing_rate
+                    sync_success_rate: performance.sync_success_rate || 0,
+                    statements_per_minute: performance.statements_per_minute || 0
                 },
                 data_quality: {
-                    valid_statements: 0, // Add if available
-                    average_score: 0 // Add if available
+                    valid_statements: performance.valid_statements || 0,
+                    average_score: performance.average_score || 0
                 }
             }
         });
@@ -133,11 +142,10 @@ function updateDashboard(data) {
 
 async function loadActivityChart() {
     try {
-        const response = await fetch('/analytics');
+        const response = await fetch('/api/analytics/activities');
         const data = await response.json();
-        // Example: Use top_activities for chart
-        const labels = data.insights.top_activities.map(a => a.activity);
-        const counts = data.insights.top_activities.map(a => a.count);
+        const labels = data.activities.map(a => a.name);
+        const counts = data.activities.map(a => a.engagement_count);
         const ctx = document.getElementById('activityChart').getContext('2d');
         if (activityChart) activityChart.destroy();
         activityChart = new Chart(ctx, {
@@ -164,6 +172,14 @@ async function loadActivityChart() {
                 scales: { y: { beginAtZero: true } }
             }
         });
+        // Add interactivity: click to filter or show details
+        ctx.canvas.onclick = function(evt) {
+            const points = activityChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+            if (points.length) {
+                const idx = points[0].index;
+                alert('Activity: ' + labels[idx] + '\nEngagements: ' + counts[idx]);
+            }
+        };
     } catch (error) {
         console.error('Failed to load activity chart:', error);
         setTimeout(() => {
