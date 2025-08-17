@@ -59,9 +59,49 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSyncTimeline();
 });
 
-function loadDashboardData() {
-    // Simulate async fetch
-    setTimeout(() => updateDashboard(mockDashboardData), 300);
+// Replace mock data with real API calls
+async function loadDashboardData() {
+    try {
+        const response = await fetch('/metrics');
+        const data = await response.json();
+        updateDashboard({
+            learninglocker_data: {
+                sync_status: {
+                    learninglocker_sync: {
+                        total_synced: data.data_metrics.statements_flat_count,
+                        last_sync_time: data.timestamp,
+                    }
+                },
+                statement_stats: {
+                    total_statements: data.data_metrics.statements_flat_count,
+                    statements_today: 0, // Add if available
+                    unique_actors: data.data_metrics.actors_count,
+                    completion_rate: 0 // Add if available
+                }
+            },
+            performance_metrics: {
+                system_performance: {
+                    cpu_usage: data.system_health.cpu_percent,
+                    memory_usage: data.system_health.memory_percent,
+                    response_time_ms: 0 // Add if available
+                },
+                user_activity: {
+                    total_sessions: 0 // Add if available
+                },
+                sync_performance: {
+                    sync_success_rate: 0, // Add if available
+                    statements_per_minute: data.data_metrics.processing_rate
+                },
+                data_quality: {
+                    valid_statements: 0, // Add if available
+                    average_score: 0 // Add if available
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+        updateDashboard(mockDashboardData);
+    }
 }
 
 function updateDashboard(data) {
@@ -91,37 +131,26 @@ function updateDashboard(data) {
     document.getElementById('avg-score').textContent = performance.data_quality?.average_score || 0;
 }
 
-function loadActivityChart() {
-    // Simulate async fetch
-    setTimeout(() => {
-        const data = mockActivityData;
+async function loadActivityChart() {
+    try {
+        const response = await fetch('/analytics');
+        const data = await response.json();
+        // Example: Use top_activities for chart
+        const labels = data.insights.top_activities.map(a => a.activity);
+        const counts = data.insights.top_activities.map(a => a.count);
         const ctx = document.getElementById('activityChart').getContext('2d');
         if (activityChart) activityChart.destroy();
         activityChart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: data.activity_data.map(d => d.date),
+                labels: labels,
                 datasets: [
                     {
-                        label: 'Total Statements',
-                        data: data.activity_data.map(d => d.statements),
+                        label: 'Engagement Count',
+                        data: counts,
+                        backgroundColor: 'rgba(52, 152, 219, 0.5)',
                         borderColor: '#3498db',
-                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Completions',
-                        data: data.activity_data.map(d => d.completions),
-                        borderColor: '#27ae60',
-                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Attempts',
-                        data: data.activity_data.map(d => d.attempts),
-                        borderColor: '#f39c12',
-                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                        tension: 0.4
+                        borderWidth: 1
                     }
                 ]
             },
@@ -129,13 +158,58 @@ function loadActivityChart() {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'top' },
-                    title: { display: true, text: 'Statement Activity Over Time' }
+                    legend: { display: false },
+                    title: { display: true, text: 'Top Activities (24h)' }
                 },
                 scales: { y: { beginAtZero: true } }
             }
         });
-    }, 300);
+    } catch (error) {
+        console.error('Failed to load activity chart:', error);
+        setTimeout(() => {
+            const data = mockActivityData;
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            if (activityChart) activityChart.destroy();
+            activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.activity_data.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Total Statements',
+                            data: data.activity_data.map(d => d.statements),
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Completions',
+                            data: data.activity_data.map(d => d.completions),
+                            borderColor: '#27ae60',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Attempts',
+                            data: data.activity_data.map(d => d.attempts),
+                            borderColor: '#f39c12',
+                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: 'Statement Activity Over Time' }
+                    },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }, 300);
+    }
 }
 
 function loadSyncTimeline() {
