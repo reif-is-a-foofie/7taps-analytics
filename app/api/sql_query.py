@@ -3,16 +3,17 @@ MVP SQL Query API for direct database queries
 Simple interface for querying normalized tables
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Dict, List, Any, Optional
-import os
 import logging
+import os
 import re
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import psycopg2
+from fastapi import APIRouter, Depends, HTTPException
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import SimpleConnectionPool
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,26 +24,30 @@ router = APIRouter()
 # Database connection pool
 db_pool = None
 
+
 def get_db_pool():
     """Get database connection pool"""
     global db_pool
     if db_pool is None:
-        database_url = os.getenv("DATABASE_URL", "postgresql://analytics_user:analytics_pass@localhost:5432/7taps_analytics")
-        db_pool = SimpleConnectionPool(
-            minconn=1,
-            maxconn=10,
-            dsn=database_url
+        database_url = os.getenv(
+            "DATABASE_URL",
+            "postgresql://analytics_user:analytics_pass@localhost:5432/7taps_analytics",
         )
+        db_pool = SimpleConnectionPool(minconn=1, maxconn=10, dsn=database_url)
     return db_pool
+
 
 class SQLQueryRequest(BaseModel):
     """SQL query request model"""
+
     sql: str
     max_rows: Optional[int] = 1000
     timeout: Optional[int] = 30
 
+
 class SQLQueryResponse(BaseModel):
     """SQL query response model"""
+
     success: bool
     columns: List[str]
     data: List[List[Any]]
@@ -50,37 +55,49 @@ class SQLQueryResponse(BaseModel):
     execution_time: float
     error: Optional[str] = None
 
+
 def is_readonly_query(sql: str) -> bool:
     """Check if SQL query is read-only"""
     # Convert to uppercase and remove comments
-    sql_upper = re.sub(r'--.*$', '', sql.upper(), flags=re.MULTILINE)
-    sql_upper = re.sub(r'/\*.*?\*/', '', sql_upper, flags=re.DOTALL)
-    
+    sql_upper = re.sub(r"--.*$", "", sql.upper(), flags=re.MULTILINE)
+    sql_upper = re.sub(r"/\*.*?\*/", "", sql_upper, flags=re.DOTALL)
+
     # Check for dangerous keywords
     dangerous_keywords = [
-        'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 
-        'TRUNCATE', 'GRANT', 'REVOKE', 'EXECUTE', 'CALL'
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "DROP",
+        "CREATE",
+        "ALTER",
+        "TRUNCATE",
+        "GRANT",
+        "REVOKE",
+        "EXECUTE",
+        "CALL",
     ]
-    
+
     for keyword in dangerous_keywords:
         if keyword in sql_upper:
             return False
-    
+
     # Must start with SELECT
-    if not sql_upper.strip().startswith('SELECT'):
+    if not sql_upper.strip().startswith("SELECT"):
         return False
-    
+
     return True
+
 
 def validate_sql_query(sql: str) -> bool:
     """Validate SQL query"""
     if not sql.strip():
         return False
-    
+
     if not is_readonly_query(sql):
         return False
-    
+
     return True
+
 
 @router.post("/query", response_model=SQLQueryResponse)
 async def execute_sql_query(request: SQLQueryRequest):
@@ -89,49 +106,51 @@ async def execute_sql_query(request: SQLQueryRequest):
         # Validate query
         if not validate_sql_query(request.sql):
             raise HTTPException(
-                status_code=400, 
-                detail="Invalid query. Only read-only SELECT queries are allowed."
+                status_code=400,
+                detail="Invalid query. Only read-only SELECT queries are allowed.",
             )
-        
+
         # Get database connection
         pool = get_db_pool()
         conn = pool.getconn()
-        
+
         try:
             # Set query timeout
             conn.set_session(autocommit=False)
             cursor = conn.cursor()
             cursor.execute(f"SET statement_timeout = {request.timeout * 1000}")
-            
+
             # Execute query
             start_time = datetime.now()
             cursor.execute(request.sql)
-            
+
             # Fetch results with row limit
             rows = cursor.fetchmany(request.max_rows)
             execution_time = (datetime.now() - start_time).total_seconds()
-            
+
             # Get column names
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            
+            columns = (
+                [desc[0] for desc in cursor.description] if cursor.description else []
+            )
+
             # Convert rows to list format
             data = []
             for row in rows:
                 data.append(list(row))
-            
+
             cursor.close()
-            
+
             return SQLQueryResponse(
                 success=True,
                 columns=columns,
                 data=data,
                 row_count=len(data),
-                execution_time=execution_time
+                execution_time=execution_time,
             )
-            
+
         finally:
             pool.putconn(conn)
-            
+
     except Exception as e:
         logger.error(f"SQL query execution failed: {e}")
         return SQLQueryResponse(
@@ -140,8 +159,9 @@ async def execute_sql_query(request: SQLQueryRequest):
             data=[],
             row_count=0,
             execution_time=0,
-            error=str(e)
+            error=str(e),
         )
+
 
 @router.get("/tables")
 async def get_available_tables():
@@ -149,40 +169,33 @@ async def get_available_tables():
     try:
         pool = get_db_pool()
         conn = pool.getconn()
-        
+
         try:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT table_name, table_type 
                 FROM information_schema.tables 
                 WHERE table_schema = 'public' 
                 ORDER BY table_name
-            """)
-            
+            """
+            )
+
             tables = cursor.fetchall()
             cursor.close()
-            
+
             return {
                 "success": True,
-                "tables": [
-                    {
-                        "name": table[0],
-                        "type": table[1]
-                    }
-                    for table in tables
-                ]
+                "tables": [{"name": table[0], "type": table[1]} for table in tables],
             }
-            
+
         finally:
             pool.putconn(conn)
-            
+
     except Exception as e:
         logger.error(f"Failed to get tables: {e}")
-        return {
-            "success": False,
-            "tables": [],
-            "error": str(e)
-        }
+        return {"success": False, "tables": [], "error": str(e)}
+
 
 @router.get("/table-info/{table_name}")
 async def get_table_info(table_name: str):
@@ -190,19 +203,22 @@ async def get_table_info(table_name: str):
     try:
         pool = get_db_pool()
         conn = pool.getconn()
-        
+
         try:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT column_name, data_type, is_nullable, column_default
                 FROM information_schema.columns 
                 WHERE table_name = %s AND table_schema = 'public'
                 ORDER BY ordinal_position
-            """, (table_name,))
-            
+            """,
+                (table_name,),
+            )
+
             columns = cursor.fetchall()
             cursor.close()
-            
+
             return {
                 "success": True,
                 "table_name": table_name,
@@ -211,23 +227,24 @@ async def get_table_info(table_name: str):
                         "name": col[0],
                         "type": col[1],
                         "nullable": col[2] == "YES",
-                        "default": col[3]
+                        "default": col[3],
                     }
                     for col in columns
-                ]
+                ],
             }
-            
+
         finally:
             pool.putconn(conn)
-            
+
     except Exception as e:
         logger.error(f"Failed to get table info for {table_name}: {e}")
         return {
             "success": False,
             "table_name": table_name,
             "columns": [],
-            "error": str(e)
+            "error": str(e),
         }
+
 
 @router.get("/sample-queries")
 async def get_sample_queries():
@@ -248,7 +265,7 @@ UNION ALL
 SELECT 'activities' as table_name, COUNT(*) as count FROM activities
 UNION ALL
 SELECT 'verbs' as table_name, COUNT(*) as count FROM verbs
-                """
+                """,
             },
             {
                 "name": "Cohort Analysis",
@@ -262,7 +279,7 @@ FROM statements_normalized
 WHERE cohort_name IS NOT NULL 
 GROUP BY cohort_name 
 ORDER BY statement_count DESC
-                """
+                """,
             },
             {
                 "name": "Top Activities",
@@ -277,7 +294,7 @@ JOIN activities a ON sn.activity_id = a.activity_id
 GROUP BY a.activity_id, a.name
 ORDER BY engagement_count DESC
 LIMIT 10
-                """
+                """,
             },
             {
                 "name": "Top Actors",
@@ -292,7 +309,7 @@ JOIN actors ac ON sn.actor_id = ac.actor_id
 GROUP BY ac.actor_id, ac.name
 ORDER BY activity_count DESC
 LIMIT 10
-                """
+                """,
             },
             {
                 "name": "Processing Status",
@@ -306,7 +323,7 @@ UNION ALL
 SELECT 'normalization_ratio' as metric, 
        ROUND((SELECT COUNT(*) FROM statements_normalized) * 100.0 / 
              NULLIF((SELECT COUNT(*) FROM statements_flat), 0), 2) as value
-                """
-            }
-        ]
+                """,
+            },
+        ],
     }

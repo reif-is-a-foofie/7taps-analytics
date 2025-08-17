@@ -1,16 +1,17 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Dict, Any, Optional
-import httpx
 import json
 import logging
-from langchain.llms import OpenAI
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
 import os
+from typing import Any, Dict, Optional
+
+import httpx
 import openai
-from psycopg2.pool import SimpleConnectionPool
+from fastapi import APIRouter, HTTPException
+from langchain.chains import LLMChain
+from langchain.llms import OpenAI
+from langchain.prompts import PromptTemplate
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import SimpleConnectionPool
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,9 +19,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
 class NLPQueryRequest(BaseModel):
     query: str
     query_type: str = "analytics"  # cohort, completion, analytics, general
+
 
 class NLPQueryResponse(BaseModel):
     original_query: str
@@ -28,6 +31,7 @@ class NLPQueryResponse(BaseModel):
     results: Dict[str, Any]
     confidence: float
     error: Optional[str] = None
+
 
 # SQL translation prompt template
 SQL_TRANSLATION_PROMPT = """
@@ -51,29 +55,30 @@ Query type: {query_type}
 Translate to SQL:
 """
 
+
 class NLPService:
     """NLP service for translating natural language to SQL queries."""
-    
+
     def __init__(self):
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.database_url = os.getenv("DATABASE_URL")
-        
+
         # Initialize OpenAI client
         if self.openai_api_key:
             self.openai_client = openai.OpenAI(api_key=self.openai_api_key)
         else:
             self.openai_client = None
-            
+
         # Initialize database connection
-        self.db_pool = SimpleConnectionPool(
-            minconn=1,
-            maxconn=5,
-            dsn=self.database_url
-        ) if self.database_url else None
+        self.db_pool = (
+            SimpleConnectionPool(minconn=1, maxconn=5, dsn=self.database_url)
+            if self.database_url
+            else None
+        )
 
     async def translate_to_sql(self, query: str, query_type: str) -> str:
         """Translate natural language to SQL using LangChain or fallback"""
-        
+
         if self.chain is not None:
             try:
                 result = await self.chain.arun(query=query, query_type=query_type)
@@ -87,7 +92,7 @@ class NLPService:
     def _fallback_translation(self, query: str, query_type: str) -> str:
         """Fallback SQL translation for common query patterns"""
         query_lower = query.lower()
-        
+
         # Common query patterns
         if "cohort" in query_lower and "completion" in query_lower:
             return """
@@ -105,7 +110,7 @@ class NLPService:
             GROUP BY c.cohort_name
             ORDER BY completion_rate DESC
             """
-        
+
         elif "completion rate" in query_lower:
             return """
             SELECT 
@@ -121,7 +126,7 @@ class NLPService:
             GROUP BY DATE_TRUNC('day', timestamp)
             ORDER BY date DESC
             """
-        
+
         elif "recent activity" in query_lower or "last" in query_lower:
             return """
             SELECT 
@@ -133,7 +138,7 @@ class NLPService:
             ORDER BY timestamp DESC
             LIMIT 50
             """
-        
+
         elif "user engagement" in query_lower:
             return """
             SELECT 
@@ -146,7 +151,7 @@ class NLPService:
             ORDER BY statement_count DESC
             LIMIT 20
             """
-        
+
         else:
             # Default query for general analytics
             return """
@@ -165,33 +170,35 @@ class NLPService:
         try:
             if not self.db_pool:
                 return {"error": "Database connection not available"}
-            
+
             conn = self.db_pool.getconn()
             try:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute(sql)
                     results = cursor.fetchall()
-                    
+
                     # Convert to list of dicts
                     result_list = []
                     for row in results:
                         result_list.append(dict(row))
-                    
+
                     return {
                         "results": result_list,
                         "row_count": len(result_list),
-                        "success": True
+                        "success": True,
                     }
-                    
+
             finally:
                 self.db_pool.putconn(conn)
-                
+
         except Exception as e:
             logger.error(f"Failed to execute SQL directly: {e}")
             return {"error": f"Database error: {str(e)}"}
 
+
 # Initialize NLP service
 nlp_service = NLPService()
+
 
 @router.post("/ui/nlp-query", response_model=NLPQueryResponse)
 async def nlp_query(request: NLPQueryRequest):
@@ -199,34 +206,42 @@ async def nlp_query(request: NLPQueryRequest):
     Translate natural language query to SQL and execute via MCP DB
     """
     try:
-        logger.info(f"Processing NLP query: {request.query} (type: {request.query_type})")
-        
+        logger.info(
+            f"Processing NLP query: {request.query} (type: {request.query_type})"
+        )
+
         # Step 1: Translate natural language to SQL
-        translated_sql = await nlp_service.translate_to_sql(request.query, request.query_type)
+        translated_sql = await nlp_service.translate_to_sql(
+            request.query, request.query_type
+        )
         logger.info(f"Translated SQL: {translated_sql}")
-        
+
         # Step 2: Execute SQL via MCP DB
         results = await nlp_service.execute_sql_direct(translated_sql)
-        
+
         # Step 3: Calculate confidence (simplified)
         confidence = 0.85 if nlp_service.chain else 0.65
-        
+
         return {
             "query": request.query,
             "translated_sql": translated_sql,
             "results": results.get("results", []),
             "row_count": results.get("row_count", 0),
             "confidence": confidence,
-            "database_url": nlp_service.database_url.split("@")[-1] if nlp_service.database_url else "not_configured",
-            "message": f"Processed NLP query: {request.query}"
+            "database_url": (
+                nlp_service.database_url.split("@")[-1]
+                if nlp_service.database_url
+                else "not_configured"
+            ),
+            "message": f"Processed NLP query: {request.query}",
         }
-        
+
     except Exception as e:
         logger.error(f"NLP query processing failed: {e}")
         raise HTTPException(
-            status_code=500,
-            detail=f"NLP query processing failed: {str(e)}"
+            status_code=500, detail=f"NLP query processing failed: {str(e)}"
         )
+
 
 @router.get("/ui/nlp-status")
 async def nlp_status():
@@ -237,10 +252,12 @@ async def nlp_status():
         "mcp_db_url": nlp_service.mcp_db_url,
         "capabilities": [
             "natural_language_to_sql",
-            "cohort_analysis", 
+            "cohort_analysis",
             "completion_tracking",
             "user_engagement",
-            "recent_activity"
+            "recent_activity",
         ],
-        "langchain_status": "initialized" if nlp_service.chain is not None else "fallback_only"
-    } 
+        "langchain_status": (
+            "initialized" if nlp_service.chain is not None else "fallback_only"
+        ),
+    }

@@ -4,10 +4,11 @@ Data Import UI for 7taps Analytics.
 Simple interface for uploading CSV polls data and audio files.
 """
 
-import os
 import json
-from typing import Dict, Any
-from fastapi import APIRouter, Request, Form, UploadFile, File
+import os
+from typing import Any, Dict
+
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -16,10 +17,11 @@ router = APIRouter()
 # Templates
 templates = Jinja2Templates(directory="templates")
 
+
 @router.get("/data-import", response_class=HTMLResponse)
 async def data_import_page(request: Request):
     """Data import interface page."""
-    
+
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
@@ -336,5 +338,5 @@ async def data_import_page(request: Request):
     </body>
     </html>
     """
-    
+
     return HTMLResponse(content=html_content)

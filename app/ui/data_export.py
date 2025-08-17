@@ -5,16 +5,17 @@ This module provides an interface for exporting xAPI statements
 in various formats (JSON, CSV, XML).
 """
 
-from fastapi import APIRouter, Request, HTTPException, Query
-from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.templating import Jinja2Templates
-from typing import Dict, Any, List, Optional
-import json
 import csv
 import io
+import json
+import os
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
-import os
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from app.logging_config import get_logger
 
@@ -22,20 +23,23 @@ router = APIRouter()
 logger = get_logger("data_export")
 templates = Jinja2Templates(directory="templates")
 
+
 class DataExporter:
     """Data export functionality."""
-    
+
     def __init__(self):
         self.api_base = "https://seventaps-analytics-5135b3a0701a.herokuapp.com/api"
-        
-    async def get_export_data(self,
-                             format_type: str = "json",
-                             start_date: Optional[str] = None,
-                             end_date: Optional[str] = None,
-                             actor_filter: Optional[str] = None,
-                             verb_filter: Optional[str] = None,
-                             object_filter: Optional[str] = None,
-                             limit: int = 1000) -> Dict[str, Any]:
+
+    async def get_export_data(
+        self,
+        format_type: str = "json",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        actor_filter: Optional[str] = None,
+        verb_filter: Optional[str] = None,
+        object_filter: Optional[str] = None,
+        limit: int = 1000,
+    ) -> Dict[str, Any]:
         """Get data for export with filtering."""
         try:
             # Mock export data
@@ -45,82 +49,100 @@ class DataExporter:
                     "id": "statement-001",
                     "actor": {
                         "account": {"name": "user1@7taps.com"},
-                        "name": "Test User 1"
+                        "name": "Test User 1",
                     },
                     "verb": {
                         "id": "http://adlnet.gov/expapi/verbs/completed",
-                        "display": {"en-US": "completed"}
+                        "display": {"en-US": "completed"},
                     },
                     "object": {
                         "id": "http://7taps.com/activities/course-1",
                         "objectType": "Activity",
                         "definition": {
                             "name": {"en-US": "Introduction Course"},
-                            "description": {"en-US": "Basic introduction to the platform"}
-                        }
+                            "description": {
+                                "en-US": "Basic introduction to the platform"
+                            },
+                        },
                     },
                     "timestamp": "2025-01-05T10:30:00Z",
                     "result": {
                         "score": {"raw": 85, "min": 0, "max": 100},
                         "success": True,
-                        "completion": True
+                        "completion": True,
                     },
-                    "context": {
-                        "platform": "7taps",
-                        "language": "en-US"
-                    }
+                    "context": {"platform": "7taps", "language": "en-US"},
                 },
                 {
                     "id": "statement-002",
                     "actor": {
                         "account": {"name": "user2@7taps.com"},
-                        "name": "Test User 2"
+                        "name": "Test User 2",
                     },
                     "verb": {
                         "id": "http://adlnet.gov/expapi/verbs/attempted",
-                        "display": {"en-US": "attempted"}
+                        "display": {"en-US": "attempted"},
                     },
                     "object": {
                         "id": "http://7taps.com/activities/quiz-1",
                         "objectType": "Activity",
                         "definition": {
                             "name": {"en-US": "Knowledge Quiz"},
-                            "description": {"en-US": "Test your knowledge"}
-                        }
+                            "description": {"en-US": "Test your knowledge"},
+                        },
                     },
                     "timestamp": "2025-01-05T11:15:00Z",
-                    "result": {
-                        "success": True
-                    },
-                    "context": {
-                        "platform": "7taps",
-                        "language": "en-US"
-                    }
-                }
+                    "result": {"success": True},
+                    "context": {"platform": "7taps", "language": "en-US"},
+                },
             ]
-            
+
             # Apply filters
             if actor_filter:
-                statements = [s for s in statements if actor_filter.lower() in s.get("actor", {}).get("account", {}).get("name", "").lower()]
-            
+                statements = [
+                    s
+                    for s in statements
+                    if actor_filter.lower()
+                    in s.get("actor", {}).get("account", {}).get("name", "").lower()
+                ]
+
             if verb_filter:
-                statements = [s for s in statements if verb_filter.lower() in s.get("verb", {}).get("id", "").lower()]
-            
+                statements = [
+                    s
+                    for s in statements
+                    if verb_filter.lower() in s.get("verb", {}).get("id", "").lower()
+                ]
+
             if object_filter:
-                statements = [s for s in statements if object_filter.lower() in s.get("object", {}).get("id", "").lower()]
-            
+                statements = [
+                    s
+                    for s in statements
+                    if object_filter.lower()
+                    in s.get("object", {}).get("id", "").lower()
+                ]
+
             # Apply date filters
             if start_date:
-                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                statements = [s for s in statements if datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00')) >= start_dt]
-            
+                start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+                statements = [
+                    s
+                    for s in statements
+                    if datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))
+                    >= start_dt
+                ]
+
             if end_date:
-                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-                statements = [s for s in statements if datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00')) <= end_dt]
-            
+                end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                statements = [
+                    s
+                    for s in statements
+                    if datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))
+                    <= end_dt
+                ]
+
             # Apply limit
             statements = statements[:limit]
-            
+
             return {
                 "statements": statements,
                 "export_info": {
@@ -132,15 +154,15 @@ class DataExporter:
                         "end_date": end_date,
                         "actor": actor_filter,
                         "verb": verb_filter,
-                        "object": object_filter
-                    }
-                }
+                        "object": object_filter,
+                    },
+                },
             }
-            
+
         except Exception as e:
             logger.error("Failed to get export data", error=e)
             return {"error": str(e)}
-    
+
     def export_to_json(self, data: Dict[str, Any]) -> str:
         """Export data to JSON format."""
         try:
@@ -148,83 +170,103 @@ class DataExporter:
         except Exception as e:
             logger.error("Failed to export to JSON", error=e)
             raise
-    
+
     def export_to_csv(self, data: Dict[str, Any]) -> str:
         """Export data to CSV format."""
         try:
             output = io.StringIO()
             writer = csv.writer(output)
-            
+
             # Write header
-            writer.writerow([
-                "Statement ID", "Actor", "Verb", "Object", "Timestamp", 
-                "Score", "Success", "Completion", "Platform"
-            ])
-            
+            writer.writerow(
+                [
+                    "Statement ID",
+                    "Actor",
+                    "Verb",
+                    "Object",
+                    "Timestamp",
+                    "Score",
+                    "Success",
+                    "Completion",
+                    "Platform",
+                ]
+            )
+
             # Write data
             for statement in data["statements"]:
                 score = ""
                 if statement.get("result", {}).get("score"):
                     score = f"{statement['result']['score']['raw']}/{statement['result']['score']['max']}"
-                
-                writer.writerow([
-                    statement["id"],
-                    statement["actor"]["account"]["name"],
-                    statement["verb"]["id"].split("/")[-1],
-                    statement["object"]["id"].split("/")[-1],
-                    statement["timestamp"],
-                    score,
-                    statement.get("result", {}).get("success", ""),
-                    statement.get("result", {}).get("completion", ""),
-                    statement.get("context", {}).get("platform", "")
-                ])
-            
+
+                writer.writerow(
+                    [
+                        statement["id"],
+                        statement["actor"]["account"]["name"],
+                        statement["verb"]["id"].split("/")[-1],
+                        statement["object"]["id"].split("/")[-1],
+                        statement["timestamp"],
+                        score,
+                        statement.get("result", {}).get("success", ""),
+                        statement.get("result", {}).get("completion", ""),
+                        statement.get("context", {}).get("platform", ""),
+                    ]
+                )
+
             return output.getvalue()
         except Exception as e:
             logger.error("Failed to export to CSV", error=e)
             raise
-    
+
     def export_to_xml(self, data: Dict[str, Any]) -> str:
         """Export data to XML format."""
         try:
             root = ET.Element("xapi_statements")
             root.set("export_date", data["export_info"]["export_date"])
             root.set("total_statements", str(data["export_info"]["total_statements"]))
-            
+
             for statement in data["statements"]:
                 stmt_elem = ET.SubElement(root, "statement")
                 stmt_elem.set("id", statement["id"])
                 stmt_elem.set("timestamp", statement["timestamp"])
-                
+
                 # Actor
                 actor_elem = ET.SubElement(stmt_elem, "actor")
                 actor_elem.set("name", statement["actor"]["account"]["name"])
-                
+
                 # Verb
                 verb_elem = ET.SubElement(stmt_elem, "verb")
                 verb_elem.set("id", statement["verb"]["id"])
                 verb_elem.set("display", statement["verb"]["display"]["en-US"])
-                
+
                 # Object
                 obj_elem = ET.SubElement(stmt_elem, "object")
                 obj_elem.set("id", statement["object"]["id"])
                 obj_elem.set("type", statement["object"]["objectType"])
-                
+
                 # Result
                 if statement.get("result"):
                     result_elem = ET.SubElement(stmt_elem, "result")
                     if statement["result"].get("score"):
-                        result_elem.set("score", f"{statement['result']['score']['raw']}/{statement['result']['score']['max']}")
-                    result_elem.set("success", str(statement["result"].get("success", "")))
-                    result_elem.set("completion", str(statement["result"].get("completion", "")))
-            
-            return ET.tostring(root, encoding='unicode', method='xml')
+                        result_elem.set(
+                            "score",
+                            f"{statement['result']['score']['raw']}/{statement['result']['score']['max']}",
+                        )
+                    result_elem.set(
+                        "success", str(statement["result"].get("success", ""))
+                    )
+                    result_elem.set(
+                        "completion", str(statement["result"].get("completion", ""))
+                    )
+
+            return ET.tostring(root, encoding="unicode", method="xml")
         except Exception as e:
             logger.error("Failed to export to XML", error=e)
             raise
 
+
 # Global exporter instance
 exporter = DataExporter()
+
 
 @router.get("/data-export", response_class=HTMLResponse)
 async def data_export_page(request: Request):
@@ -233,28 +275,31 @@ async def data_export_page(request: Request):
         # Get default date range (last 30 days)
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=30)
-        
+
         context = {
             "request": request,
             "default_start_date": start_date.strftime("%Y-%m-%d"),
             "default_end_date": end_date.strftime("%Y-%m-%d"),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
-        
+
         return templates.TemplateResponse("data_export.html", context)
-        
+
     except Exception as e:
         logger.error("Failed to render data export page", error=e)
         raise HTTPException(status_code=500, detail=f"Export page error: {str(e)}")
 
+
 @router.post("/api/export/download")
-async def download_export(format_type: str = Query("json"),
-                         start_date: Optional[str] = Query(None),
-                         end_date: Optional[str] = Query(None),
-                         actor_filter: Optional[str] = Query(None),
-                         verb_filter: Optional[str] = Query(None),
-                         object_filter: Optional[str] = Query(None),
-                         limit: int = Query(1000, ge=1, le=10000)):
+async def download_export(
+    format_type: str = Query("json"),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    actor_filter: Optional[str] = Query(None),
+    verb_filter: Optional[str] = Query(None),
+    object_filter: Optional[str] = Query(None),
+    limit: int = Query(1000, ge=1, le=10000),
+):
     """Download exported data."""
     try:
         # Get export data
@@ -265,50 +310,59 @@ async def download_export(format_type: str = Query("json"),
             actor_filter=actor_filter,
             verb_filter=verb_filter,
             object_filter=object_filter,
-            limit=limit
+            limit=limit,
         )
-        
+
         if "error" in data:
             raise HTTPException(status_code=500, detail=data["error"])
-        
+
         # Generate export content
         if format_type == "json":
             content = exporter.export_to_json(data)
-            filename = f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+            filename = (
+                f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+            )
             media_type = "application/json"
         elif format_type == "csv":
             content = exporter.export_to_csv(data)
-            filename = f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+            filename = (
+                f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+            )
             media_type = "text/csv"
         elif format_type == "xml":
             content = exporter.export_to_xml(data)
-            filename = f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xml"
+            filename = (
+                f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xml"
+            )
             media_type = "application/xml"
         else:
             raise HTTPException(status_code=400, detail="Unsupported format type")
-        
+
         # Create file response
-        file_content = io.BytesIO(content.encode('utf-8'))
-        
+        file_content = io.BytesIO(content.encode("utf-8"))
+
         return FileResponse(
             file_content,
             filename=filename,
             media_type=media_type,
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
-        
+
     except Exception as e:
         logger.error("Failed to download export", error=e)
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
+
 @router.get("/api/export/preview")
-async def preview_export(format_type: str = Query("json"),
-                        start_date: Optional[str] = Query(None),
-                        end_date: Optional[str] = Query(None),
-                        actor_filter: Optional[str] = Query(None),
-                        verb_filter: Optional[str] = Query(None),
-                        object_filter: Optional[str] = Query(None),
-                        limit: int = Query(10, ge=1, le=100)):
+async def preview_export(
+    format_type: str = Query("json"),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    actor_filter: Optional[str] = Query(None),
+    verb_filter: Optional[str] = Query(None),
+    object_filter: Optional[str] = Query(None),
+    limit: int = Query(10, ge=1, le=100),
+):
     """Preview export data."""
     try:
         data = await exporter.get_export_data(
@@ -318,12 +372,12 @@ async def preview_export(format_type: str = Query("json"),
             actor_filter=actor_filter,
             verb_filter=verb_filter,
             object_filter=object_filter,
-            limit=limit
+            limit=limit,
         )
-        
+
         if "error" in data:
             return {"error": data["error"]}
-        
+
         # Generate preview content
         if format_type == "json":
             content = exporter.export_to_json(data)
@@ -333,17 +387,18 @@ async def preview_export(format_type: str = Query("json"),
             content = exporter.export_to_xml(data)
         else:
             return {"error": "Unsupported format type"}
-        
+
         return {
             "preview": content,
             "format": format_type,
             "total_statements": data["export_info"]["total_statements"],
-            "preview_count": len(data["statements"])
+            "preview_count": len(data["statements"]),
         }
-        
+
     except Exception as e:
         logger.error("Failed to preview export", error=e)
         return {"error": str(e)}
+
 
 @router.get("/api/export/stats")
 async def get_export_stats():
@@ -356,17 +411,13 @@ async def get_export_stats():
             "popular_formats": [
                 {"format": "json", "count": 15},
                 {"format": "csv", "count": 8},
-                {"format": "xml", "count": 3}
+                {"format": "xml", "count": 3},
             ],
-            "export_sizes": {
-                "json": "2.3 MB",
-                "csv": "1.8 MB",
-                "xml": "3.1 MB"
-            }
+            "export_sizes": {"json": "2.3 MB", "csv": "1.8 MB", "xml": "3.1 MB"},
         }
-        
+
         return stats
-        
+
     except Exception as e:
         logger.error("Failed to get export stats", error=e)
-        return {"error": str(e)} 
+        return {"error": str(e)}

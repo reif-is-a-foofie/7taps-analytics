@@ -1,13 +1,15 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-import os
+
 from app.config import settings
 
 app = FastAPI(
     title="7taps Analytics ETL",
     description="Streaming ETL for xAPI analytics using direct database connections",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS middleware
@@ -18,6 +20,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -236,6 +239,7 @@ async def root():
     """
     return html_content
 
+
 @app.get("/api")
 async def root():
     """Root endpoint with application information"""
@@ -250,39 +254,40 @@ async def root():
             "api_docs": "/docs",
             "health": "/health",
             "xapi_ingestion": "/api/xapi/ingest",
-            "7taps_statements": "/statements"
+            "7taps_statements": "/statements",
         },
-        "services": {
-            "fastapi": "running",
-            "postgresql": "running",
-            "redis": "running"
-        }
+        "services": {"fastapi": "running", "postgresql": "running", "redis": "running"},
     }
+
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "7taps-analytics-etl"}
 
+
+from app.api.data_import import router as data_import_router
+from app.api.data_normalization import router as data_normalization_router
+
 # Import and include routers - DEPLOYMENT FIX IN PROGRESS
 from app.api.etl import router as etl_router
-from app.api.orchestrator import router as orchestrator_router
-from app.api.nlp import router as nlp_router
-from app.api.xapi import router as xapi_router
-from app.api.seventaps import router as seventaps_router
-from app.api.xapi_lrs import router as xapi_lrs_router
-from app.api.learninglocker_sync import router as learninglocker_sync_router
 from app.api.health import router as health_router
-from app.api.data_normalization import router as data_normalization_router
-from app.api.data_import import router as data_import_router
+from app.api.learninglocker_sync import router as learninglocker_sync_router
+from app.api.nlp import router as nlp_router
+from app.api.orchestrator import router as orchestrator_router
+from app.api.seventaps import router as seventaps_router
+
+# from app.api.monitoring import router as monitoring_router
+# from app.ui.production_dashboard import router as production_dashboard_router
+from app.api.sql_query import router as sql_query_router
+from app.api.xapi import router as xapi_router
+from app.api.xapi_lrs import router as xapi_lrs_router
+
 # from app.api.migration import router as migration_router  # TEMPORARILY DISABLED - FIXING DEPLOYMENT CRASH
 # from app.api.focus_group_import import router as focus_group_import_router
 from app.ui.admin import router as admin_router
 from app.ui.dashboard import router as dashboard_router
 from app.ui.data_import import router as data_import_ui_router
-# from app.api.monitoring import router as monitoring_router
-# from app.ui.production_dashboard import router as production_dashboard_router
-from app.api.sql_query import router as sql_query_router
 from app.ui.sql_query import router as sql_query_ui_router
 
 app.include_router(etl_router, prefix="/ui", tags=["ETL"])
@@ -292,7 +297,9 @@ app.include_router(xapi_router, tags=["xAPI"])
 app.include_router(seventaps_router, tags=["7taps"])
 app.include_router(xapi_lrs_router, tags=["xAPI LRS"])
 app.include_router(learninglocker_sync_router, prefix="/api", tags=["Learning Locker"])
-app.include_router(data_normalization_router, prefix="/api", tags=["Data Normalization"])
+app.include_router(
+    data_normalization_router, prefix="/api", tags=["Data Normalization"]
+)
 app.include_router(data_import_router, prefix="/api", tags=["Data Import"])
 # app.include_router(migration_router, prefix="/api", tags=["Migration"])
 # app.include_router(focus_group_import_router, prefix="/api", tags=["Focus Group Import"])
@@ -307,4 +314,5 @@ app.include_router(sql_query_ui_router, tags=["SQL Query UI"])
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

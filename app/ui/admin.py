@@ -1,12 +1,13 @@
+import json
+import logging
+import os
+from typing import Any, Dict, List, Optional
+
+import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
-import httpx
-import os
-import json
-import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,9 +18,11 @@ router = APIRouter()
 # Templates setup
 templates = Jinja2Templates(directory="app/templates")
 
+
 class DBQueryRequest(BaseModel):
     query: str
     query_type: str = "analytics"  # cohort, completion, analytics, custom
+
 
 class DBQueryResponse(BaseModel):
     query: str
@@ -28,25 +31,30 @@ class DBQueryResponse(BaseModel):
     execution_time: float
     error: Optional[str] = None
 
+
 class PrebuiltQuery(BaseModel):
     name: str
     description: str
     sql: str
     category: str
 
+
 class AdminPanelConfig:
     def __init__(self):
         self.sqlpad_url = os.getenv("SQLPAD_URL", "http://localhost:3000")
         self.superset_url = os.getenv("SUPERSET_URL", "http://localhost:8088")
-        self.database_url = os.getenv("DATABASE_URL", "postgresql://localhost:5432/7taps_analytics")
+        self.database_url = os.getenv(
+            "DATABASE_URL", "postgresql://localhost:5432/7taps_analytics"
+        )
         self.use_sqlpad = os.getenv("USE_SQLPAD", "true").lower() == "true"
-        
+
     def get_db_terminal_url(self) -> str:
         """Get the appropriate DB terminal URL"""
         if self.use_sqlpad:
             return f"{self.sqlpad_url}/query"
         else:
             return f"{self.superset_url}/superset/sqllab"
+
 
 # Initialize config
 admin_config = AdminPanelConfig()
@@ -71,7 +79,7 @@ PREBUILT_QUERIES = [
         GROUP BY c.cohort_name
         ORDER BY completion_rate DESC
         """,
-        category="cohort"
+        category="cohort",
     ),
     PrebuiltQuery(
         name="Recent Activity",
@@ -86,7 +94,7 @@ PREBUILT_QUERIES = [
         ORDER BY timestamp DESC
         LIMIT 50
         """,
-        category="analytics"
+        category="analytics",
     ),
     PrebuiltQuery(
         name="User Engagement",
@@ -102,7 +110,7 @@ PREBUILT_QUERIES = [
         ORDER BY statement_count DESC
         LIMIT 20
         """,
-        category="analytics"
+        category="analytics",
     ),
     PrebuiltQuery(
         name="Completion Trends",
@@ -121,7 +129,7 @@ PREBUILT_QUERIES = [
         GROUP BY DATE_TRUNC('day', timestamp)
         ORDER BY date DESC
         """,
-        category="completion"
+        category="completion",
     ),
     PrebuiltQuery(
         name="Verb Distribution",
@@ -136,50 +144,65 @@ PREBUILT_QUERIES = [
         GROUP BY verb
         ORDER BY count DESC
         """,
-        category="analytics"
-    )
+        category="analytics",
+    ),
 ]
+
 
 async def execute_safe_query(sql: str) -> DBQueryResponse:
     """Execute a safe read-only query via direct database connection"""
+    import os
     import time
+
     import psycopg2
     from psycopg2.extras import RealDictCursor
-    import os
-    
+
     start_time = time.time()
-    
+
     try:
         # Validate query is read-only
         sql_upper = sql.upper().strip()
-        if any(keyword in sql_upper for keyword in ['DELETE', 'DROP', 'UPDATE', 'INSERT', 'CREATE', 'ALTER', 'TRUNCATE']):
-            raise HTTPException(status_code=400, detail="Only SELECT queries are allowed")
-        
+        if any(
+            keyword in sql_upper
+            for keyword in [
+                "DELETE",
+                "DROP",
+                "UPDATE",
+                "INSERT",
+                "CREATE",
+                "ALTER",
+                "TRUNCATE",
+            ]
+        ):
+            raise HTTPException(
+                status_code=400, detail="Only SELECT queries are allowed"
+            )
+
         # Get database URL from environment
         database_url = os.getenv("DATABASE_URL")
         if not database_url:
             raise Exception("DATABASE_URL not configured")
-        
+
         # Execute query directly
         with psycopg2.connect(database_url) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(sql)
                 results = cursor.fetchall()
-                
+
                 # Convert to list of dicts
                 result_list = []
                 for row in results:
                     result_list.append(dict(row))
-                
+
                 execution_time = time.time() - start_time
-                
+
                 return DBQueryResponse(
                     query=sql,
                     results=result_list,
                     row_count=len(result_list),
-                    execution_time=execution_time
+                    execution_time=execution_time,
                 )
-                
+
     except Exception as e:
         execution_time = time.time() - start_time
         logger.error(f"Query execution failed: {e}")
@@ -188,8 +211,9 @@ async def execute_safe_query(sql: str) -> DBQueryResponse:
             results=[],
             row_count=0,
             execution_time=execution_time,
-            error=f"Query execution failed: {str(e)}"
+            error=f"Query execution failed: {str(e)}",
         )
+
 
 @router.get("/ui/db-terminal", response_class=HTMLResponse)
 async def db_terminal_page(request: Request):
@@ -201,25 +225,28 @@ async def db_terminal_page(request: Request):
             "sqlpad_url": admin_config.sqlpad_url,
             "superset_url": admin_config.superset_url,
             "use_sqlpad": admin_config.use_sqlpad,
-            "prebuilt_queries": PREBUILT_QUERIES
-        }
+            "prebuilt_queries": PREBUILT_QUERIES,
+        },
     )
+
 
 @router.post("/ui/db-query", response_model=DBQueryResponse)
 async def execute_db_query(request: DBQueryRequest):
     """Execute a safe database query"""
     logger.info(f"Executing query: {request.query[:100]}...")
-    
+
     result = await execute_safe_query(request.query)
     return result
+
 
 @router.get("/ui/prebuilt-queries")
 async def get_prebuilt_queries():
     """Get list of prebuilt queries"""
     return {
         "queries": [query.dict() for query in PREBUILT_QUERIES],
-        "categories": ["cohort", "completion", "analytics"]
+        "categories": ["cohort", "completion", "analytics"],
     }
+
 
 @router.get("/ui/db-status")
 async def db_terminal_status():
@@ -235,9 +262,10 @@ async def db_terminal_status():
             "prebuilt_analytics",
             "cohort_analysis",
             "completion_tracking",
-            "user_engagement"
-        ]
+            "user_engagement",
+        ],
     }
+
 
 @router.get("/ui/admin")
 async def admin_panel():
@@ -248,12 +276,12 @@ async def admin_panel():
             "db_terminal": "/ui/db-terminal",
             "nlp_query": "/api/ui/nlp-query",
             "etl_status": "/ui/test-etl-streaming",
-            "orchestrator": "/api/debug/progress"
+            "orchestrator": "/api/debug/progress",
         },
         "capabilities": [
             "database_queries",
             "natural_language_queries",
             "etl_monitoring",
-            "progress_tracking"
-        ]
-    } 
+            "progress_tracking",
+        ],
+    }

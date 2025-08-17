@@ -3,11 +3,12 @@ MVP SQL Query UI for direct database queries
 Simple web interface for querying normalized tables
 """
 
+import logging
+from datetime import datetime
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import logging
-from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
 
 @router.get("/sql-query", response_class=HTMLResponse)
 async def sql_query_interface(request: Request):
@@ -25,8 +27,8 @@ async def sql_query_interface(request: Request):
             {
                 "request": request,
                 "title": "7taps Analytics - SQL Query Interface",
-                "timestamp": datetime.now().isoformat()
-            }
+                "timestamp": datetime.now().isoformat(),
+            },
         )
     except Exception as e:
         logger.error(f"SQL query interface rendering failed: {e}")
@@ -41,5 +43,5 @@ async def sql_query_interface(request: Request):
                 </body>
             </html>
             """,
-            status_code=500
+            status_code=500,
         )
