@@ -15,7 +15,10 @@ from pydantic import BaseModel
 import asyncio
 
 from app.migrate_flat_to_normalized import migrate_flat_to_normalized, FlatToNormalizedMigrator
-from app.database import get_database
+from app.config import settings
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from contextlib import asynccontextmanager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -232,7 +235,7 @@ async def run_normalized_schema_migration():
         logger.info("🚀 Starting normalized schema migration...")
         
         # Get database connection
-        db = get_database()
+        conn = psycopg2.connect(settings.DATABASE_URL)
         
         # Step 1: Create normalized schema
         logger.info("Creating normalized schema...")
@@ -365,7 +368,9 @@ async def run_normalized_schema_migration():
         $$ LANGUAGE plpgsql;
         """
         
-        await db.execute(schema_sql)
+        cursor = conn.cursor()
+        cursor.execute(schema_sql)
+        conn.commit()
         logger.info("✅ Created normalized schema")
         
         # Step 2: Migrate xAPI data
@@ -497,7 +502,8 @@ async def run_normalized_schema_migration():
         ON CONFLICT (statement_id) DO NOTHING;
         """
         
-        await db.execute(xapi_sql)
+        cursor.execute(xapi_sql)
+        conn.commit()
         logger.info("✅ Migrated xAPI data")
         
         # Step 3: Create views
@@ -543,31 +549,38 @@ async def run_normalized_schema_migration():
         ORDER BY total_statements DESC;
         """
         
-        await db.execute(views_sql)
+        cursor.execute(views_sql)
+        conn.commit()
         logger.info("✅ Created views")
         
         # Step 4: Verify migration
         logger.info("Verifying migration...")
         
         # Get counts
-        result = await db.fetch_one("SELECT COUNT(*) as count FROM statements")
-        statement_count = result['count']
+        cursor.execute("SELECT COUNT(*) as count FROM statements")
+        result = cursor.fetchone()
+        statement_count = result[0]
         
-        result = await db.fetch_one("SELECT COUNT(*) as count FROM actors")
-        actor_count = result['count']
+        cursor.execute("SELECT COUNT(*) as count FROM actors")
+        result = cursor.fetchone()
+        actor_count = result[0]
         
-        result = await db.fetch_one("SELECT COUNT(*) as count FROM activities")
-        activity_count = result['count']
+        cursor.execute("SELECT COUNT(*) as count FROM activities")
+        result = cursor.fetchone()
+        activity_count = result[0]
         
-        result = await db.fetch_all("SELECT source, COUNT(*) as count FROM statements GROUP BY source")
-        sources = await db.fetch_all("SELECT source, COUNT(*) as count FROM statements GROUP BY source")
+        cursor.execute("SELECT source, COUNT(*) as count FROM statements GROUP BY source")
+        sources = cursor.fetchall()
         
         logger.info(f"📊 Migration results:")
         logger.info(f"   Statements: {statement_count}")
         logger.info(f"   Actors: {actor_count}")
         logger.info(f"   Activities: {activity_count}")
         for source in sources:
-            logger.info(f"   {source['source']}: {source['count']} statements")
+            logger.info(f"   {source[0]}: {source[1]} statements")
+        
+        cursor.close()
+        conn.close()
         
         return {
             "success": True,
@@ -576,12 +589,16 @@ async def run_normalized_schema_migration():
                 "statements": statement_count,
                 "actors": actor_count,
                 "activities": activity_count,
-                "sources": [{"source": s["source"], "count": s["count"]} for s in sources]
+                "sources": [{"source": s[0], "count": s[1]} for s in sources]
             }
         }
         
     except Exception as e:
         logger.error(f"Migration failed: {e}")
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
         raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}")
 
 @router.get("/migration/health")
