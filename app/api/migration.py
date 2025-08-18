@@ -250,11 +250,9 @@ async def run_normalized_schema_migration():
         DROP TABLE IF EXISTS context_extensions CASCADE;
         DROP TABLE IF EXISTS results CASCADE;
         DROP TABLE IF EXISTS statements CASCADE;
-        DROP TABLE IF EXISTS activities CASCADE;
-        DROP TABLE IF EXISTS actors CASCADE;
 
-        -- 1. Actors table - normalized user data
-        CREATE TABLE actors (
+        -- 1. Actors table - normalized user data (create if not exists)
+        CREATE TABLE IF NOT EXISTS actors (
             actor_id VARCHAR(255) PRIMARY KEY,
             name VARCHAR(255),
             email VARCHAR(255),
@@ -265,8 +263,8 @@ async def run_normalized_schema_migration():
             updated_at TIMESTAMPTZ DEFAULT NOW()
         );
 
-        -- 2. Activities table - learning activities/cards
-        CREATE TABLE activities (
+        -- 2. Activities table - learning activities/cards (create if not exists)
+        CREATE TABLE IF NOT EXISTS activities (
             activity_id VARCHAR(500) PRIMARY KEY,
             name TEXT,
             type VARCHAR(100), -- 'card', 'lesson', 'quiz', etc.
@@ -316,16 +314,16 @@ async def run_normalized_schema_migration():
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
 
-        -- Create indexes for performance
-        CREATE INDEX idx_actors_email ON actors(email);
-        CREATE INDEX idx_actors_source ON actors(source);
-        CREATE INDEX idx_statements_actor_id ON statements(actor_id);
-        CREATE INDEX idx_statements_activity_id ON statements(activity_id);
-        CREATE INDEX idx_statements_verb_id ON statements(verb_id);
-        CREATE INDEX idx_statements_timestamp ON statements(timestamp);
-        CREATE INDEX idx_statements_source ON statements(source);
-        CREATE INDEX idx_context_extensions_statement_id ON context_extensions(statement_id);
-        CREATE INDEX idx_context_extensions_key ON context_extensions(extension_key);
+        -- Create indexes for performance (create if not exists)
+        CREATE INDEX IF NOT EXISTS idx_actors_email ON actors(email);
+        CREATE INDEX IF NOT EXISTS idx_actors_source ON actors(source);
+        CREATE INDEX IF NOT EXISTS idx_statements_actor_id ON statements(actor_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_activity_id ON statements(activity_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_verb_id ON statements(verb_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_timestamp ON statements(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_statements_source ON statements(source);
+        CREATE INDEX IF NOT EXISTS idx_context_extensions_statement_id ON context_extensions(statement_id);
+        CREATE INDEX IF NOT EXISTS idx_context_extensions_key ON context_extensions(extension_key);
 
         -- Create updated_at trigger for actors table
         CREATE OR REPLACE FUNCTION update_updated_at_column()
