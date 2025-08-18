@@ -144,12 +144,6 @@ st.markdown("""
 # Initialize session state
 if 'messages' not in st.session_state:
     st.session_state.messages = []
-if 'current_viz' not in st.session_state:
-    st.session_state.current_viz = None
-if 'viz_history' not in st.session_state:
-    st.session_state.viz_history = []
-if 'current_query' not in st.session_state:
-    st.session_state.current_query = ""
 
 # Database connection function
 def get_db_connection():
@@ -299,25 +293,28 @@ def generate_bot_response_with_openai(user_query):
         # Extract SQL query from response
         sql_query = extract_sql_from_response(bot_response)
         
+        # Initialize message with response
+        message_data = {"role": "assistant", "content": bot_response}
+        
         if sql_query:
             # Execute the query and create visualization
             result = query_database(sql_query)
             
             if result and "results" in result:
-                # Create visualization
-                viz = create_visualization(
+                # Create visualization data
+                viz_data = create_visualization(
                     result["results"], 
                     chart_type="bar",
                     title=f"Results for: {user_query}"
                 )
-                if viz:
-                    st.session_state.current_viz = viz
+                if viz_data:
+                    message_data["viz_data"] = viz_data
         
-        return bot_response
+        return message_data
         
     except Exception as e:
         st.error(f"OpenAI API error: {str(e)}")
-        return f"I'm having trouble connecting to my AI brain right now. Error: {str(e)}"
+        return {"role": "assistant", "content": f"I'm having trouble connecting to my AI brain right now. Error: {str(e)}"}
 
 def extract_sql_from_response(response):
     """Extract SQL query from OpenAI response"""
@@ -374,93 +371,68 @@ def main():
         st.markdown("- How many unique learners?")
         st.markdown("</div>", unsafe_allow_html=True)
     
-    # Two-column layout
-    col1, col2 = st.columns([1, 1])
+    # Single chat interface
+    st.markdown("### 💬 Chat with Seven")
     
-    with col1:
-        st.markdown("### 💬 Chat with Seven")
-        
-        # Chat input with modern styling
-        st.markdown('<div class="input-container">', unsafe_allow_html=True)
-        user_input = st.text_input(
-            "Ask me about your learning analytics...",
-            key="user_input",
-            placeholder="e.g., 'Show me focus group responses by lesson' or 'What are the engagement trends?'"
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        col1a, col1b = st.columns([1, 1])
-        with col1a:
-            if st.button("🚀 Send", key="send_button", use_container_width=True):
-                if user_input:
-                    # Add user message
-                    st.session_state.messages.append({"role": "user", "content": user_input})
-                    st.session_state.current_query = user_input
-                    
-                    # Show loading message
-                    with st.spinner("🧠 Seven is thinking..."):
-                        # Generate bot response with OpenAI
-                        bot_response = generate_bot_response_with_openai(user_input)
-                        st.session_state.messages.append({"role": "assistant", "content": bot_response})
-                    
-                    # Clear input
-                    st.rerun()
-        
-        with col1b:
-            if st.button("🗑️ Clear Chat", key="clear_chat", use_container_width=True):
-                st.session_state.messages = []
-                st.session_state.current_viz = None
+    # Chat input with modern styling
+    st.markdown('<div class="input-container">', unsafe_allow_html=True)
+    user_input = st.text_input(
+        "Ask me about your learning analytics...",
+        key="user_input",
+        placeholder="e.g., 'Show me focus group responses by lesson' or 'What are the engagement trends?'"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    col1a, col1b = st.columns([1, 1])
+    with col1a:
+        if st.button("🚀 Send", key="send_button", use_container_width=True):
+            if user_input:
+                # Add user message
+                st.session_state.messages.append({"role": "user", "content": user_input})
+                
+                # Show loading message
+                with st.spinner("🧠 Seven is thinking..."):
+                    # Generate bot response with OpenAI
+                    bot_response_data = generate_bot_response_with_openai(user_input)
+                    st.session_state.messages.append(bot_response_data)
+                
+                # Clear input
                 st.rerun()
-        
-        # Display chat messages with modern styling
-        if st.session_state.messages:
-            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-            for message in st.session_state.messages:
-                if message["role"] == "user":
-                    st.markdown(f"""
-                    <div class="user-message">
-                        <div class="message-header">You</div>
-                        {message["content"]}
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    # Format the bot response nicely
-                    formatted_response = format_bot_response(message["content"])
-                    st.markdown(f"""
-                    <div class="bot-message">
-                        <div class="message-header">🧠 Seven</div>
-                        {formatted_response}
-                    </div>
-                    """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.info("👋 Hi! I'm Seven, your AI data analyst. Ask me anything about your learning analytics data!")
     
-    with col2:
-        st.markdown("### 📊 Visualizations")
-        
-        if st.session_state.current_viz:
-            st.markdown('<div class="viz-container">', unsafe_allow_html=True)
-            render_streamlit_chart(st.session_state.current_viz)
-            
-            # Save visualization
-            if st.button("💾 Save Chart", key="save_viz", use_container_width=True):
-                save_visualization(st.session_state.current_viz, st.session_state.current_query)
-                st.success("✅ Chart saved!")
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="viz-container">', unsafe_allow_html=True)
-            st.info("📈 Ask Seven a question to see visualizations here!")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Show visualization history
-        if st.session_state.viz_history:
-            st.markdown("### 📚 Saved Charts")
-            for i, (title, viz) in enumerate(st.session_state.viz_history):
-                if st.button(f"📊 {title[:30]}...", key=f"load_viz_{i}", use_container_width=True):
-                    st.session_state.current_viz = viz
-                    st.session_state.current_query = title
-                    st.rerun()
+    with col1b:
+        if st.button("🗑️ Clear Chat", key="clear_chat", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
+    
+    # Display chat messages with inline visualizations
+    if st.session_state.messages:
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        for message in st.session_state.messages:
+            if message["role"] == "user":
+                st.markdown(f"""
+                <div class="user-message">
+                    <div class="message-header">You</div>
+                    {message["content"]}
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Format the bot response nicely
+                formatted_response = format_bot_response(message["content"])
+                st.markdown(f"""
+                <div class="bot-message">
+                    <div class="message-header">🧠 Seven</div>
+                    {formatted_response}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Show inline visualization if available
+                if "viz_data" in message:
+                    st.markdown('<div class="viz-container">', unsafe_allow_html=True)
+                    render_streamlit_chart(message["viz_data"])
+                    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.info("👋 Hi! I'm Seven, your AI data analyst. Ask me anything about your learning analytics data!")
 
 def format_bot_response(response):
     """Format bot response with proper styling"""
@@ -484,12 +456,6 @@ def format_bot_response(response):
                 return formatted_sql
     
     return response
-
-def save_visualization(viz, title):
-    """Save visualization to history"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-    saved_title = f"{title} ({timestamp})"
-    st.session_state.viz_history.append((saved_title, viz))
 
 if __name__ == "__main__":
     main()
