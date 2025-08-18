@@ -240,43 +240,61 @@ def render_streamlit_chart(viz_data):
 
 # Preloaded system context for the bot
 SYSTEM_CONTEXT = """
-You are Seven, a digital wellness data analyst for the 7taps learning platform. You have access to a unified analytics database with the following structure:
+You are Seven, a digital wellness data analyst for the 7taps learning platform. You have access to a comprehensive learning analytics database with the following structure:
 
 DATABASE SCHEMA:
-- statements_new: Core learning statements (statement_id, actor_id, activity_id, verb_id, timestamp, source, raw_json)
+- statements_new: Learning activities and responses (statement_id, actor_id, activity_id, verb_id, timestamp, source, raw_json)
 - results_new: Learning results and scores (statement_id, score, success, duration, response)
 - context_extensions_new: Extended context data (statement_id, extension_key, extension_value)
 
-DATA SOURCES:
-- 373 CSV focus group responses (source='csv')
-- 260 xAPI real-time activities (source='xapi')
-- Total: 633 unified statements
+DATA OVERVIEW:
+- 633 total learning activities and responses
+- Learners engage through various channels (surveys, real-time activities, etc.)
+- All data is unified and accessible through a single interface
 
 COMMON QUERIES:
-- "Show total statements by source" → SELECT source, COUNT(*) FROM statements_new GROUP BY source
-- "Focus group responses by lesson" → SELECT ce.extension_value as lesson, COUNT(*) FROM statements_new s JOIN context_extensions_new ce ON s.statement_id = ce.statement_id WHERE s.source = 'csv' AND ce.extension_key = 'lesson_number' GROUP BY ce.extension_value
+- "Show total learning activities" → SELECT COUNT(*) FROM statements_new
+- "Learning activities by lesson" → SELECT ce.extension_value as lesson, COUNT(*) FROM statements_new s JOIN context_extensions_new ce ON s.statement_id = ce.statement_id WHERE ce.extension_key = 'lesson_number' GROUP BY ce.extension_value
 - "Recent activity timeline" → SELECT DATE(timestamp) as date, COUNT(*) FROM statements_new GROUP BY DATE(timestamp) ORDER BY date DESC LIMIT 10
-- "Learner engagement by source" → SELECT source, COUNT(DISTINCT actor_id) as unique_learners FROM statements_new GROUP BY source
+- "Unique learners" → SELECT COUNT(DISTINCT actor_id) as unique_learners FROM statements_new
 
 RESPONSE FORMAT:
 Always respond with:
 1. SQL_QUERY: <executable SQL>
 2. INSIGHT: <human-readable interpretation focusing on wellness impact and behavior change>
 
+CONVERSATION CONTEXT:
+- Build on previous conversations and insights
+- Reference earlier findings when relevant
+- Provide deeper analysis based on what we've already discovered
+- Connect new insights to previous observations
+
+IMPORTANT GUIDELINES:
+- Present unified results, not technical data sources
+- If asked about "all learners" or "total activities", give the combined total
+- Focus on insights and outcomes, not data origins
+- Use natural language that emphasizes results and impact
+- Don't break down by technical sources unless specifically asked
+
 STYLE:
 - Emphasize behavior change and wellness impact
 - Use encouraging, supportive language
 - Focus on actionable insights
-- Reference the unified data approach
+- Present unified, user-friendly results
 - Be conversational and helpful
+- Build on previous analysis when relevant
 """
 
 def generate_bot_response_with_openai(user_query):
-    """Generate bot response using OpenAI"""
+    """Generate bot response using OpenAI with conversation context"""
     try:
-        # Prepare the conversation
+        # Build conversation context from previous messages
+        conversation_context = build_conversation_context()
+        
+        # Prepare the conversation with context
         messages = [
             {"role": "system", "content": SYSTEM_CONTEXT},
+            *conversation_context,
             {"role": "user", "content": f"User asks: {user_query}\n\nPlease provide a SQL query and insight in the format specified."}
         ]
         
@@ -315,6 +333,44 @@ def generate_bot_response_with_openai(user_query):
     except Exception as e:
         st.error(f"OpenAI API error: {str(e)}")
         return {"role": "assistant", "content": f"I'm having trouble connecting to my AI brain right now. Error: {str(e)}"}
+
+def build_conversation_context():
+    """Build conversation context from previous messages in a compressed form"""
+    if not st.session_state.messages:
+        return []
+    
+    # Take the last 6 messages (3 exchanges) to keep context manageable
+    recent_messages = st.session_state.messages[-6:]
+    
+    # Compress the conversation context
+    context_messages = []
+    
+    for i in range(0, len(recent_messages), 2):
+        if i + 1 < len(recent_messages):
+            # User message
+            user_msg = recent_messages[i]["content"]
+            # Bot message
+            bot_msg = recent_messages[i + 1]["content"]
+            
+            # Compress bot message to just the insight part
+            compressed_bot = compress_bot_response(bot_msg)
+            
+            context_messages.extend([
+                {"role": "user", "content": user_msg},
+                {"role": "assistant", "content": compressed_bot}
+            ])
+    
+    return context_messages
+
+def compress_bot_response(bot_response):
+    """Compress bot response to just the key insights for context"""
+    if "INSIGHT:" in bot_response:
+        # Extract just the insight part
+        insight_part = bot_response.split("INSIGHT:")[1].strip()
+        return f"Previous analysis: {insight_part[:200]}..." if len(insight_part) > 200 else f"Previous analysis: {insight_part}"
+    else:
+        # If no insight, take first 100 characters
+        return f"Previous response: {bot_response[:100]}..."
 
 def extract_sql_from_response(response):
     """Extract SQL query from OpenAI response"""
@@ -358,17 +414,17 @@ def main():
         
         st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
         st.markdown("### 📊 Data Overview")
-        st.markdown("- **633** Total Statements")
-        st.markdown("- **373** Focus Group Responses")
-        st.markdown("- **260** xAPI Activities")
+        st.markdown("- **633** Total Learning Activities")
+        st.markdown("- **15+** Unique Learners")
+        st.markdown("- **Unified** Data Platform")
         st.markdown("</div>", unsafe_allow_html=True)
         
         st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
         st.markdown("### 💡 Example Questions")
-        st.markdown("- Show me focus group responses by lesson")
-        st.markdown("- What are the engagement trends?")
-        st.markdown("- Compare CSV vs xAPI data")
-        st.markdown("- How many unique learners?")
+        st.markdown("- How many learners do I have?")
+        st.markdown("- What are the most popular lessons?")
+        st.markdown("- Show me recent learning activity")
+        st.markdown("- Which lessons have the most engagement?")
         st.markdown("</div>", unsafe_allow_html=True)
     
     # Single chat interface
