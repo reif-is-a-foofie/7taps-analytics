@@ -54,53 +54,47 @@ admin_config = AdminPanelConfig()
 # Prebuilt queries for common analytics
 PREBUILT_QUERIES = [
     PrebuiltQuery(
-        name="Cohort Completion Rates",
-        description="Show completion rates by cohort",
+        name="User Engagement (Case-Normalized)",
+        description="Top 20 most active users with case-insensitive grouping",
         sql="""
         SELECT 
-            c.cohort_name,
-            COUNT(DISTINCT s.actor) as total_users,
-            COUNT(DISTINCT CASE WHEN s.verb = 'completed' THEN s.actor END) as completed_users,
-            ROUND(
-                COUNT(DISTINCT CASE WHEN s.verb = 'completed' THEN s.actor END) * 100.0 / 
-                COUNT(DISTINCT s.actor), 2
-            ) as completion_rate
-        FROM statements s
-        LEFT JOIN cohorts c ON s.actor = c.user_id
-        WHERE c.cohort_name IS NOT NULL
-        GROUP BY c.cohort_name
-        ORDER BY completion_rate DESC
+            LOWER(actor_id) as normalized_actor_id,
+            COUNT(*) as statement_count,
+            COUNT(DISTINCT DATE(timestamp)) as active_days,
+            MAX(timestamp) as last_activity
+        FROM statements_normalized
+        GROUP BY LOWER(actor_id)
+        ORDER BY statement_count DESC
+        LIMIT 20
         """,
-        category="cohort"
+        category="analytics"
     ),
     PrebuiltQuery(
         name="Recent Activity",
         description="Show last 50 statements",
         sql="""
         SELECT 
-            actor,
-            verb,
-            object,
+            actor_id,
+            verb_id,
+            activity_id,
             timestamp
-        FROM statements
+        FROM statements_normalized
         ORDER BY timestamp DESC
         LIMIT 50
         """,
         category="analytics"
     ),
     PrebuiltQuery(
-        name="User Engagement",
-        description="Top 20 most active users",
+        name="Verb Distribution",
+        description="Most common xAPI verbs with case-insensitive grouping",
         sql="""
         SELECT 
-            actor,
-            COUNT(*) as statement_count,
-            COUNT(DISTINCT DATE(timestamp)) as active_days,
-            MAX(timestamp) as last_activity
-        FROM statements
-        GROUP BY actor
-        ORDER BY statement_count DESC
-        LIMIT 20
+            verb_id,
+            COUNT(*) as count,
+            COUNT(DISTINCT LOWER(actor_id)) as unique_users
+        FROM statements_normalized
+        GROUP BY verb_id
+        ORDER BY count DESC
         """,
         category="analytics"
     ),
@@ -110,13 +104,13 @@ PREBUILT_QUERIES = [
         sql="""
         SELECT 
             DATE_TRUNC('day', timestamp) as date,
-            COUNT(DISTINCT actor) as total_users,
-            COUNT(DISTINCT CASE WHEN verb = 'completed' THEN actor END) as completed_users,
+            COUNT(DISTINCT LOWER(actor_id)) as total_users,
+            COUNT(DISTINCT CASE WHEN verb_id LIKE '%completed%' THEN LOWER(actor_id) END) as completed_users,
             ROUND(
-                COUNT(DISTINCT CASE WHEN verb = 'completed' THEN actor END) * 100.0 / 
-                COUNT(DISTINCT actor), 2
+                COUNT(DISTINCT CASE WHEN verb_id LIKE '%completed%' THEN LOWER(actor_id) END) * 100.0 / 
+                COUNT(DISTINCT LOWER(actor_id)), 2
             ) as completion_rate
-        FROM statements
+        FROM statements_normalized
         WHERE timestamp >= NOW() - INTERVAL '30 days'
         GROUP BY DATE_TRUNC('day', timestamp)
         ORDER BY date DESC
