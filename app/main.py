@@ -182,6 +182,7 @@ async def root():
                     <h2>📚 API Documentation</h2>
                     <p>Interactive API documentation with Swagger UI for testing endpoints and understanding the API structure.</p>
                     <a href="/docs" class="btn">View API Docs</a>
+                    <a href="/playground" class="btn">🚀 Developer Playground</a>
                 </div>
                 
                 <div class="card">
