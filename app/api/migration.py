@@ -737,11 +737,11 @@ async def run_normalized_schema_migration_simple():
             COUNT(CASE WHEN r.completion = true THEN 1 END) as completed_activities,
             MIN(s.timestamp) as first_activity,
             MAX(s.timestamp) as last_activity,
-            a.source
+            'mixed' as source
         FROM actors a
         LEFT JOIN statements_new s ON a.actor_id = s.actor_id
         LEFT JOIN results_new r ON s.statement_id = r.statement_id
-        GROUP BY a.actor_id, a.name, a.email, a.source
+        GROUP BY a.actor_id, a.name, a.email
         ORDER BY total_statements DESC;
         """
         
