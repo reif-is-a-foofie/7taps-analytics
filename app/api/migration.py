@@ -801,7 +801,7 @@ async def migrate_xapi_to_normalized():
         logger.info("Starting xAPI data migration to new normalized schema...")
         
         # Step 1: Get all statements from statements_flat
-        cursor.execute("SELECT * FROM statements_flat")
+        cursor.execute("SELECT statement_id, raw_statement FROM statements_flat")
         flat_statements = cursor.fetchall()
         
         migrated_count = 0
@@ -810,10 +810,10 @@ async def migrate_xapi_to_normalized():
         for flat_statement in flat_statements:
             try:
                 # Parse the JSON statement
-                statement_json = flat_statement[1]  # Assuming the JSON is in the second column
+                statement_id = flat_statement[0]
+                statement_json = flat_statement[1]  # raw_statement column
                 
                 # Extract basic statement info
-                statement_id = statement_json.get('id')
                 actor = statement_json.get('actor', {})
                 verb = statement_json.get('verb', {})
                 object_data = statement_json.get('object', {})
