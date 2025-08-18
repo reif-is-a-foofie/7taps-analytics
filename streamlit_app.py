@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import requests
 import json
 from datetime import datetime
@@ -123,53 +121,55 @@ def get_data_overview():
 
 # Visualization functions
 def create_visualization(data, chart_type="bar", title="", x_col=None, y_col=None):
-    """Create Plotly visualization based on data and type"""
+    """Create Streamlit visualization based on data and type"""
     if not data or len(data) == 0:
         return None
     
     df = pd.DataFrame(data)
     
+    # For Streamlit native charts, we return the dataframe and chart type
+    # The actual chart rendering happens in the main UI
+    return {
+        "dataframe": df,
+        "chart_type": chart_type,
+        "title": title,
+        "x_col": x_col,
+        "y_col": y_col
+    }
+
+def render_streamlit_chart(viz_data):
+    """Render chart using Streamlit's native charting"""
+    if not viz_data:
+        return
+    
+    df = viz_data["dataframe"]
+    chart_type = viz_data["chart_type"]
+    title = viz_data["title"]
+    
+    # Display title
+    if title:
+        st.subheader(title)
+    
+    # Render appropriate chart based on type
     if chart_type == "bar":
-        if x_col and y_col and x_col in df.columns and y_col in df.columns:
-            fig = px.bar(df, x=x_col, y=y_col, title=title)
-        else:
-            # Auto-detect columns
-            numeric_cols = df.select_dtypes(include=['number']).columns
-            if len(numeric_cols) > 0 and len(df.columns) > 1:
-                fig = px.bar(df, x=df.columns[0], y=numeric_cols[0], title=title)
-            else:
-                fig = px.bar(df, title=title)
-    
+        st.bar_chart(df)
     elif chart_type == "line":
-        if x_col and y_col and x_col in df.columns and y_col in df.columns:
-            fig = px.line(df, x=x_col, y=y_col, title=title)
-        else:
-            numeric_cols = df.select_dtypes(include=['number']).columns
-            if len(numeric_cols) > 0 and len(df.columns) > 1:
-                fig = px.line(df, x=df.columns[0], y=numeric_cols[0], title=title)
-            else:
-                fig = px.line(df, title=title)
-    
-    elif chart_type == "pie":
-        if len(df.columns) >= 2:
-            fig = px.pie(df, values=df.columns[1], names=df.columns[0], title=title)
-        else:
-            fig = px.pie(df, title=title)
-    
+        st.line_chart(df)
+    elif chart_type == "area":
+        st.area_chart(df)
     elif chart_type == "scatter":
+        # For scatter, we need to specify columns
         if len(df.columns) >= 2:
-            fig = px.scatter(df, x=df.columns[0], y=df.columns[1], title=title)
+            st.scatter_chart(df, x=df.columns[0], y=df.columns[1])
         else:
-            fig = px.scatter(df, title=title)
-    
+            st.write("Need at least 2 columns for scatter chart")
     else:
-        fig = px.bar(df, title=title)
+        # Default to bar chart
+        st.bar_chart(df)
     
-    fig.update_layout(
-        height=400,
-        margin=dict(l=20, r=20, t=40, b=20)
-    )
-    return fig
+    # Show the raw data below
+    with st.expander("View Raw Data"):
+        st.dataframe(df)
 
 # Preloaded system context for the bot
 SYSTEM_CONTEXT = """
@@ -336,7 +336,7 @@ def main():
         st.markdown("### 📊 Visualization")
         
         if st.session_state.current_viz:
-            st.plotly_chart(st.session_state.current_viz, use_container_width=True)
+            render_streamlit_chart(st.session_state.current_viz)
             
             # Save visualization
             if st.button("Save Visualization", key="save_viz"):
