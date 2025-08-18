@@ -70,6 +70,21 @@ class NLPService:
             maxconn=5,
             dsn=self.database_url
         ) if self.database_url else None
+        
+        # Initialize LangChain (optional)
+        self.chain = None
+        if self.openai_api_key:
+            try:
+                llm = OpenAI(api_key=self.openai_api_key, temperature=0)
+                prompt = PromptTemplate(
+                    input_variables=["query", "query_type"],
+                    template=SQL_TRANSLATION_PROMPT
+                )
+                self.chain = LLMChain(llm=llm, prompt=prompt)
+                logger.info("LangChain initialized successfully")
+            except Exception as e:
+                logger.warning(f"LangChain initialization failed: {e}")
+                self.chain = None
 
     async def translate_to_sql(self, query: str, query_type: str) -> str:
         """Translate natural language to SQL using LangChain or fallback"""
@@ -88,76 +103,97 @@ class NLPService:
         """Fallback SQL translation for common query patterns"""
         query_lower = query.lower()
         
-        # Common query patterns
-        if "cohort" in query_lower and "completion" in query_lower:
+        # Updated schema patterns for unified data
+        if "total" in query_lower and ("statement" in query_lower or "data" in query_lower):
             return """
             SELECT 
-                c.cohort_name,
-                COUNT(DISTINCT s.actor) as total_users,
-                COUNT(DISTINCT CASE WHEN s.verb = 'completed' THEN s.actor END) as completed_users,
-                ROUND(
-                    COUNT(DISTINCT CASE WHEN s.verb = 'completed' THEN s.actor END) * 100.0 / 
-                    COUNT(DISTINCT s.actor), 2
-                ) as completion_rate
-            FROM statements s
-            LEFT JOIN cohorts c ON s.actor = c.user_id
-            WHERE c.cohort_name IS NOT NULL
-            GROUP BY c.cohort_name
-            ORDER BY completion_rate DESC
+                source,
+                COUNT(*) as total_statements,
+                COUNT(DISTINCT actor_id) as unique_learners
+            FROM statements_new
+            GROUP BY source
+            ORDER BY total_statements DESC
             """
         
-        elif "completion rate" in query_lower:
+        elif "focus group" in query_lower or "csv" in query_lower:
             return """
             SELECT 
-                DATE_TRUNC('day', timestamp) as date,
-                COUNT(DISTINCT actor) as total_users,
-                COUNT(DISTINCT CASE WHEN verb = 'completed' THEN actor END) as completed_users,
-                ROUND(
-                    COUNT(DISTINCT CASE WHEN verb = 'completed' THEN actor END) * 100.0 / 
-                    COUNT(DISTINCT actor), 2
-                ) as completion_rate
-            FROM statements
-            WHERE timestamp >= NOW() - INTERVAL '30 days'
-            GROUP BY DATE_TRUNC('day', timestamp)
-            ORDER BY date DESC
+                ce.extension_value as lesson_number,
+                COUNT(*) as response_count,
+                COUNT(DISTINCT s.actor_id) as unique_learners
+            FROM statements_new s
+            JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
+            WHERE s.source = 'csv' 
+                AND ce.extension_key = 'https://7taps.com/lesson-number'
+            GROUP BY ce.extension_value
+            ORDER BY lesson_number::integer
             """
         
-        elif "recent activity" in query_lower or "last" in query_lower:
+        elif "xapi" in query_lower or "real-time" in query_lower:
             return """
             SELECT 
-                actor,
-                verb,
-                object,
-                timestamp
-            FROM statements
-            ORDER BY timestamp DESC
+                verb_id,
+                COUNT(*) as activity_count,
+                COUNT(DISTINCT actor_id) as unique_learners
+            FROM statements_new
+            WHERE source = 'xapi'
+            GROUP BY verb_id
+            ORDER BY activity_count DESC
+            """
+        
+        elif "learner" in query_lower and "engagement" in query_lower:
+            return """
+            SELECT 
+                s.source,
+                s.actor_id,
+                COUNT(*) as total_activities,
+                COUNT(DISTINCT s.activity_id) as unique_activities
+            FROM statements_new s
+            GROUP BY s.source, s.actor_id
+            ORDER BY total_activities DESC
+            LIMIT 20
+            """
+        
+        elif "recent" in query_lower or "last" in query_lower:
+            return """
+            SELECT 
+                s.source,
+                s.actor_id,
+                s.activity_id,
+                s.verb_id,
+                s.timestamp,
+                r.response
+            FROM statements_new s
+            LEFT JOIN results_new r ON s.statement_id = r.statement_id
+            ORDER BY s.timestamp DESC
             LIMIT 50
             """
         
-        elif "user engagement" in query_lower:
+        elif "card type" in query_lower or "response" in query_lower:
             return """
             SELECT 
-                actor,
-                COUNT(*) as statement_count,
-                COUNT(DISTINCT DATE(timestamp)) as active_days,
-                MAX(timestamp) as last_activity
-            FROM statements
-            GROUP BY actor
-            ORDER BY statement_count DESC
-            LIMIT 20
+                ce.extension_value as card_type,
+                COUNT(*) as response_count,
+                COUNT(DISTINCT s.actor_id) as unique_learners
+            FROM statements_new s
+            JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
+            WHERE s.source = 'csv' 
+                AND ce.extension_key = 'https://7taps.com/card-type'
+            GROUP BY ce.extension_value
+            ORDER BY response_count DESC
             """
         
         else:
             # Default query for general analytics
             return """
             SELECT 
-                verb,
-                COUNT(*) as count,
-                COUNT(DISTINCT actor) as unique_users
-            FROM statements
-            WHERE timestamp >= NOW() - INTERVAL '7 days'
-            GROUP BY verb
-            ORDER BY count DESC
+                source,
+                COUNT(*) as total_statements,
+                COUNT(DISTINCT actor_id) as unique_learners,
+                COUNT(DISTINCT activity_id) as unique_activities
+            FROM statements_new
+            GROUP BY source
+            ORDER BY total_statements DESC
             """
 
     async def execute_sql_direct(self, sql: str) -> Dict[str, Any]:
@@ -234,13 +270,28 @@ async def nlp_status():
     return {
         "status": "healthy",
         "langchain_available": nlp_service.chain is not None,
-        "mcp_db_url": nlp_service.mcp_db_url,
+        "database_url": nlp_service.database_url.split("@")[-1] if nlp_service.database_url else "not_configured",
         "capabilities": [
             "natural_language_to_sql",
-            "cohort_analysis", 
-            "completion_tracking",
-            "user_engagement",
-            "recent_activity"
+            "unified_data_queries",
+            "cross_source_analytics", 
+            "focus_group_analysis",
+            "xapi_activity_patterns",
+            "learner_engagement_tracking",
+            "response_quality_analysis"
         ],
-        "langchain_status": "initialized" if nlp_service.chain is not None else "fallback_only"
+        "schema": "normalized_relational",
+        "data_sources": {
+            "csv_focus_group": "373 statements",
+            "xapi_real_time": "260 statements",
+            "total_unified": "633 statements"
+        },
+        "langchain_status": "initialized" if nlp_service.chain is not None else "fallback_only",
+        "example_queries": [
+            "Show me the total number of statements from both xAPI and CSV sources",
+            "What are the focus group responses by lesson?",
+            "Show me recent activity from both data sources",
+            "Which learners are most engaged across both sources?",
+            "What are the card type distributions in the focus group data?"
+        ]
     } 
