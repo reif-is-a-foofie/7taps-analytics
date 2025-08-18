@@ -285,6 +285,7 @@ from app.api.data_import import router as data_import_router
 from app.api.migration import router as migration_router
 from app.api.focus_group_import import router as focus_group_import_router
 from app.api.csv_to_xapi import router as csv_to_xapi_router
+from app.api.data_access import router as data_access_router
 from app.ui.admin import router as admin_router
 from app.ui.dashboard import router as dashboard_router
 from app.ui.data_import import router as data_import_ui_router
@@ -303,6 +304,7 @@ app.include_router(data_import_router, prefix="/api", tags=["Data Import"])
 app.include_router(migration_router, prefix="/api", tags=["Migration"])
 app.include_router(focus_group_import_router, prefix="/api", tags=["Focus Group Import"])
 app.include_router(csv_to_xapi_router, prefix="/api", tags=["CSV to xAPI"])
+app.include_router(data_access_router, prefix="/api", tags=["Data Access"])
 app.include_router(health_router, tags=["Health"])
 app.include_router(admin_router, tags=["Admin"])
 app.include_router(dashboard_router, tags=["Dashboard"])

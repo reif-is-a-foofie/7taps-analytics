@@ -1,7 +1,7 @@
 {
   "complete_learner_mapping": {
     "created_at": "2025-01-16T00:05:00Z",
-    "purpose": "Complete learner mapping incorporating learners_cleaned.csv data",
+    "purpose": "Complete learner mapping incorporating data/learners_cleaned.csv data",
     "data_sources": {
       "learners_cleaned_csv": "Real learner data with names, emails, groups",
       "response_data_csv": "Learner responses with readable names",
@@ -26,7 +26,7 @@
       "solution": "Create mapping table between hashed and readable names",
       "implementation": {
         "step_1": "Extract unique learner names from response CSV",
-        "step_2": "Match with learners_cleaned.csv data",
+        "step_2": "Match with data/learners_cleaned.csv data",
         "step_3": "Create hashed_name → readable_name mapping",
         "step_4": "Store mapping in database for lookups"
       }
@@ -108,7 +108,7 @@
         "Learner": {
           "xapi_field": "actor.account.name",
           "normalized_field": "actor_id",
-          "learner_data": "Use learners_cleaned.csv for additional info",
+          "learner_data": "Use data/learners_cleaned.csv for additional info",
           "transformation": "Map readable name to hashed name for xAPI",
           "additional_fields": {
             "additional_field_1": "Readable learner name",
@@ -239,7 +239,7 @@
         ]
       },
       "data_enrichment_process": {
-        "step_1": "Load learners_cleaned.csv into learner_mappings table",
+        "step_1": "Load data/learners_cleaned.csv into learner_mappings table",
         "step_2": "Create hashed_name → readable_name lookup function",
         "step_3": "Enrich xAPI statements with learner data",
         "step_4": "Store additional fields for easy querying"
