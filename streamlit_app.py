@@ -7,6 +7,14 @@ import json
 from datetime import datetime
 import sqlite3
 import os
+import openai
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv('.env.7taps')
+
+# Configure OpenAI
+openai.api_key = os.getenv('OPEN-AI_KEY')
 
 # Page config
 st.set_page_config(
@@ -49,6 +57,15 @@ st.markdown("""
     }
     .seven-bot {
         color: #9c27b0;
+    }
+    .sql-block {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -184,12 +201,85 @@ STYLE:
 - Use encouraging, supportive language
 - Focus on actionable insights
 - Reference the unified data approach
+- Be conversational and helpful
 """
+
+def generate_bot_response_with_openai(user_query):
+    """Generate bot response using OpenAI"""
+    try:
+        # Prepare the conversation
+        messages = [
+            {"role": "system", "content": SYSTEM_CONTEXT},
+            {"role": "user", "content": f"User asks: {user_query}\n\nPlease provide a SQL query and insight in the format specified."}
+        ]
+        
+        # Call OpenAI
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=messages,
+            max_tokens=500,
+            temperature=0.7
+        )
+        
+        bot_response = response.choices[0].message.content
+        
+        # Extract SQL query from response
+        sql_query = extract_sql_from_response(bot_response)
+        
+        if sql_query:
+            # Execute the query and create visualization
+            result = query_database(sql_query)
+            
+            if result and "results" in result:
+                # Create visualization
+                viz = create_visualization(
+                    result["results"], 
+                    chart_type="bar",
+                    title=f"Results for: {user_query}"
+                )
+                if viz:
+                    st.session_state.current_viz = viz
+        
+        return bot_response
+        
+    except Exception as e:
+        st.error(f"OpenAI API error: {str(e)}")
+        return f"I'm having trouble connecting to my AI brain right now. Error: {str(e)}"
+
+def extract_sql_from_response(response):
+    """Extract SQL query from OpenAI response"""
+    try:
+        # Look for SQL_QUERY: pattern
+        if "SQL_QUERY:" in response:
+            sql_start = response.find("SQL_QUERY:") + len("SQL_QUERY:")
+            sql_end = response.find("INSIGHT:") if "INSIGHT:" in response else len(response)
+            sql_query = response[sql_start:sql_end].strip()
+            
+            # Clean up the SQL
+            sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
+            return sql_query
+        
+        # Fallback: look for code blocks
+        if "```" in response:
+            lines = response.split("```")
+            for i, line in enumerate(lines):
+                if "SELECT" in line.upper() and "FROM" in line.upper():
+                    return line.strip()
+        
+        return None
+    except:
+        return None
 
 # Main app layout
 def main():
     # Header
     st.markdown('<h1 class="main-header">🧠 <span class="seven-bot">Seven</span> Analytics</h1>', unsafe_allow_html=True)
+    
+    # Show OpenAI status
+    if openai.api_key:
+        st.sidebar.success("✅ OpenAI Connected")
+    else:
+        st.sidebar.error("❌ OpenAI Not Connected")
     
     # Two-column layout
     col1, col2 = st.columns([1, 1])
@@ -210,12 +300,13 @@ def main():
                 st.session_state.messages.append({"role": "user", "content": user_input})
                 st.session_state.current_query = user_input
                 
-                # Generate bot response
-                bot_response = generate_bot_response(user_input)
-                st.session_state.messages.append({"role": "assistant", "content": bot_response})
+                # Show loading message
+                with st.spinner("Seven is thinking..."):
+                    # Generate bot response with OpenAI
+                    bot_response = generate_bot_response_with_openai(user_input)
+                    st.session_state.messages.append({"role": "assistant", "content": bot_response})
                 
-                # Clear input
-                st.session_state.user_input = ""
+                # Clear input - use rerun instead of direct assignment
                 st.rerun()
         
         # Display chat messages
@@ -227,9 +318,11 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
             else:
+                # Format the bot response nicely
+                formatted_response = format_bot_response(message["content"])
                 st.markdown(f"""
                 <div class="chat-message bot-message">
-                    <strong>Seven:</strong> {message["content"]}
+                    <strong>Seven:</strong> {formatted_response}
                 </div>
                 """, unsafe_allow_html=True)
         
@@ -261,97 +354,14 @@ def main():
                     st.session_state.current_query = title
                     st.rerun()
 
-def generate_bot_response(user_query):
-    """Generate bot response based on user query"""
-    # This is where you'd integrate with OpenAI/ChatGPT
-    # For now, we'll use a simple rule-based system
+def format_bot_response(response):
+    """Format bot response with proper styling"""
+    # Replace SQL_QUERY: with styled block
+    if "SQL_QUERY:" in response:
+        response = response.replace("SQL_QUERY:", "<strong>SQL Query:</strong>")
+        response = response.replace("INSIGHT:", "<br><strong>Insight:</strong>")
     
-    query_lower = user_query.lower()
-    
-    # Predefined responses based on common patterns
-    if "total" in query_lower and ("statement" in query_lower or "data" in query_lower):
-        sql_query = """
-        SELECT 
-            source,
-            COUNT(*) as total_statements,
-            COUNT(DISTINCT actor_id) as unique_learners
-        FROM statements_new
-        GROUP BY source
-        ORDER BY total_statements DESC
-        """
-        insight = "Your learning platform has collected 633 total statements across both focus group surveys and real-time xAPI activities. This unified approach gives you comprehensive insights into both structured feedback and natural learning behaviors."
-        
-    elif "focus group" in query_lower or "csv" in query_lower:
-        sql_query = """
-        SELECT 
-            ce.extension_value as lesson_number,
-            COUNT(*) as responses
-        FROM statements_new s
-        JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
-        WHERE s.source = 'csv' AND ce.extension_key = 'lesson_number'
-        GROUP BY ce.extension_value
-        ORDER BY lesson_number
-        """
-        insight = "The focus group data shows engagement across different lessons, helping identify which content resonates most with learners and where additional support might be needed."
-        
-    elif "trend" in query_lower or "timeline" in query_lower:
-        sql_query = """
-        SELECT 
-            DATE(timestamp) as date,
-            COUNT(*) as daily_activity
-        FROM statements_new
-        GROUP BY DATE(timestamp)
-        ORDER BY date DESC
-        LIMIT 10
-        """
-        insight = "This timeline shows learning activity patterns over time, helping identify peak engagement periods and potential drop-off points in the learning journey."
-        
-    elif "engagement" in query_lower:
-        sql_query = """
-        SELECT 
-            source,
-            COUNT(DISTINCT actor_id) as unique_learners,
-            COUNT(*) as total_activities
-        FROM statements_new
-        GROUP BY source
-        """
-        insight = "Comparing engagement across data sources reveals how different types of learning activities contribute to overall platform usage and learner satisfaction."
-        
-    else:
-        # Default response
-        sql_query = """
-        SELECT 
-            source,
-            COUNT(*) as count
-        FROM statements_new
-        GROUP BY source
-        """
-        insight = "Here's an overview of your learning data. Feel free to ask more specific questions about focus group responses, engagement trends, or specific lessons!"
-    
-    # Execute the query and create visualization
-    result = query_database(sql_query)
-    
-    if result and "results" in result:
-        # Create visualization
-        viz = create_visualization(
-            result["results"], 
-            chart_type="bar",
-            title=f"Results for: {user_query}"
-        )
-        if viz:
-            st.session_state.current_viz = viz
-    
-    return f"""
-**SQL Query:**
-```sql
-{sql_query}
-```
-
-**Insight:**
-{insight}
-
-*Ask me to save this visualization or explore other aspects of your data!*
-"""
+    return response
 
 def save_visualization(viz, title):
     """Save visualization to history"""
