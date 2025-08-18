@@ -714,7 +714,7 @@ async def run_normalized_schema_migration_simple():
             a.name as learner_name,
             a.email as learner_email,
             act.name as activity_name,
-            act.type as activity_type,
+            act.activity_type as activity_type,
             s.verb_id,
             s.timestamp,
             r.response,
