@@ -16,54 +16,127 @@ openai.api_key = os.getenv('OPEN-AI_KEY')
 
 # Page config
 st.set_page_config(
-    page_title="7taps Analytics - Seven",
+    page_title="Seven Analytics - AI Data Analyst",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for the chat interface
+# Custom CSS for modern chat interface
 st.markdown("""
 <style>
-    .chat-message {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-        display: flex;
-        flex-direction: column;
-    }
-    .user-message {
-        background-color: #e3f2fd;
-        border-left: 4px solid #2196f3;
-    }
-    .bot-message {
-        background-color: #f3e5f5;
-        border-left: 4px solid #9c27b0;
-    }
-    .stButton > button {
-        width: 100%;
-        border-radius: 20px;
-        height: 3rem;
-        border: 1px solid #ddd;
-    }
     .main-header {
         text-align: center;
         color: #1f1f1f;
         font-size: 2.5rem;
         font-weight: bold;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
-    .seven-bot {
-        color: #9c27b0;
-    }
-    .sql-block {
-        background-color: #f8f9fa;
+    
+    .chat-container {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 10px 0;
         border: 1px solid #e9ecef;
-        border-radius: 0.375rem;
-        padding: 1rem;
-        margin: 1rem 0;
+    }
+    
+    .user-message {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 18px 18px 4px 18px;
+        margin: 10px 0;
+        max-width: 80%;
+        margin-left: auto;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .bot-message {
+        background: white;
+        color: #333;
+        padding: 15px 20px;
+        border-radius: 18px 18px 18px 4px;
+        margin: 10px 0;
+        max-width: 80%;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .message-header {
+        font-weight: bold;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+    
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 10px 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .input-container {
+        background: white;
+        border-radius: 25px;
+        padding: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border: 1px solid #e9ecef;
+    }
+    
+    .stTextInput > div > div > input {
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 20px !important;
+        padding: 12px 20px !important;
+    }
+    
+    .viz-container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 10px 0;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .sidebar-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 10px 0;
+    }
+    
+    .code-block {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 10px 0;
         font-family: 'Courier New', monospace;
-        font-size: 0.875rem;
+        font-size: 0.9rem;
+        overflow-x: auto;
+    }
+    
+    .insight-block {
+        background: #e8f5e8;
+        border-left: 4px solid #28a745;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 0 8px 8px 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -213,8 +286,8 @@ def generate_bot_response_with_openai(user_query):
             {"role": "user", "content": f"User asks: {user_query}\n\nPlease provide a SQL query and insight in the format specified."}
         ]
         
-        # Call OpenAI
-        response = openai.ChatCompletion.create(
+        # Call OpenAI with new API
+        response = openai.chat.completions.create(
             model="gpt-4",
             messages=messages,
             max_tokens=500,
@@ -273,13 +346,33 @@ def extract_sql_from_response(response):
 # Main app layout
 def main():
     # Header
-    st.markdown('<h1 class="main-header">🧠 <span class="seven-bot">Seven</span> Analytics</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🧠 Seven Analytics</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align: center; color: #666; margin-bottom: 2rem;">Your AI-powered data analyst for learning analytics</p>', unsafe_allow_html=True)
     
-    # Show OpenAI status
-    if openai.api_key:
-        st.sidebar.success("✅ OpenAI Connected")
-    else:
-        st.sidebar.error("❌ OpenAI Not Connected")
+    # Sidebar with info
+    with st.sidebar:
+        st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
+        st.markdown("### 🤖 AI Status")
+        if openai.api_key:
+            st.success("✅ OpenAI Connected")
+        else:
+            st.error("❌ OpenAI Not Connected")
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
+        st.markdown("### 📊 Data Overview")
+        st.markdown("- **633** Total Statements")
+        st.markdown("- **373** Focus Group Responses")
+        st.markdown("- **260** xAPI Activities")
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
+        st.markdown("### 💡 Example Questions")
+        st.markdown("- Show me focus group responses by lesson")
+        st.markdown("- What are the engagement trends?")
+        st.markdown("- Compare CSV vs xAPI data")
+        st.markdown("- How many unique learners?")
+        st.markdown("</div>", unsafe_allow_html=True)
     
     # Two-column layout
     col1, col2 = st.columns([1, 1])
@@ -287,69 +380,84 @@ def main():
     with col1:
         st.markdown("### 💬 Chat with Seven")
         
-        # Chat input
+        # Chat input with modern styling
+        st.markdown('<div class="input-container">', unsafe_allow_html=True)
         user_input = st.text_input(
-            "Ask Seven about your learning analytics...",
+            "Ask me about your learning analytics...",
             key="user_input",
             placeholder="e.g., 'Show me focus group responses by lesson' or 'What are the engagement trends?'"
         )
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        if st.button("Send", key="send_button"):
-            if user_input:
-                # Add user message
-                st.session_state.messages.append({"role": "user", "content": user_input})
-                st.session_state.current_query = user_input
-                
-                # Show loading message
-                with st.spinner("Seven is thinking..."):
-                    # Generate bot response with OpenAI
-                    bot_response = generate_bot_response_with_openai(user_input)
-                    st.session_state.messages.append({"role": "assistant", "content": bot_response})
-                
-                # Clear input - use rerun instead of direct assignment
+        col1a, col1b = st.columns([1, 1])
+        with col1a:
+            if st.button("🚀 Send", key="send_button", use_container_width=True):
+                if user_input:
+                    # Add user message
+                    st.session_state.messages.append({"role": "user", "content": user_input})
+                    st.session_state.current_query = user_input
+                    
+                    # Show loading message
+                    with st.spinner("🧠 Seven is thinking..."):
+                        # Generate bot response with OpenAI
+                        bot_response = generate_bot_response_with_openai(user_input)
+                        st.session_state.messages.append({"role": "assistant", "content": bot_response})
+                    
+                    # Clear input
+                    st.rerun()
+        
+        with col1b:
+            if st.button("🗑️ Clear Chat", key="clear_chat", use_container_width=True):
+                st.session_state.messages = []
+                st.session_state.current_viz = None
                 st.rerun()
         
-        # Display chat messages
-        for message in st.session_state.messages:
-            if message["role"] == "user":
-                st.markdown(f"""
-                <div class="chat-message user-message">
-                    <strong>You:</strong> {message["content"]}
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                # Format the bot response nicely
-                formatted_response = format_bot_response(message["content"])
-                st.markdown(f"""
-                <div class="chat-message bot-message">
-                    <strong>Seven:</strong> {formatted_response}
-                </div>
-                """, unsafe_allow_html=True)
-        
-        # Clear chat button
-        if st.button("Clear Chat", key="clear_chat"):
-            st.session_state.messages = []
-            st.session_state.current_viz = None
-            st.rerun()
+        # Display chat messages with modern styling
+        if st.session_state.messages:
+            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+            for message in st.session_state.messages:
+                if message["role"] == "user":
+                    st.markdown(f"""
+                    <div class="user-message">
+                        <div class="message-header">You</div>
+                        {message["content"]}
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    # Format the bot response nicely
+                    formatted_response = format_bot_response(message["content"])
+                    st.markdown(f"""
+                    <div class="bot-message">
+                        <div class="message-header">🧠 Seven</div>
+                        {formatted_response}
+                    </div>
+                    """, unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.info("👋 Hi! I'm Seven, your AI data analyst. Ask me anything about your learning analytics data!")
     
     with col2:
-        st.markdown("### 📊 Visualization")
+        st.markdown("### 📊 Visualizations")
         
         if st.session_state.current_viz:
+            st.markdown('<div class="viz-container">', unsafe_allow_html=True)
             render_streamlit_chart(st.session_state.current_viz)
             
             # Save visualization
-            if st.button("Save Visualization", key="save_viz"):
+            if st.button("💾 Save Chart", key="save_viz", use_container_width=True):
                 save_visualization(st.session_state.current_viz, st.session_state.current_query)
-                st.success("Visualization saved!")
+                st.success("✅ Chart saved!")
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.info("Ask Seven a question to see visualizations here!")
+            st.markdown('<div class="viz-container">', unsafe_allow_html=True)
+            st.info("📈 Ask Seven a question to see visualizations here!")
+            st.markdown('</div>', unsafe_allow_html=True)
         
         # Show visualization history
         if st.session_state.viz_history:
-            st.markdown("### 📚 Saved Visualizations")
+            st.markdown("### 📚 Saved Charts")
             for i, (title, viz) in enumerate(st.session_state.viz_history):
-                if st.button(f"Load: {title}", key=f"load_viz_{i}"):
+                if st.button(f"📊 {title[:30]}...", key=f"load_viz_{i}", use_container_width=True):
                     st.session_state.current_viz = viz
                     st.session_state.current_query = title
                     st.rerun()
@@ -358,8 +466,22 @@ def format_bot_response(response):
     """Format bot response with proper styling"""
     # Replace SQL_QUERY: with styled block
     if "SQL_QUERY:" in response:
-        response = response.replace("SQL_QUERY:", "<strong>SQL Query:</strong>")
-        response = response.replace("INSIGHT:", "<br><strong>Insight:</strong>")
+        # Extract SQL and insight parts
+        parts = response.split("SQL_QUERY:")
+        if len(parts) > 1:
+            sql_part = parts[1].split("INSIGHT:")[0] if "INSIGHT:" in parts[1] else parts[1]
+            insight_part = parts[1].split("INSIGHT:")[1] if "INSIGHT:" in parts[1] else ""
+            
+            # Format SQL as code block
+            sql_clean = sql_part.replace("```sql", "").replace("```", "").strip()
+            formatted_sql = f'<div class="code-block">SQL Query:<br><code>{sql_clean}</code></div>'
+            
+            # Format insight
+            if insight_part:
+                formatted_insight = f'<div class="insight-block"><strong>💡 Insight:</strong><br>{insight_part.strip()}</div>'
+                return f"{formatted_sql}<br>{formatted_insight}"
+            else:
+                return formatted_sql
     
     return response
 
