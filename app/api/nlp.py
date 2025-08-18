@@ -248,13 +248,11 @@ async def nlp_query(request: NLPQueryRequest):
         confidence = 0.85 if nlp_service.chain else 0.65
         
         return {
-            "query": request.query,
+            "original_query": request.query,
             "translated_sql": translated_sql,
             "results": results.get("results", []),
-            "row_count": results.get("row_count", 0),
             "confidence": confidence,
-            "database_url": nlp_service.database_url.split("@")[-1] if nlp_service.database_url else "not_configured",
-            "message": f"Processed NLP query: {request.query}"
+            "error": results.get("error")
         }
         
     except Exception as e:
