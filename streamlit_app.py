@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for beautiful ChatGPT-style interface
+# Simple, clean CSS
 st.markdown("""
 <style>
     /* Hide Streamlit elements */
@@ -28,129 +28,57 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Main container */
+    /* Clean background */
     .main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        padding: 0;
+        background: #f8f9fa;
     }
     
-    /* Chat container */
+    /* Simple chat container */
     .chat-container {
         max-width: 800px;
         margin: 0 auto;
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        backdrop-filter: blur(10px);
-        overflow: hidden;
-        height: 90vh;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    /* Header */
-    .chat-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         padding: 20px;
-        text-align: center;
-        font-size: 24px;
-        font-weight: bold;
+        margin-top: 20px;
     }
     
-    /* Messages area */
-    .messages-area {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-        background: #f8f9fa;
-    }
-    
-    /* Message bubbles */
-    .message {
-        margin-bottom: 20px;
-        display: flex;
-        align-items: flex-start;
-    }
-    
+    /* Message styling */
     .user-message {
-        justify-content: flex-end;
+        background: #007bff;
+        color: white;
+        padding: 12px 16px;
+        border-radius: 18px 18px 4px 18px;
+        margin: 8px 0;
+        max-width: 80%;
+        margin-left: auto;
     }
     
     .bot-message {
-        justify-content: flex-start;
-    }
-    
-    .message-content {
-        max-width: 70%;
-        padding: 15px 20px;
-        border-radius: 20px;
-        font-size: 16px;
-        line-height: 1.5;
-    }
-    
-    .user-message .message-content {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-bottom-right-radius: 5px;
-    }
-    
-    .bot-message .message-content {
-        background: white;
+        background: #f1f3f4;
         color: #333;
-        border: 1px solid #e1e5e9;
-        border-bottom-left-radius: 5px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 12px 16px;
+        border-radius: 18px 18px 18px 4px;
+        margin: 8px 0;
+        max-width: 80%;
     }
     
-    /* Input area */
-    .input-area {
-        padding: 20px;
-        background: white;
-        border-top: 1px solid #e1e5e9;
-    }
-    
-    .input-container {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-    
+    /* Input styling */
     .stTextInput > div > div > input {
         border-radius: 25px;
         border: 2px solid #e1e5e9;
-        padding: 15px 20px;
-        font-size: 16px;
-        background: #f8f9fa;
-        transition: all 0.3s ease;
-    }
-    
-    .stTextInput > div > div > input:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        background: white;
+        padding: 12px 20px;
     }
     
     .stButton > button {
         border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        width: 45px;
+        height: 45px;
+        background: #007bff;
         border: none;
         color: white;
-        font-size: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        font-size: 18px;
     }
     
     /* Code blocks */
@@ -158,60 +86,19 @@ st.markdown("""
         background: #f6f8fa;
         border: 1px solid #e1e4e8;
         border-radius: 6px;
-        padding: 16px;
-        margin: 10px 0;
-        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        padding: 12px;
+        margin: 8px 0;
+        font-family: monospace;
         font-size: 14px;
-        overflow-x: auto;
-        color: #24292e;
     }
     
-    /* Insight blocks */
-    .insight-block {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        border-radius: 10px;
-        padding: 15px;
-        margin: 10px 0;
-        font-weight: 500;
-    }
-    
-    /* Charts */
+    /* Chart container */
     .chart-container {
         background: white;
-        border-radius: 10px;
+        border: 1px solid #e1e5e9;
+        border-radius: 8px;
         padding: 15px;
         margin: 10px 0;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Loading animation */
-    .typing-indicator {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        padding: 15px 20px;
-        background: white;
-        border-radius: 20px;
-        border-bottom-left-radius: 5px;
-        max-width: 70%;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    .typing-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #667eea;
-        animation: typing 1.4s infinite ease-in-out;
-    }
-    
-    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-    
-    @keyframes typing {
-        0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-        40% { transform: scale(1); opacity: 1; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -220,12 +107,7 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Database connection function
-def get_db_connection():
-    """Get database connection via API"""
-    return None  # We'll use API calls instead
-
-# Query database function
+# Database functions
 def query_database(sql_query):
     """Execute SQL query via API"""
     try:
@@ -233,21 +115,6 @@ def query_database(sql_query):
             "https://seventaps-analytics-5135b3a0701a.herokuapp.com/ui/db-query",
             json={"query": sql_query},
             timeout=30
-        )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"error": f"API Error: {response.status_code}"}
-    except Exception as e:
-        return {"error": f"Connection Error: {str(e)}"}
-
-# Get data overview
-def get_data_overview():
-    """Get data overview via API"""
-    try:
-        response = requests.get(
-            "https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/ui/nlp-status",
-            timeout=10
         )
         if response.status_code == 200:
             return response.json()
@@ -284,12 +151,10 @@ def render_streamlit_chart(viz_data):
     try:
         data = viz_data["data"]
         chart_type = viz_data["type"]
-        columns = viz_data["columns"]
         
         if not data or len(data) < 2:
             return
             
-        # Convert to DataFrame format
         import pandas as pd
         df = pd.DataFrame(data[1:], columns=data[0])
         
@@ -308,9 +173,9 @@ def render_streamlit_chart(viz_data):
         st.markdown('</div>', unsafe_allow_html=True)
         
     except Exception as e:
-        st.error(f"Chart rendering error: {str(e)}")
+        st.error(f"Chart error: {str(e)}")
 
-# System context for the bot
+# System context
 SYSTEM_CONTEXT = """
 You are Seven, a digital wellness data analyst for the 7taps learning platform. You have access to a comprehensive learning analytics database with the following structure:
 
@@ -335,12 +200,6 @@ Always respond with:
 1. SQL_QUERY: <executable SQL>
 2. INSIGHT: <human-readable interpretation focusing on wellness impact and behavior change>
 
-CONVERSATION CONTEXT:
-- Build on previous conversations and insights
-- Reference earlier findings when relevant
-- Provide deeper analysis based on what we've already discovered
-- Connect new insights to previous observations
-
 IMPORTANT GUIDELINES:
 - Present unified results, not technical data sources
 - If asked about "all learners" or "total activities", give the combined total
@@ -354,7 +213,6 @@ STYLE:
 - Focus on actionable insights
 - Present unified, user-friendly results
 - Be conversational and helpful
-- Build on previous analysis when relevant
 """
 
 # Build conversation context
@@ -370,7 +228,6 @@ def build_conversation_context():
         if msg["role"] == "user":
             context.append(f"User: {msg['content']}")
         else:
-            # Compress bot responses to key insights
             compressed = compress_bot_response(msg['content'])
             if compressed:
                 context.append(f"Seven: {compressed}")
@@ -395,15 +252,12 @@ def compress_bot_response(response):
 def generate_bot_response_with_openai(user_input):
     """Generate response using OpenAI API"""
     try:
-        # Build conversation context
         conversation_context = build_conversation_context()
         
-        # Prepare messages
         messages = [
             {"role": "system", "content": SYSTEM_CONTEXT},
         ]
         
-        # Add conversation context if available
         if conversation_context:
             messages.append({
                 "role": "system", 
@@ -412,7 +266,6 @@ def generate_bot_response_with_openai(user_input):
         
         messages.append({"role": "user", "content": user_input})
         
-        # Call OpenAI API
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages,
@@ -422,10 +275,8 @@ def generate_bot_response_with_openai(user_input):
         
         bot_response = response.choices[0].message.content
         
-        # Extract SQL query
         sql_query = extract_sql_from_response(bot_response)
         
-        # Execute query if SQL found
         viz_data = None
         if sql_query:
             query_result = query_database(sql_query)
@@ -461,10 +312,9 @@ def format_bot_response(response):
     """Format bot response with styling"""
     formatted = response
     
-    # Format SQL blocks
     if 'SQL_QUERY:' in formatted:
         formatted = formatted.replace('SQL_QUERY:', '<div class="code-block"><strong>SQL Query:</strong><br>')
-        formatted = formatted.replace('INSIGHT:', '</div><div class="insight-block"><strong>💡 Insight:</strong> ')
+        formatted = formatted.replace('INSIGHT:', '</div><div class="code-block"><strong>💡 Insight:</strong> ')
         formatted = formatted.replace('```sql', '<div class="code-block">')
         formatted = formatted.replace('```', '</div>')
     
@@ -473,56 +323,26 @@ def format_bot_response(response):
 # Main function
 def main():
     # Header
-    st.markdown("""
-    <div class="chat-header">
-        🧠 Seven Analytics
-    </div>
-    """, unsafe_allow_html=True)
+    st.title("🧠 Seven Analytics")
+    st.markdown("Ask me about your learning analytics data")
     
     # Chat container
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     
-    # Messages area
-    st.markdown('<div class="messages-area">', unsafe_allow_html=True)
-    
     # Display messages
     for message in st.session_state.messages:
         if message["role"] == "user":
-            st.markdown(f"""
-            <div class="message user-message">
-                <div class="message-content">{message["content"]}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="user-message">{message["content"]}</div>', unsafe_allow_html=True)
         else:
-            # Bot message
             formatted_response = format_bot_response(message["content"])
-            st.markdown(f"""
-            <div class="message bot-message">
-                <div class="message-content">{formatted_response}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="bot-message">{formatted_response}</div>', unsafe_allow_html=True)
             
-            # Show visualization if available
             if "viz_data" in message and message["viz_data"]:
                 render_streamlit_chart(message["viz_data"])
-    
-    # Show typing indicator if processing
-    if "processing" in st.session_state and st.session_state.processing:
-        st.markdown("""
-        <div class="message bot-message">
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
     
     # Input area
-    st.markdown('<div class="input-area">', unsafe_allow_html=True)
-    
     col1, col2 = st.columns([6, 1])
     
     with col1:
@@ -539,29 +359,17 @@ def main():
                 # Add user message
                 st.session_state.messages.append({"role": "user", "content": user_input})
                 
-                # Set processing flag
-                st.session_state.processing = True
+                # Generate bot response
+                bot_response_data = generate_bot_response_with_openai(user_input)
+                
+                # Add bot message
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": bot_response_data["response"],
+                    "viz_data": bot_response_data["viz_data"]
+                })
+                
                 st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Process user input if processing flag is set
-    if "processing" in st.session_state and st.session_state.processing:
-        # Generate bot response
-        bot_response_data = generate_bot_response_with_openai(user_input)
-        
-        # Add bot message
-        st.session_state.messages.append({
-            "role": "assistant", 
-            "content": bot_response_data["response"],
-            "viz_data": bot_response_data["viz_data"]
-        })
-        
-        # Clear processing flag and input
-        del st.session_state.processing
-        st.session_state.user_input = ""
-        st.rerun()
 
 if __name__ == "__main__":
     main()
