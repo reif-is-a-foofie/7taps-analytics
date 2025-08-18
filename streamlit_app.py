@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Clean, minimal CSS
+# Simple CSS
 st.markdown("""
 <style>
     /* Hide Streamlit elements */
@@ -28,44 +28,7 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* White background */
-    .main {
-        background: white;
-        padding: 0;
-    }
-    
-    /* Chat container - pinned to bottom */
-    .chat-container {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 100vh;
-        background: white;
-        display: flex;
-        flex-direction: column;
-        z-index: 1000;
-    }
-    
-    /* Header */
-    .chat-header {
-        background: #f8f9fa;
-        padding: 15px 20px;
-        border-bottom: 1px solid #e1e5e9;
-        text-align: center;
-        font-weight: bold;
-        font-size: 18px;
-    }
-    
-    /* Messages area - scrollable */
-    .messages-area {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-        background: white;
-    }
-    
-    /* Message bubbles */
+    /* Simple chat styling */
     .user-message {
         background: #007bff;
         color: white;
@@ -87,36 +50,6 @@ st.markdown("""
         word-wrap: break-word;
     }
     
-    /* Input area - fixed at bottom */
-    .input-area {
-        background: white;
-        padding: 15px 20px;
-        border-top: 1px solid #e1e5e9;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    /* Input styling */
-    .stTextInput > div > div > input {
-        border-radius: 25px;
-        border: 2px solid #e1e5e9;
-        padding: 12px 20px;
-        background: white;
-    }
-    
-    .stButton > button {
-        border-radius: 50%;
-        width: 45px;
-        height: 45px;
-        background: #007bff;
-        border: none;
-        color: white;
-        font-size: 18px;
-        min-width: 45px;
-    }
-    
-    /* Code blocks */
     .code-block {
         background: #f6f8fa;
         border: 1px solid #e1e4e8;
@@ -128,24 +61,12 @@ st.markdown("""
         overflow-x: auto;
     }
     
-    /* Chart container */
     .chart-container {
         background: white;
         border: 1px solid #e1e5e9;
         border-radius: 8px;
         padding: 15px;
         margin: 10px 0;
-    }
-    
-    /* Remove default margins */
-    .block-container {
-        padding: 0;
-        max-width: none;
-    }
-    
-    /* Hide main content */
-    .main .block-container {
-        padding: 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -374,14 +295,9 @@ def format_bot_response(response):
 
 # Main function
 def main():
-    # Chat container - full screen
-    st.markdown("""
-    <div class="chat-container">
-        <div class="chat-header">
-            🧠 Seven Analytics
-        </div>
-        <div class="messages-area">
-    """, unsafe_allow_html=True)
+    # Header
+    st.title("🧠 Seven Analytics")
+    st.markdown("Ask me about your learning analytics data")
     
     # Display messages
     for message in st.session_state.messages:
@@ -394,36 +310,36 @@ def main():
             if "viz_data" in message and message["viz_data"]:
                 render_streamlit_chart(message["viz_data"])
     
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Input area
+    st.markdown("---")
     
-    # Input area - fixed at bottom
-    st.markdown('<div class="input-area">', unsafe_allow_html=True)
+    col1, col2 = st.columns([6, 1])
     
-    user_input = st.text_input(
-        "Type your message...",
-        key="user_input",
-        label_visibility="collapsed",
-        placeholder="Ask me about your learning analytics..."
-    )
+    with col1:
+        user_input = st.text_input(
+            "Ask me about your learning analytics...",
+            key="user_input",
+            label_visibility="collapsed",
+            placeholder="How many learners do I have?"
+        )
     
-    if st.button("🚀", key="send_button"):
-        if user_input.strip():
-            # Add user message
-            st.session_state.messages.append({"role": "user", "content": user_input})
-            
-            # Generate bot response
-            bot_response_data = generate_bot_response_with_openai(user_input)
-            
-            # Add bot message
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": bot_response_data["response"],
-                "viz_data": bot_response_data["viz_data"]
-            })
-            
-            st.rerun()
-    
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    with col2:
+        if st.button("🚀", key="send_button"):
+            if user_input.strip():
+                # Add user message
+                st.session_state.messages.append({"role": "user", "content": user_input})
+                
+                # Generate bot response
+                bot_response_data = generate_bot_response_with_openai(user_input)
+                
+                # Add bot message
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": bot_response_data["response"],
+                    "viz_data": bot_response_data["viz_data"]
+                })
+                
+                st.rerun()
 
 if __name__ == "__main__":
     main()
