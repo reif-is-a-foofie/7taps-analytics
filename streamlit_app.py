@@ -1,164 +1,233 @@
 import streamlit as st
-import pandas as pd
 import requests
 import json
-from datetime import datetime
-import sqlite3
-import os
 import openai
+import os
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load environment variables
-load_dotenv('.env.7taps')
+load_dotenv()
 
 # Configure OpenAI
-openai.api_key = os.getenv('OPEN-AI_KEY')
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Page config
 st.set_page_config(
-    page_title="Seven Analytics - AI Data Analyst",
+    page_title="Seven Analytics",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for modern chat interface
+# Custom CSS for beautiful ChatGPT-style interface
 st.markdown("""
 <style>
-    .main-header {
-        text-align: center;
-        color: #1f1f1f;
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+    /* Hide Streamlit elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Main container */
+    .main {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 0;
     }
     
+    /* Chat container */
     .chat-container {
-        background: #f8f9fa;
-        border-radius: 10px;
+        max-width: 800px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+        height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Header */
+    .chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
         padding: 20px;
-        margin: 10px 0;
-        border: 1px solid #e9ecef;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+    }
+    
+    /* Messages area */
+    .messages-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8f9fa;
+    }
+    
+    /* Message bubbles */
+    .message {
+        margin-bottom: 20px;
+        display: flex;
+        align-items: flex-start;
     }
     
     .user-message {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 15px 20px;
-        border-radius: 18px 18px 4px 18px;
-        margin: 10px 0;
-        max-width: 80%;
-        margin-left: auto;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        justify-content: flex-end;
     }
     
     .bot-message {
-        background: white;
-        color: #333;
-        padding: 15px 20px;
-        border-radius: 18px 18px 18px 4px;
-        margin: 10px 0;
-        max-width: 80%;
-        border: 1px solid #e9ecef;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        justify-content: flex-start;
     }
     
-    .message-header {
-        font-weight: bold;
-        margin-bottom: 8px;
-        font-size: 0.9rem;
+    .message-content {
+        max-width: 70%;
+        padding: 15px 20px;
+        border-radius: 20px;
+        font-size: 16px;
+        line-height: 1.5;
+    }
+    
+    .user-message .message-content {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-bottom-right-radius: 5px;
+    }
+    
+    .bot-message .message-content {
+        background: white;
+        color: #333;
+        border: 1px solid #e1e5e9;
+        border-bottom-left-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Input area */
+    .input-area {
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #e1e5e9;
+    }
+    
+    .input-container {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .stTextInput > div > div > input {
+        border-radius: 25px;
+        border: 2px solid #e1e5e9;
+        padding: 15px 20px;
+        font-size: 16px;
+        background: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
     }
     
     .stButton > button {
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
         border: none;
-        border-radius: 25px;
-        padding: 10px 25px;
-        font-weight: 600;
+        color: white;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
         transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
     
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
     
-    .input-container {
-        background: white;
-        border-radius: 25px;
-        padding: 5px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        border: 1px solid #e9ecef;
-    }
-    
-    .stTextInput > div > div > input {
-        border: none !important;
-        box-shadow: none !important;
-        border-radius: 20px !important;
-        padding: 12px 20px !important;
-    }
-    
-    .viz-container {
-        background: white;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 10px 0;
-        border: 1px solid #e9ecef;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    
-    .sidebar-info {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 15px;
-        border-radius: 10px;
-        margin: 10px 0;
-    }
-    
+    /* Code blocks */
     .code-block {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        padding: 15px;
+        background: #f6f8fa;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        padding: 16px;
         margin: 10px 0;
-        font-family: 'Courier New', monospace;
-        font-size: 0.9rem;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 14px;
         overflow-x: auto;
+        color: #24292e;
     }
     
+    /* Insight blocks */
     .insight-block {
-        background: #e8f5e8;
-        border-left: 4px solid #28a745;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-radius: 10px;
         padding: 15px;
         margin: 10px 0;
-        border-radius: 0 8px 8px 0;
+        font-weight: 500;
+    }
+    
+    /* Charts */
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Loading animation */
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 15px 20px;
+        background: white;
+        border-radius: 20px;
+        border-bottom-left-radius: 5px;
+        max-width: 70%;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #667eea;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes typing {
+        0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+        40% { transform: scale(1); opacity: 1; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # Initialize session state
-if 'messages' not in st.session_state:
+if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Database connection function
 def get_db_connection():
-    """Get connection to the analytics database"""
-    try:
-        # For now, we'll use the API endpoint to query data
-        # In production, you'd connect directly to the database
-        return None
-    except Exception as e:
-        st.error(f"Database connection failed: {e}")
-        return None
+    """Get database connection via API"""
+    return None  # We'll use API calls instead
 
-# API functions
+# Query database function
 def query_database(sql_query):
-    """Execute SQL query via the API"""
+    """Execute SQL query via API"""
     try:
         response = requests.post(
             "https://seventaps-analytics-5135b3a0701a.herokuapp.com/ui/db-query",
@@ -168,12 +237,13 @@ def query_database(sql_query):
         if response.status_code == 200:
             return response.json()
         else:
-            return {"error": f"API error: {response.status_code}"}
+            return {"error": f"API Error: {response.status_code}"}
     except Exception as e:
-        return {"error": f"Request failed: {str(e)}"}
+        return {"error": f"Connection Error: {str(e)}"}
 
+# Get data overview
 def get_data_overview():
-    """Get overview of available data"""
+    """Get data overview via API"""
     try:
         response = requests.get(
             "https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/ui/nlp-status",
@@ -182,63 +252,65 @@ def get_data_overview():
         if response.status_code == 200:
             return response.json()
         else:
+            return {"error": f"API Error: {response.status_code}"}
+    except Exception as e:
+        return {"error": f"Connection Error: {str(e)}"}
+
+# Create visualization function
+def create_visualization(data, chart_type="bar"):
+    """Create visualization data"""
+    if not data or "error" in data:
+        return None
+    
+    try:
+        df_data = data.get("data", [])
+        if not df_data:
             return None
-    except:
+            
+        return {
+            "data": df_data,
+            "type": chart_type,
+            "columns": data.get("columns", [])
+        }
+    except Exception as e:
         return None
 
-# Visualization functions
-def create_visualization(data, chart_type="bar", title="", x_col=None, y_col=None):
-    """Create Streamlit visualization based on data and type"""
-    if not data or len(data) == 0:
-        return None
-    
-    df = pd.DataFrame(data)
-    
-    # For Streamlit native charts, we return the dataframe and chart type
-    # The actual chart rendering happens in the main UI
-    return {
-        "dataframe": df,
-        "chart_type": chart_type,
-        "title": title,
-        "x_col": x_col,
-        "y_col": y_col
-    }
-
+# Render Streamlit chart
 def render_streamlit_chart(viz_data):
-    """Render chart using Streamlit's native charting"""
+    """Render chart using Streamlit native components"""
     if not viz_data:
         return
     
-    df = viz_data["dataframe"]
-    chart_type = viz_data["chart_type"]
-    title = viz_data["title"]
-    
-    # Display title
-    if title:
-        st.subheader(title)
-    
-    # Render appropriate chart based on type
-    if chart_type == "bar":
-        st.bar_chart(df)
-    elif chart_type == "line":
-        st.line_chart(df)
-    elif chart_type == "area":
-        st.area_chart(df)
-    elif chart_type == "scatter":
-        # For scatter, we need to specify columns
-        if len(df.columns) >= 2:
-            st.scatter_chart(df, x=df.columns[0], y=df.columns[1])
-        else:
-            st.write("Need at least 2 columns for scatter chart")
-    else:
-        # Default to bar chart
-        st.bar_chart(df)
-    
-    # Show the raw data below
-    with st.expander("View Raw Data"):
-        st.dataframe(df)
+    try:
+        data = viz_data["data"]
+        chart_type = viz_data["type"]
+        columns = viz_data["columns"]
+        
+        if not data or len(data) < 2:
+            return
+            
+        # Convert to DataFrame format
+        import pandas as pd
+        df = pd.DataFrame(data[1:], columns=data[0])
+        
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        
+        if chart_type == "bar":
+            st.bar_chart(df.set_index(df.columns[0]))
+        elif chart_type == "line":
+            st.line_chart(df.set_index(df.columns[0]))
+        elif chart_type == "area":
+            st.area_chart(df.set_index(df.columns[0]))
+        elif chart_type == "scatter":
+            if len(df.columns) >= 2:
+                st.scatter_chart(df, x=df.columns[0], y=df.columns[1])
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    except Exception as e:
+        st.error(f"Chart rendering error: {str(e)}")
 
-# Preloaded system context for the bot
+# System context for the bot
 SYSTEM_CONTEXT = """
 You are Seven, a digital wellness data analyst for the 7taps learning platform. You have access to a comprehensive learning analytics database with the following structure:
 
@@ -285,233 +357,211 @@ STYLE:
 - Build on previous analysis when relevant
 """
 
-def generate_bot_response_with_openai(user_query):
-    """Generate bot response using OpenAI with conversation context"""
+# Build conversation context
+def build_conversation_context():
+    """Build conversation context from recent messages"""
+    if len(st.session_state.messages) < 2:
+        return ""
+    
+    recent_messages = st.session_state.messages[-6:]  # Last 3 exchanges
+    context = []
+    
+    for msg in recent_messages:
+        if msg["role"] == "user":
+            context.append(f"User: {msg['content']}")
+        else:
+            # Compress bot responses to key insights
+            compressed = compress_bot_response(msg['content'])
+            if compressed:
+                context.append(f"Seven: {compressed}")
+    
+    return "\n".join(context)
+
+# Compress bot response
+def compress_bot_response(response):
+    """Extract key insights from bot response"""
+    lines = response.split('\n')
+    insights = []
+    
+    for line in lines:
+        if line.startswith('INSIGHT:') or 'insight' in line.lower():
+            insights.append(line.strip())
+        elif 'learners' in line.lower() or 'activities' in line.lower():
+            insights.append(line.strip())
+    
+    return ' '.join(insights[:2]) if insights else ""
+
+# Generate bot response with OpenAI
+def generate_bot_response_with_openai(user_input):
+    """Generate response using OpenAI API"""
     try:
-        # Build conversation context from previous messages
+        # Build conversation context
         conversation_context = build_conversation_context()
         
-        # Prepare the conversation with context
+        # Prepare messages
         messages = [
             {"role": "system", "content": SYSTEM_CONTEXT},
-            *conversation_context,
-            {"role": "user", "content": f"User asks: {user_query}\n\nPlease provide a SQL query and insight in the format specified."}
         ]
         
-        # Call OpenAI with new API
+        # Add conversation context if available
+        if conversation_context:
+            messages.append({
+                "role": "system", 
+                "content": f"Previous conversation context:\n{conversation_context}\n\nBuild on this context in your response."
+            })
+        
+        messages.append({"role": "user", "content": user_input})
+        
+        # Call OpenAI API
         response = openai.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=messages,
-            max_tokens=500,
-            temperature=0.7
+            temperature=0.7,
+            max_tokens=1000
         )
         
         bot_response = response.choices[0].message.content
         
-        # Extract SQL query from response
+        # Extract SQL query
         sql_query = extract_sql_from_response(bot_response)
         
-        # Initialize message with response
-        message_data = {"role": "assistant", "content": bot_response}
-        
+        # Execute query if SQL found
+        viz_data = None
         if sql_query:
-            # Execute the query and create visualization
-            result = query_database(sql_query)
-            
-            if result and "results" in result:
-                # Create visualization data
-                viz_data = create_visualization(
-                    result["results"], 
-                    chart_type="bar",
-                    title=f"Results for: {user_query}"
-                )
-                if viz_data:
-                    message_data["viz_data"] = viz_data
+            query_result = query_database(sql_query)
+            if query_result and "error" not in query_result:
+                viz_data = create_visualization(query_result)
         
-        return message_data
+        return {
+            "response": bot_response,
+            "sql_query": sql_query,
+            "viz_data": viz_data
+        }
         
     except Exception as e:
-        st.error(f"OpenAI API error: {str(e)}")
-        return {"role": "assistant", "content": f"I'm having trouble connecting to my AI brain right now. Error: {str(e)}"}
+        return {
+            "response": f"I'm having trouble connecting to my AI brain right now. Error: {str(e)}",
+            "sql_query": None,
+            "viz_data": None
+        }
 
-def build_conversation_context():
-    """Build conversation context from previous messages in a compressed form"""
-    if not st.session_state.messages:
-        return []
-    
-    # Take the last 6 messages (3 exchanges) to keep context manageable
-    recent_messages = st.session_state.messages[-6:]
-    
-    # Compress the conversation context
-    context_messages = []
-    
-    for i in range(0, len(recent_messages), 2):
-        if i + 1 < len(recent_messages):
-            # User message
-            user_msg = recent_messages[i]["content"]
-            # Bot message
-            bot_msg = recent_messages[i + 1]["content"]
-            
-            # Compress bot message to just the insight part
-            compressed_bot = compress_bot_response(bot_msg)
-            
-            context_messages.extend([
-                {"role": "user", "content": user_msg},
-                {"role": "assistant", "content": compressed_bot}
-            ])
-    
-    return context_messages
-
-def compress_bot_response(bot_response):
-    """Compress bot response to just the key insights for context"""
-    if "INSIGHT:" in bot_response:
-        # Extract just the insight part
-        insight_part = bot_response.split("INSIGHT:")[1].strip()
-        return f"Previous analysis: {insight_part[:200]}..." if len(insight_part) > 200 else f"Previous analysis: {insight_part}"
-    else:
-        # If no insight, take first 100 characters
-        return f"Previous response: {bot_response[:100]}..."
-
+# Extract SQL from response
 def extract_sql_from_response(response):
-    """Extract SQL query from OpenAI response"""
-    try:
-        # Look for SQL_QUERY: pattern
-        if "SQL_QUERY:" in response:
-            sql_start = response.find("SQL_QUERY:") + len("SQL_QUERY:")
-            sql_end = response.find("INSIGHT:") if "INSIGHT:" in response else len(response)
-            sql_query = response[sql_start:sql_end].strip()
-            
-            # Clean up the SQL
-            sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
-            return sql_query
-        
-        # Fallback: look for code blocks
-        if "```" in response:
-            lines = response.split("```")
-            for i, line in enumerate(lines):
-                if "SELECT" in line.upper() and "FROM" in line.upper():
-                    return line.strip()
-        
-        return None
-    except:
-        return None
+    """Extract SQL query from bot response"""
+    lines = response.split('\n')
+    for line in lines:
+        if line.startswith('SQL_QUERY:') or line.startswith('```sql'):
+            sql = line.replace('SQL_QUERY:', '').replace('```sql', '').replace('```', '').strip()
+            if sql and sql.upper().startswith('SELECT'):
+                return sql
+    return None
 
-# Main app layout
+# Format bot response
+def format_bot_response(response):
+    """Format bot response with styling"""
+    formatted = response
+    
+    # Format SQL blocks
+    if 'SQL_QUERY:' in formatted:
+        formatted = formatted.replace('SQL_QUERY:', '<div class="code-block"><strong>SQL Query:</strong><br>')
+        formatted = formatted.replace('INSIGHT:', '</div><div class="insight-block"><strong>💡 Insight:</strong> ')
+        formatted = formatted.replace('```sql', '<div class="code-block">')
+        formatted = formatted.replace('```', '</div>')
+    
+    return formatted
+
+# Main function
 def main():
     # Header
-    st.markdown('<h1 class="main-header">🧠 Seven Analytics</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align: center; color: #666; margin-bottom: 2rem;">Your AI-powered data analyst for learning analytics</p>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="chat-header">
+        🧠 Seven Analytics
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Sidebar with info
-    with st.sidebar:
-        st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
-        st.markdown("### 🤖 AI Status")
-        if openai.api_key:
-            st.success("✅ OpenAI Connected")
+    # Chat container
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    
+    # Messages area
+    st.markdown('<div class="messages-area">', unsafe_allow_html=True)
+    
+    # Display messages
+    for message in st.session_state.messages:
+        if message["role"] == "user":
+            st.markdown(f"""
+            <div class="message user-message">
+                <div class="message-content">{message["content"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.error("❌ OpenAI Not Connected")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
-        st.markdown("### 📊 Data Overview")
-        st.markdown("- **633** Total Learning Activities")
-        st.markdown("- **15+** Unique Learners")
-        st.markdown("- **Unified** Data Platform")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
-        st.markdown("### 💡 Example Questions")
-        st.markdown("- How many learners do I have?")
-        st.markdown("- What are the most popular lessons?")
-        st.markdown("- Show me recent learning activity")
-        st.markdown("- Which lessons have the most engagement?")
-        st.markdown("</div>", unsafe_allow_html=True)
+            # Bot message
+            formatted_response = format_bot_response(message["content"])
+            st.markdown(f"""
+            <div class="message bot-message">
+                <div class="message-content">{formatted_response}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Show visualization if available
+            if "viz_data" in message and message["viz_data"]:
+                render_streamlit_chart(message["viz_data"])
     
-    # Single chat interface
-    st.markdown("### 💬 Chat with Seven")
+    # Show typing indicator if processing
+    if "processing" in st.session_state and st.session_state.processing:
+        st.markdown("""
+        <div class="message bot-message">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Chat input with modern styling
-    st.markdown('<div class="input-container">', unsafe_allow_html=True)
-    user_input = st.text_input(
-        "Ask me about your learning analytics...",
-        key="user_input",
-        placeholder="e.g., 'Show me focus group responses by lesson' or 'What are the engagement trends?'"
-    )
     st.markdown('</div>', unsafe_allow_html=True)
     
-    col1a, col1b = st.columns([1, 1])
-    with col1a:
-        if st.button("🚀 Send", key="send_button", use_container_width=True):
-            if user_input:
+    # Input area
+    st.markdown('<div class="input-area">', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([6, 1])
+    
+    with col1:
+        user_input = st.text_input(
+            "Ask me about your learning analytics...",
+            key="user_input",
+            label_visibility="collapsed",
+            placeholder="How many learners do I have?"
+        )
+    
+    with col2:
+        if st.button("🚀", key="send_button"):
+            if user_input.strip():
                 # Add user message
                 st.session_state.messages.append({"role": "user", "content": user_input})
                 
-                # Show loading message
-                with st.spinner("🧠 Seven is thinking..."):
-                    # Generate bot response with OpenAI
-                    bot_response_data = generate_bot_response_with_openai(user_input)
-                    st.session_state.messages.append(bot_response_data)
-                
-                # Clear input
+                # Set processing flag
+                st.session_state.processing = True
                 st.rerun()
     
-    with col1b:
-        if st.button("🗑️ Clear Chat", key="clear_chat", use_container_width=True):
-            st.session_state.messages = []
-            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    # Display chat messages with inline visualizations
-    if st.session_state.messages:
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-        for message in st.session_state.messages:
-            if message["role"] == "user":
-                st.markdown(f"""
-                <div class="user-message">
-                    <div class="message-header">You</div>
-                    {message["content"]}
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                # Format the bot response nicely
-                formatted_response = format_bot_response(message["content"])
-                st.markdown(f"""
-                <div class="bot-message">
-                    <div class="message-header">🧠 Seven</div>
-                    {formatted_response}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Show inline visualization if available
-                if "viz_data" in message:
-                    st.markdown('<div class="viz-container">', unsafe_allow_html=True)
-                    render_streamlit_chart(message["viz_data"])
-                    st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info("👋 Hi! I'm Seven, your AI data analyst. Ask me anything about your learning analytics data!")
-
-def format_bot_response(response):
-    """Format bot response with proper styling"""
-    # Replace SQL_QUERY: with styled block
-    if "SQL_QUERY:" in response:
-        # Extract SQL and insight parts
-        parts = response.split("SQL_QUERY:")
-        if len(parts) > 1:
-            sql_part = parts[1].split("INSIGHT:")[0] if "INSIGHT:" in parts[1] else parts[1]
-            insight_part = parts[1].split("INSIGHT:")[1] if "INSIGHT:" in parts[1] else ""
-            
-            # Format SQL as code block
-            sql_clean = sql_part.replace("```sql", "").replace("```", "").strip()
-            formatted_sql = f'<div class="code-block">SQL Query:<br><code>{sql_clean}</code></div>'
-            
-            # Format insight
-            if insight_part:
-                formatted_insight = f'<div class="insight-block"><strong>💡 Insight:</strong><br>{insight_part.strip()}</div>'
-                return f"{formatted_sql}<br>{formatted_insight}"
-            else:
-                return formatted_sql
-    
-    return response
+    # Process user input if processing flag is set
+    if "processing" in st.session_state and st.session_state.processing:
+        # Generate bot response
+        bot_response_data = generate_bot_response_with_openai(user_input)
+        
+        # Add bot message
+        st.session_state.messages.append({
+            "role": "assistant", 
+            "content": bot_response_data["response"],
+            "viz_data": bot_response_data["viz_data"]
+        })
+        
+        # Clear processing flag and input
+        del st.session_state.processing
+        st.session_state.user_input = ""
+        st.rerun()
 
 if __name__ == "__main__":
     main()
