@@ -376,10 +376,10 @@ async def run_normalized_schema_migration():
             cursor.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS lesson_number INTEGER")
             cursor.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS global_q_number INTEGER")
             cursor.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS pdf_page INTEGER")
+            conn.commit()
         except Exception as e:
             logger.warning(f"Some columns may already exist: {e}")
         
-        conn.commit()
         logger.info("✅ Created normalized schema")
         
         # Step 2: Migrate xAPI data
