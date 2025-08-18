@@ -368,6 +368,17 @@ async def run_normalized_schema_migration():
         
         cursor = conn.cursor()
         cursor.execute(schema_sql)
+        
+        # Add missing columns to existing tables if they don't exist
+        try:
+            cursor.execute("ALTER TABLE actors ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'xapi'")
+            cursor.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'xapi'")
+            cursor.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS lesson_number INTEGER")
+            cursor.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS global_q_number INTEGER")
+            cursor.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS pdf_page INTEGER")
+        except Exception as e:
+            logger.warning(f"Some columns may already exist: {e}")
+        
         conn.commit()
         logger.info("✅ Created normalized schema")
         
