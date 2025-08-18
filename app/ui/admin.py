@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Templates setup
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory="templates")
 
 class DBQueryRequest(BaseModel):
     query: str
@@ -54,81 +54,161 @@ admin_config = AdminPanelConfig()
 # Prebuilt queries for common analytics
 PREBUILT_QUERIES = [
     PrebuiltQuery(
-        name="User Engagement (Case-Normalized)",
-        description="Top 20 most active users with case-insensitive grouping",
+        name="Unified Data Overview",
+        description="Overview of data from both xAPI and CSV sources",
         sql="""
         SELECT 
-            LOWER(actor_id) as normalized_actor_id,
-            COUNT(*) as statement_count,
-            COUNT(DISTINCT DATE(timestamp)) as active_days,
-            MAX(timestamp) as last_activity
-        FROM statements_normalized
-        GROUP BY LOWER(actor_id)
-        ORDER BY statement_count DESC
+            source,
+            COUNT(*) as total_statements,
+            COUNT(DISTINCT actor_id) as unique_learners,
+            COUNT(DISTINCT activity_id) as unique_activities,
+            MIN(timestamp) as earliest_activity,
+            MAX(timestamp) as latest_activity
+        FROM statements_new
+        GROUP BY source
+        ORDER BY total_statements DESC
+        """,
+        category="analytics"
+    ),
+    PrebuiltQuery(
+        name="Focus Group Responses by Lesson",
+        description="CSV focus group data organized by lesson number",
+        sql="""
+        SELECT 
+            ce.extension_value as lesson_number,
+            COUNT(*) as response_count,
+            COUNT(DISTINCT s.actor_id) as unique_learners,
+            COUNT(DISTINCT ce2.extension_value) as card_types
+        FROM statements_new s
+        JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
+        LEFT JOIN context_extensions_new ce2 ON s.statement_id = ce2.statement_id 
+            AND ce2.extension_key = 'https://7taps.com/card-type'
+        WHERE s.source = 'csv' 
+            AND ce.extension_key = 'https://7taps.com/lesson-number'
+        GROUP BY ce.extension_value
+        ORDER BY lesson_number::integer
+        """,
+        category="analytics"
+    ),
+    PrebuiltQuery(
+        name="xAPI Activity Patterns",
+        description="Real-time xAPI learning activity patterns",
+        sql="""
+        SELECT 
+            verb_id,
+            COUNT(*) as activity_count,
+            COUNT(DISTINCT actor_id) as unique_learners,
+            COUNT(DISTINCT activity_id) as unique_activities,
+            AVG(EXTRACT(EPOCH FROM (NOW() - timestamp))/3600) as hours_since_last_activity
+        FROM statements_new
+        WHERE source = 'xapi'
+        GROUP BY verb_id
+        ORDER BY activity_count DESC
+        """,
+        category="analytics"
+    ),
+    PrebuiltQuery(
+        name="Learner Engagement by Source",
+        description="Compare learner engagement across xAPI and CSV sources",
+        sql="""
+        SELECT 
+            s.source,
+            s.actor_id,
+            COUNT(*) as total_activities,
+            COUNT(DISTINCT s.activity_id) as unique_activities,
+            MIN(s.timestamp) as first_activity,
+            MAX(s.timestamp) as last_activity,
+            COUNT(r.response) as responses_with_data
+        FROM statements_new s
+        LEFT JOIN results_new r ON s.statement_id = r.statement_id
+        GROUP BY s.source, s.actor_id
+        ORDER BY total_activities DESC
         LIMIT 20
         """,
         category="analytics"
     ),
     PrebuiltQuery(
-        name="Recent Activity",
-        description="Show last 50 statements",
+        name="Recent Activity Timeline",
+        description="Recent activity from both sources in chronological order",
         sql="""
         SELECT 
-            actor_id,
-            verb_id,
-            activity_id,
-            timestamp
-        FROM statements_normalized
-        ORDER BY timestamp DESC
+            s.source,
+            s.actor_id,
+            s.activity_id,
+            s.verb_id,
+            s.timestamp,
+            r.response,
+            CASE 
+                WHEN s.source = 'csv' THEN 
+                    (SELECT ce.extension_value FROM context_extensions_new ce 
+                     WHERE ce.statement_id = s.statement_id 
+                     AND ce.extension_key = 'https://7taps.com/lesson-number' LIMIT 1)
+                ELSE 'N/A'
+            END as lesson_number
+        FROM statements_new s
+        LEFT JOIN results_new r ON s.statement_id = r.statement_id
+        ORDER BY s.timestamp DESC
         LIMIT 50
         """,
         category="analytics"
     ),
     PrebuiltQuery(
-        name="Verb Distribution",
-        description="Most common xAPI verbs with case-insensitive grouping",
+        name="Card Type Distribution",
+        description="Distribution of focus group card types (Form, Poll, Quiz, etc.)",
         sql="""
         SELECT 
-            verb_id,
-            COUNT(*) as count,
-            COUNT(DISTINCT LOWER(actor_id)) as unique_users
-        FROM statements_normalized
-        GROUP BY verb_id
-        ORDER BY count DESC
+            ce.extension_value as card_type,
+            COUNT(*) as response_count,
+            COUNT(DISTINCT s.actor_id) as unique_learners,
+            AVG(LENGTH(r.response)) as avg_response_length
+        FROM statements_new s
+        JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
+        LEFT JOIN results_new r ON s.statement_id = r.statement_id
+        WHERE s.source = 'csv' 
+            AND ce.extension_key = 'https://7taps.com/card-type'
+        GROUP BY ce.extension_value
+        ORDER BY response_count DESC
         """,
         category="analytics"
     ),
     PrebuiltQuery(
-        name="Completion Trends",
-        description="Daily completion rates for last 30 days",
+        name="Cross-Source Learner Analysis",
+        description="Find learners who appear in both xAPI and CSV data",
         sql="""
         SELECT 
-            DATE_TRUNC('day', timestamp) as date,
-            COUNT(DISTINCT LOWER(actor_id)) as total_users,
-            COUNT(DISTINCT CASE WHEN verb_id LIKE '%completed%' THEN LOWER(actor_id) END) as completed_users,
-            ROUND(
-                COUNT(DISTINCT CASE WHEN verb_id LIKE '%completed%' THEN LOWER(actor_id) END) * 100.0 / 
-                COUNT(DISTINCT LOWER(actor_id)), 2
-            ) as completion_rate
-        FROM statements_normalized
-        WHERE timestamp >= NOW() - INTERVAL '30 days'
-        GROUP BY DATE_TRUNC('day', timestamp)
-        ORDER BY date DESC
+            actor_id,
+            COUNT(CASE WHEN source = 'xapi' THEN 1 END) as xapi_activities,
+            COUNT(CASE WHEN source = 'csv' THEN 1 END) as csv_responses,
+            COUNT(*) as total_activities,
+            MIN(timestamp) as first_activity,
+            MAX(timestamp) as last_activity
+        FROM statements_new
+        GROUP BY actor_id
+        HAVING COUNT(CASE WHEN source = 'xapi' THEN 1 END) > 0 
+           AND COUNT(CASE WHEN source = 'csv' THEN 1 END) > 0
+        ORDER BY total_activities DESC
         """,
-        category="completion"
+        category="analytics"
     ),
     PrebuiltQuery(
-        name="Verb Distribution",
-        description="Most common xAPI verbs",
+        name="Response Quality Analysis",
+        description="Analyze focus group response quality and engagement",
         sql="""
         SELECT 
-            verb,
-            COUNT(*) as count,
-            COUNT(DISTINCT actor) as unique_users
-        FROM statements
-        WHERE timestamp >= NOW() - INTERVAL '7 days'
-        GROUP BY verb
-        ORDER BY count DESC
+            s.actor_id,
+            COUNT(*) as total_responses,
+            AVG(LENGTH(r.response)) as avg_response_length,
+            COUNT(CASE WHEN LENGTH(r.response) > 100 THEN 1 END) as detailed_responses,
+            COUNT(CASE WHEN LENGTH(r.response) <= 50 THEN 1 END) as brief_responses,
+            ROUND(
+                COUNT(CASE WHEN LENGTH(r.response) > 100 THEN 1 END) * 100.0 / COUNT(*), 2
+            ) as detailed_response_rate
+        FROM statements_new s
+        JOIN results_new r ON s.statement_id = r.statement_id
+        WHERE s.source = 'csv' AND r.response IS NOT NULL
+        GROUP BY s.actor_id
+        ORDER BY total_responses DESC
+        LIMIT 15
         """,
         category="analytics"
     )
@@ -225,29 +305,48 @@ async def db_terminal_status():
         "database_url": admin_config.database_url,
         "prebuilt_queries_count": len(PREBUILT_QUERIES),
         "capabilities": [
-            "read_only_queries",
-            "prebuilt_analytics",
-            "cohort_analysis",
-            "completion_tracking",
-            "user_engagement"
-        ]
+            "unified_data_queries",
+            "cross_source_analytics", 
+            "focus_group_analysis",
+            "xapi_activity_patterns",
+            "learner_engagement_tracking",
+            "response_quality_analysis",
+            "real_time_analytics"
+        ],
+        "data_sources": {
+            "csv_focus_group": "373 statements",
+            "xapi_real_time": "260 statements",
+            "total_unified": "633 statements"
+        }
     }
 
 @router.get("/ui/admin")
 async def admin_panel():
     """Admin panel overview"""
     return {
-        "panel": "7taps Analytics Admin",
+        "panel": "7taps Analytics Admin - Unified Data Platform",
         "modules": {
             "db_terminal": "/ui/db-terminal",
             "nlp_query": "/api/ui/nlp-query",
             "etl_status": "/ui/test-etl-streaming",
-            "orchestrator": "/api/debug/progress"
+            "orchestrator": "/api/debug/progress",
+            "cohort_analytics": "/api/analytics/cohorts",
+            "focus_group_import": "/api/import/focus-group"
         },
         "capabilities": [
-            "database_queries",
-            "natural_language_queries",
+            "unified_data_queries",
+            "natural_language_queries", 
+            "cross_source_analytics",
+            "focus_group_analysis",
+            "real_time_xapi_tracking",
             "etl_monitoring",
             "progress_tracking"
-        ]
+        ],
+        "data_overview": {
+            "total_statements": 633,
+            "csv_responses": 373,
+            "xapi_activities": 260,
+            "unique_learners": "15+ focus group + xAPI users",
+            "schema": "normalized_relational"
+        }
     } 
