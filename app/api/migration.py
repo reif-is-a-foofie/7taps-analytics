@@ -610,6 +610,187 @@ async def run_normalized_schema_migration():
             conn.close()
         raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}")
 
+@router.post("/migration/normalized-schema-simple")
+async def run_normalized_schema_migration_simple():
+    """Run a simple normalized schema migration - just create new tables."""
+    try:
+        logger.info("🚀 Starting simple normalized schema migration...")
+        
+        # Get database connection
+        conn = psycopg2.connect(settings.DATABASE_URL)
+        cursor = conn.cursor()
+        
+        # Step 1: Create new normalized tables only
+        logger.info("Creating new normalized tables...")
+        schema_sql = """
+        -- Enable UUID extension
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+        -- Create new normalized tables (don't touch existing ones)
+        CREATE TABLE IF NOT EXISTS statements_new (
+            statement_id VARCHAR(255) PRIMARY KEY,
+            actor_id VARCHAR(255),
+            activity_id VARCHAR(500),
+            verb_id VARCHAR(255) NOT NULL,
+            timestamp TIMESTAMPTZ NOT NULL,
+            version VARCHAR(50),
+            authority_actor_id VARCHAR(255),
+            stored TIMESTAMPTZ,
+            source VARCHAR(50) NOT NULL, -- 'csv' or 'xapi'
+            raw_json JSONB, -- for audit/debug
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS results_new (
+            statement_id VARCHAR(255) PRIMARY KEY,
+            success BOOLEAN,
+            completion BOOLEAN,
+            score_raw DECIMAL(10,2),
+            score_scaled DECIMAL(5,4),
+            score_min DECIMAL(10,2),
+            score_max DECIMAL(10,2),
+            duration VARCHAR(100),
+            response TEXT, -- free-text responses from focus group
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS context_extensions_new (
+            id SERIAL PRIMARY KEY,
+            statement_id VARCHAR(255),
+            extension_key VARCHAR(255) NOT NULL,
+            extension_value TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        -- Create indexes for performance
+        CREATE INDEX IF NOT EXISTS idx_statements_new_actor_id ON statements_new(actor_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_new_activity_id ON statements_new(activity_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_new_verb_id ON statements_new(verb_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_new_timestamp ON statements_new(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_statements_new_source ON statements_new(source);
+        CREATE INDEX IF NOT EXISTS idx_context_extensions_new_statement_id ON context_extensions_new(statement_id);
+        CREATE INDEX IF NOT EXISTS idx_context_extensions_new_key ON context_extensions_new(extension_key);
+
+        -- Create function to normalize actor_id
+        CREATE OR REPLACE FUNCTION normalize_actor_id(
+            p_email VARCHAR(255),
+            p_account_name VARCHAR(255),
+            p_name VARCHAR(255)
+        ) RETURNS VARCHAR(255) AS $$
+        BEGIN
+            -- Clean and normalize email
+            IF p_email IS NOT NULL AND p_email != '' THEN
+                -- Remove 'mailto:' prefix and convert to lowercase
+                RETURN LOWER(REPLACE(p_email, 'mailto:', ''));
+            END IF;
+            
+            -- Use account name if available
+            IF p_account_name IS NOT NULL AND p_account_name != '' THEN
+                RETURN LOWER(p_account_name);
+            END IF;
+            
+            -- Fallback to name
+            IF p_name IS NOT NULL AND p_name != '' THEN
+                RETURN LOWER(p_name);
+            END IF;
+            
+            -- Final fallback
+            RETURN 'unknown_actor';
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+        
+        cursor.execute(schema_sql)
+        conn.commit()
+        logger.info("✅ Created new normalized tables")
+        
+        # Step 2: Create views
+        logger.info("Creating views...")
+        views_sql = """
+        -- Create views for easy querying
+        CREATE OR REPLACE VIEW vw_focus_group_responses AS
+        SELECT 
+            s.statement_id,
+            a.name as learner_name,
+            a.email as learner_email,
+            act.name as activity_name,
+            act.type as activity_type,
+            s.verb_id,
+            s.timestamp,
+            r.response,
+            r.success,
+            r.completion
+        FROM statements_new s
+        LEFT JOIN actors a ON s.actor_id = a.actor_id
+        LEFT JOIN activities act ON s.activity_id = act.activity_id
+        LEFT JOIN results_new r ON s.statement_id = r.statement_id
+        WHERE s.source = 'csv'
+        ORDER BY s.timestamp DESC;
+
+        CREATE OR REPLACE VIEW vw_user_progress AS
+        SELECT 
+            a.actor_id,
+            a.name as learner_name,
+            a.email as learner_email,
+            COUNT(s.statement_id) as total_statements,
+            COUNT(DISTINCT s.activity_id) as unique_activities,
+            COUNT(CASE WHEN r.completion = true THEN 1 END) as completed_activities,
+            MIN(s.timestamp) as first_activity,
+            MAX(s.timestamp) as last_activity,
+            a.source
+        FROM actors a
+        LEFT JOIN statements_new s ON a.actor_id = s.actor_id
+        LEFT JOIN results_new r ON s.statement_id = r.statement_id
+        GROUP BY a.actor_id, a.name, a.email, a.source
+        ORDER BY total_statements DESC;
+        """
+        
+        cursor.execute(views_sql)
+        conn.commit()
+        logger.info("✅ Created views")
+        
+        # Step 3: Verify migration
+        logger.info("Verifying migration...")
+        
+        # Get counts
+        cursor.execute("SELECT COUNT(*) as count FROM statements_new")
+        result = cursor.fetchone()
+        statement_count = result[0]
+        
+        cursor.execute("SELECT COUNT(*) as count FROM results_new")
+        result = cursor.fetchone()
+        result_count = result[0]
+        
+        cursor.execute("SELECT COUNT(*) as count FROM context_extensions_new")
+        result = cursor.fetchone()
+        extension_count = result[0]
+        
+        logger.info(f"📊 Migration results:")
+        logger.info(f"   New statements table: {statement_count} records")
+        logger.info(f"   New results table: {result_count} records")
+        logger.info(f"   New context_extensions table: {extension_count} records")
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": "Simple normalized schema migration completed successfully",
+            "results": {
+                "statements_new": statement_count,
+                "results_new": result_count,
+                "context_extensions_new": extension_count
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+        raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}")
+
 @router.get("/migration/health")
 async def migration_health_check():
     """Health check for migration system."""
