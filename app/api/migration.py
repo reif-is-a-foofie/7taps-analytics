@@ -791,6 +791,183 @@ async def run_normalized_schema_migration_simple():
             conn.close()
         raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}")
 
+@router.post("/migration/migrate-xapi-to-normalized")
+async def migrate_xapi_to_normalized():
+    """Migrate existing xAPI data from statements_flat to new normalized schema."""
+    try:
+        conn = psycopg2.connect(settings.DATABASE_URL)
+        cursor = conn.cursor()
+        
+        logger.info("Starting xAPI data migration to new normalized schema...")
+        
+        # Step 1: Get all statements from statements_flat
+        cursor.execute("SELECT * FROM statements_flat")
+        flat_statements = cursor.fetchall()
+        
+        migrated_count = 0
+        error_count = 0
+        
+        for flat_statement in flat_statements:
+            try:
+                # Parse the JSON statement
+                statement_json = flat_statement[1]  # Assuming the JSON is in the second column
+                
+                # Extract basic statement info
+                statement_id = statement_json.get('id')
+                actor = statement_json.get('actor', {})
+                verb = statement_json.get('verb', {})
+                object_data = statement_json.get('object', {})
+                result = statement_json.get('result', {})
+                context = statement_json.get('context', {})
+                
+                # Extract actor ID
+                actor_id = None
+                if actor.get('objectType') == 'Agent':
+                    if 'mbox' in actor:
+                        actor_id = actor['mbox'].replace('mailto:', '').lower()
+                    elif 'account' in actor:
+                        actor_id = actor['account'].get('name', '').lower()
+                    elif 'name' in actor:
+                        actor_id = actor['name'].lower().replace(' ', '_')
+                
+                if not actor_id:
+                    actor_id = 'unknown_actor'
+                
+                # Extract activity ID
+                activity_id = object_data.get('id', 'unknown_activity')
+                
+                # Extract verb ID
+                verb_id = verb.get('id', 'unknown_verb')
+                
+                # Extract timestamp
+                timestamp = statement_json.get('timestamp')
+                if timestamp:
+                    try:
+                        from datetime import datetime
+                        if isinstance(timestamp, str):
+                            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    except:
+                        timestamp = datetime.utcnow()
+                else:
+                    timestamp = datetime.utcnow()
+                
+                # Insert into statements_new
+                cursor.execute("""
+                    INSERT INTO statements_new (
+                        statement_id, actor_id, activity_id, verb_id, timestamp, 
+                        version, authority_actor_id, stored, source, raw_json
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (statement_id) DO NOTHING
+                """, (
+                    statement_id,
+                    actor_id,
+                    activity_id,
+                    verb_id,
+                    timestamp,
+                    statement_json.get('version', '1.0.3'),
+                    None,  # authority_actor_id
+                    statement_json.get('stored'),
+                    'xapi',
+                    json.dumps(statement_json)
+                ))
+                
+                # Insert into results_new if result exists
+                if result:
+                    cursor.execute("""
+                        INSERT INTO results_new (
+                            statement_id, success, completion, score_raw, score_scaled,
+                            score_min, score_max, duration, response
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (statement_id) DO NOTHING
+                    """, (
+                        statement_id,
+                        result.get('success'),
+                        result.get('completion'),
+                        result.get('score', {}).get('raw'),
+                        result.get('score', {}).get('scaled'),
+                        result.get('score', {}).get('min'),
+                        result.get('score', {}).get('max'),
+                        result.get('duration'),
+                        result.get('response')
+                    ))
+                
+                # Insert context extensions
+                if context:
+                    # Registration
+                    if 'registration' in context:
+                        cursor.execute("""
+                            INSERT INTO context_extensions_new (
+                                statement_id, extension_key, extension_value
+                            ) VALUES (%s, %s, %s)
+                        """, (statement_id, 'context.registration', context['registration']))
+                    
+                    # Platform
+                    if 'platform' in context:
+                        cursor.execute("""
+                            INSERT INTO context_extensions_new (
+                                statement_id, extension_key, extension_value
+                            ) VALUES (%s, %s, %s)
+                        """, (statement_id, 'context.platform', context['platform']))
+                    
+                    # Language
+                    if 'language' in context:
+                        cursor.execute("""
+                            INSERT INTO context_extensions_new (
+                                statement_id, extension_key, extension_value
+                            ) VALUES (%s, %s, %s)
+                        """, (statement_id, 'context.language', context['language']))
+                    
+                    # Context extensions
+                    if 'extensions' in context:
+                        for ext_key, ext_value in context['extensions'].items():
+                            cursor.execute("""
+                                INSERT INTO context_extensions_new (
+                                    statement_id, extension_key, extension_value
+                                ) VALUES (%s, %s, %s)
+                            """, (statement_id, f'context.extensions.{ext_key}', json.dumps(ext_value)))
+                
+                # Object extensions
+                if 'extensions' in object_data:
+                    for ext_key, ext_value in object_data['extensions'].items():
+                        cursor.execute("""
+                            INSERT INTO context_extensions_new (
+                                statement_id, extension_key, extension_value
+                            ) VALUES (%s, %s, %s)
+                        """, (statement_id, f'object.extensions.{ext_key}', json.dumps(ext_value)))
+                
+                migrated_count += 1
+                
+                if migrated_count % 50 == 0:
+                    logger.info(f"Migrated {migrated_count} statements...")
+                
+            except Exception as e:
+                error_count += 1
+                logger.error(f"Error migrating statement {statement_id if 'statement_id' in locals() else 'unknown'}: {e}")
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        logger.info(f"✅ xAPI migration completed: {migrated_count} migrated, {error_count} errors")
+        
+        return {
+            "success": True,
+            "message": f"Successfully migrated {migrated_count} xAPI statements to new normalized schema",
+            "results": {
+                "migrated_count": migrated_count,
+                "error_count": error_count,
+                "total_processed": len(flat_statements)
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"xAPI migration failed: {e}")
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+        raise HTTPException(status_code=500, detail=f"xAPI migration failed: {str(e)}")
+
 @router.get("/migration/health")
 async def migration_health_check():
     """Health check for migration system."""
