@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Simple, clean CSS
+# Clean, minimal CSS
 st.markdown("""
 <style>
     /* Hide Streamlit elements */
@@ -28,31 +28,53 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Clean background */
+    /* White background */
     .main {
-        background: #f8f9fa;
-    }
-    
-    /* Simple chat container */
-    .chat-container {
-        max-width: 800px;
-        margin: 0 auto;
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        padding: 20px;
-        margin-top: 20px;
+        padding: 0;
     }
     
-    /* Message styling */
+    /* Chat container - pinned to bottom */
+    .chat-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 100vh;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+    }
+    
+    /* Header */
+    .chat-header {
+        background: #f8f9fa;
+        padding: 15px 20px;
+        border-bottom: 1px solid #e1e5e9;
+        text-align: center;
+        font-weight: bold;
+        font-size: 18px;
+    }
+    
+    /* Messages area - scrollable */
+    .messages-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: white;
+    }
+    
+    /* Message bubbles */
     .user-message {
         background: #007bff;
         color: white;
         padding: 12px 16px;
         border-radius: 18px 18px 4px 18px;
         margin: 8px 0;
-        max-width: 80%;
+        max-width: 70%;
         margin-left: auto;
+        word-wrap: break-word;
     }
     
     .bot-message {
@@ -61,7 +83,18 @@ st.markdown("""
         padding: 12px 16px;
         border-radius: 18px 18px 18px 4px;
         margin: 8px 0;
-        max-width: 80%;
+        max-width: 70%;
+        word-wrap: break-word;
+    }
+    
+    /* Input area - fixed at bottom */
+    .input-area {
+        background: white;
+        padding: 15px 20px;
+        border-top: 1px solid #e1e5e9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     
     /* Input styling */
@@ -69,6 +102,7 @@ st.markdown("""
         border-radius: 25px;
         border: 2px solid #e1e5e9;
         padding: 12px 20px;
+        background: white;
     }
     
     .stButton > button {
@@ -79,6 +113,7 @@ st.markdown("""
         border: none;
         color: white;
         font-size: 18px;
+        min-width: 45px;
     }
     
     /* Code blocks */
@@ -90,6 +125,7 @@ st.markdown("""
         margin: 8px 0;
         font-family: monospace;
         font-size: 14px;
+        overflow-x: auto;
     }
     
     /* Chart container */
@@ -100,12 +136,28 @@ st.markdown("""
         padding: 15px;
         margin: 10px 0;
     }
+    
+    /* Remove default margins */
+    .block-container {
+        padding: 0;
+        max-width: none;
+    }
+    
+    /* Hide main content */
+    .main .block-container {
+        padding: 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
+    # Add introduction message
+    st.session_state.messages.append({
+        "role": "assistant", 
+        "content": "Hi, I'm @seven, how can I help you today?"
+    })
 
 # Database functions
 def query_database(sql_query):
@@ -322,12 +374,14 @@ def format_bot_response(response):
 
 # Main function
 def main():
-    # Header
-    st.title("🧠 Seven Analytics")
-    st.markdown("Ask me about your learning analytics data")
-    
-    # Chat container
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    # Chat container - full screen
+    st.markdown("""
+    <div class="chat-container">
+        <div class="chat-header">
+            🧠 Seven Analytics
+        </div>
+        <div class="messages-area">
+    """, unsafe_allow_html=True)
     
     # Display messages
     for message in st.session_state.messages:
@@ -340,36 +394,36 @@ def main():
             if "viz_data" in message and message["viz_data"]:
                 render_streamlit_chart(message["viz_data"])
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     
-    # Input area
-    col1, col2 = st.columns([6, 1])
+    # Input area - fixed at bottom
+    st.markdown('<div class="input-area">', unsafe_allow_html=True)
     
-    with col1:
-        user_input = st.text_input(
-            "Ask me about your learning analytics...",
-            key="user_input",
-            label_visibility="collapsed",
-            placeholder="How many learners do I have?"
-        )
+    user_input = st.text_input(
+        "Type your message...",
+        key="user_input",
+        label_visibility="collapsed",
+        placeholder="Ask me about your learning analytics..."
+    )
     
-    with col2:
-        if st.button("🚀", key="send_button"):
-            if user_input.strip():
-                # Add user message
-                st.session_state.messages.append({"role": "user", "content": user_input})
-                
-                # Generate bot response
-                bot_response_data = generate_bot_response_with_openai(user_input)
-                
-                # Add bot message
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": bot_response_data["response"],
-                    "viz_data": bot_response_data["viz_data"]
-                })
-                
-                st.rerun()
+    if st.button("🚀", key="send_button"):
+        if user_input.strip():
+            # Add user message
+            st.session_state.messages.append({"role": "user", "content": user_input})
+            
+            # Generate bot response
+            bot_response_data = generate_bot_response_with_openai(user_input)
+            
+            # Add bot message
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": bot_response_data["response"],
+                "viz_data": bot_response_data["viz_data"]
+            })
+            
+            st.rerun()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
