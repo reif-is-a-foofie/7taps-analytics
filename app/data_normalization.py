@@ -230,20 +230,22 @@ class DataNormalizer:
             'account_homepage': None
         }
         
-        # Extract email from mbox
+        # Extract email from mbox - normalize to lowercase
         if actor.get('mbox') and actor['mbox'].startswith('mailto:'):
-            actor_data['email'] = actor['mbox'].replace('mailto:', '')
+            actor_data['email'] = actor['mbox'].replace('mailto:', '').lower()
         
         # Extract account information
         if actor.get('account'):
             account = actor['account']
             actor_data['account_name'] = account.get('name')
             actor_data['account_homepage'] = account.get('homePage')
-            actor_data['actor_id'] = account.get('name')  # Use account name as actor_id
+            # Normalize actor_id to lowercase for consistency
+            actor_data['actor_id'] = account.get('name', '').lower() if account.get('name') else None
         
-        # Fallback actor_id
+        # Fallback actor_id - normalize to lowercase
         if not actor_data['actor_id']:
-            actor_data['actor_id'] = actor.get('mbox') or actor.get('openid') or actor.get('name')
+            fallback_id = actor.get('mbox') or actor.get('openid') or actor.get('name')
+            actor_data['actor_id'] = fallback_id.lower() if fallback_id else None
         
         return actor_data
     

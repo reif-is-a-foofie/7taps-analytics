@@ -73,22 +73,22 @@ class FlatToNormalizedMigrator:
             'account_homepage': None
         }
         
-        # Extract email from mbox
+        # Extract email from mbox - normalize to lowercase
         if actor.get('mbox') and actor['mbox'].startswith('mailto:'):
-            actor_data['email'] = actor['mbox'].replace('mailto:', '')
+            actor_data['email'] = actor['mbox'].replace('mailto:', '').lower()
             actor_data['actor_id'] = actor_data['email']
         
-        # Extract account information
+        # Extract account information - normalize to lowercase
         if actor.get('account'):
             account = actor['account']
             actor_data['account_name'] = account.get('name')
             actor_data['account_homepage'] = account.get('homePage')
             if account.get('name'):
-                actor_data['actor_id'] = account['name']
+                actor_data['actor_id'] = account['name'].lower()
         
-        # Use name as fallback
+        # Use name as fallback - normalize to lowercase
         if not actor_data['actor_id'] and actor.get('name'):
-            actor_data['actor_id'] = actor['name']
+            actor_data['actor_id'] = actor['name'].lower()
         
         return actor_data
     
