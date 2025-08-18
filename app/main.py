@@ -264,6 +264,12 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "7taps-analytics-etl"}
 
+@app.get("/playground")
+async def developer_playground():
+    """Developer playground for quick API testing and exploration"""
+    with open("DEVELOPER_PLAYGROUND.html", "r") as f:
+        return HTMLResponse(content=f.read())
+
 # Import and include routers
 from app.api.etl import router as etl_router
 from app.api.orchestrator import router as orchestrator_router
