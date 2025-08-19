@@ -31,6 +31,13 @@ async def chat_interface():
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard():
     """Serve the analytics dashboard with dynamic data"""
+    # Initialize default values in case database connection fails
+    metrics = [0, 0, 0, 0]  # [users, lessons, responses, activities]
+    lesson_names = []
+    lesson_counts = []
+    behavior_labels = []
+    behavior_values = []
+    
     # Get real data from the database
     try:
         import psycopg2
