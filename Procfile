@@ -1,3 +1,2 @@
 web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-worker: python workers/worker.py
-dashboard: python app/dashboard.py 
+worker: python workers/worker.py 

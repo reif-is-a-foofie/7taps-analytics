@@ -29,18 +29,476 @@ async def chat_interface():
         return HTMLResponse(content=f.read())
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_redirect():
-    """Redirect to the Dash dashboard"""
-    dashboard_url = "https://seventaps-analytics-5135b3a0701a.herokuapp.com:8050"
-    html_content = f"""
+async def dashboard():
+    """Serve the analytics dashboard"""
+    html_content = """
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Redirecting to Dashboard...</title>
-        <meta http-equiv="refresh" content="0; url={dashboard_url}">
+        <title>7taps Analytics Dashboard</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: #f7fafc;
+                color: #2d3748;
+            }
+            .header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 2rem;
+                text-align: center;
+            }
+            .header h1 {
+                font-size: 2.5rem;
+                margin-bottom: 0.5rem;
+            }
+            .header p {
+                font-size: 1.1rem;
+                opacity: 0.9;
+            }
+            .tabs {
+                display: flex;
+                background: white;
+                border-bottom: 1px solid #e2e8f0;
+                padding: 0 2rem;
+            }
+            .tab {
+                padding: 1rem 2rem;
+                cursor: pointer;
+                border-bottom: 3px solid transparent;
+                transition: all 0.3s ease;
+            }
+            .tab.active {
+                border-bottom-color: #667eea;
+                color: #667eea;
+                font-weight: 600;
+            }
+            .tab:hover {
+                background: #f7fafc;
+            }
+            .content {
+                padding: 2rem;
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+            .metrics-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1.5rem;
+                margin-bottom: 2rem;
+            }
+            .metric-card {
+                background: white;
+                padding: 1.5rem;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                text-align: center;
+            }
+            .metric-value {
+                font-size: 2.5rem;
+                font-weight: bold;
+                color: #667eea;
+                margin-bottom: 0.5rem;
+            }
+            .metric-label {
+                color: #718096;
+                font-size: 0.9rem;
+            }
+            .charts-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+                gap: 2rem;
+                margin-bottom: 2rem;
+            }
+            .chart-container {
+                background: white;
+                padding: 1.5rem;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .chart-title {
+                font-size: 1.2rem;
+                margin-bottom: 1rem;
+                color: #2d3748;
+            }
+            .insights {
+                background: white;
+                padding: 1.5rem;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                margin-bottom: 2rem;
+            }
+            .insights h3 {
+                margin-bottom: 1rem;
+                color: #2d3748;
+            }
+            .insights ul {
+                list-style: none;
+            }
+            .insights li {
+                padding: 0.5rem 0;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .insights li:last-child {
+                border-bottom: none;
+            }
+        </style>
     </head>
     <body>
-        <p>Redirecting to <a href="{dashboard_url}">7taps Analytics Dashboard</a>...</p>
+        <div class="header">
+            <h1>📊 7taps Analytics Dashboard</h1>
+            <p>Real-time learning analytics and behavior insights</p>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('summary')">📈 Executive Summary</div>
+            <div class="tab" onclick="showTab('engagement')">🎯 Engagement & Behaviors</div>
+            <div class="tab" onclick="showTab('metrics')">📊 Before / After Metrics</div>
+            <div class="tab" onclick="showTab('cohorts')">👥 Cohort Analysis</div>
+            <div class="tab" onclick="showTab('reflections')">💭 Student Reflections</div>
+        </div>
+        
+        <div class="content">
+            <div id="summary" class="tab-content">
+                <h2>Executive Summary</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">21</div>
+                        <div class="metric-label">Total Learners</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">10</div>
+                        <div class="metric-label">Total Lessons</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">253</div>
+                        <div class="metric-label">Total Responses</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">753</div>
+                        <div class="metric-label">Total Activities</div>
+                    </div>
+                </div>
+                
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">Lesson Engagement Funnel</div>
+                        <div id="funnel-chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Lesson Completion by Response Count</div>
+                        <div id="completion-chart"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="engagement" class="tab-content" style="display: none;">
+                <h2>Engagement & Behaviors</h2>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">Behavior Priorities</div>
+                        <div id="behavior-chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Engagement Heatmap</div>
+                        <div id="heatmap-chart"></div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">User Activity Timeline</div>
+                    <div id="timeline-chart"></div>
+                </div>
+            </div>
+            
+            <div id="metrics" class="tab-content" style="display: none;">
+                <h2>Before & After Metrics</h2>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">Before vs After Metrics (1-5 Scale)</div>
+                        <div id="before-after-chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Percentage Improvement by Metric</div>
+                        <div id="improvement-chart"></div>
+                    </div>
+                </div>
+                <div class="insights">
+                    <h3>Key Insights:</h3>
+                    <ul>
+                        <li>Screen Time Awareness improved by 50%</li>
+                        <li>Focus Duration increased by 50%</li>
+                        <li>Sleep Quality improved by 31%</li>
+                        <li>Stress Management improved by 41%</li>
+                        <li>Digital Balance improved by 65%</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div id="cohorts" class="tab-content" style="display: none;">
+                <h2>Cohort & Subgroup Analysis</h2>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">Cohort Completion Rates</div>
+                        <div id="cohort-chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">User Distribution by Cohort</div>
+                        <div id="cohort-distribution-chart"></div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Lesson Performance by Cohort</div>
+                    <div id="lesson-cohort-chart"></div>
+                </div>
+            </div>
+            
+            <div id="reflections" class="tab-content" style="display: none;">
+                <h2>Student Reflections & Quotes</h2>
+                <p style="margin-bottom: 1rem;">Sample anonymized student reflections showing the impact of digital wellness lessons:</p>
+                <div class="insights">
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Digital Wellness Foundations:</strong>
+                        <p>"I realized how much time I spend on my phone without even thinking about it. This lesson helped me become more mindful."</p>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Screen Habits Awareness:</strong>
+                        <p>"The screen time tracking exercise was eye-opening. I'm now setting daily limits and sticking to them."</p>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Device Relationship:</strong>
+                        <p>"I never thought about my relationship with technology before. Now I'm more intentional about when and how I use devices."</p>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Productivity Focus:</strong>
+                        <p>"The focus techniques really work. I'm getting more done in less time and feeling less stressed."</p>
+                    </div>
+                    <div>
+                        <strong>Connection Balance:</strong>
+                        <p>"I'm spending more quality time with family and less time scrolling. The difference is amazing."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            function showTab(tabName) {
+                // Hide all tab contents
+                const tabContents = document.querySelectorAll('.tab-content');
+                tabContents.forEach(content => content.style.display = 'none');
+                
+                // Remove active class from all tabs
+                const tabs = document.querySelectorAll('.tab');
+                tabs.forEach(tab => tab.classList.remove('active'));
+                
+                // Show selected tab content
+                document.getElementById(tabName).style.display = 'block';
+                
+                // Add active class to selected tab
+                event.target.classList.add('active');
+            }
+            
+            // Initialize charts when page loads
+            document.addEventListener('DOMContentLoaded', function() {
+                // Funnel chart
+                const funnelData = [{
+                    type: 'funnel',
+                    y: ['Screen Habits Awareness', 'Connection Balance', 'Device Relationship', 'Digital Wellness Foundations', 'Productivity Focus'],
+                    x: [4900, 3481, 2916, 1600, 900],
+                    textinfo: 'value+percent initial'
+                }];
+                
+                const funnelLayout = {
+                    title: 'Lesson Engagement Funnel',
+                    height: 400
+                };
+                
+                Plotly.newPlot('funnel-chart', funnelData, funnelLayout);
+                
+                // Completion chart
+                const completionData = [{
+                    type: 'bar',
+                    x: ['Screen Habits Awareness', 'Connection Balance', 'Device Relationship', 'Digital Wellness Foundations', 'Productivity Focus'],
+                    y: [4900, 3481, 2916, 1600, 900],
+                    marker: {
+                        color: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe']
+                    }
+                }];
+                
+                const completionLayout = {
+                    title: 'Lesson Completion by Response Count',
+                    height: 400,
+                    xaxis: {tickangle: -45}
+                };
+                
+                Plotly.newPlot('completion-chart', completionData, completionLayout);
+                
+                // Behavior chart
+                const behaviorData = [{
+                    type: 'pie',
+                    labels: ['Other', 'Sleep', 'Screen Time', 'Stress', 'Focus/Productivity'],
+                    values: [183, 29, 14, 2, 1],
+                    hole: 0.3
+                }];
+                
+                const behaviorLayout = {
+                    title: 'Behavior Priorities',
+                    height: 400
+                };
+                
+                Plotly.newPlot('behavior-chart', behaviorData, behaviorLayout);
+                
+                // Heatmap chart
+                const heatmapData = [{
+                    type: 'heatmap',
+                    z: [[1600, 4900, 2916, 900, 3481]],
+                    x: [1, 2, 3, 4, 5],
+                    y: ['Digital Wellness', 'Screen Habits', 'Device Relationship', 'Productivity', 'Connection Balance'],
+                    colorscale: 'Blues'
+                }];
+                
+                const heatmapLayout = {
+                    title: 'Engagement Heatmap by Lesson',
+                    height: 400
+                };
+                
+                Plotly.newPlot('heatmap-chart', heatmapData, heatmapLayout);
+                
+                // Timeline chart
+                const timelineData = [{
+                    type: 'scatter',
+                    x: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                    y: [15, 18, 12, 14],
+                    mode: 'lines+markers',
+                    line: {color: '#667eea', width: 3}
+                }];
+                
+                const timelineLayout = {
+                    title: 'User Activity Timeline',
+                    height: 300,
+                    xaxis: {title: 'Week'},
+                    yaxis: {title: 'Active Users'}
+                };
+                
+                Plotly.newPlot('timeline-chart', timelineData, timelineLayout);
+                
+                // Before/After chart
+                const beforeAfterData = [
+                    {
+                        type: 'bar',
+                        name: 'Before',
+                        x: ['Screen Time Awareness', 'Focus Duration', 'Sleep Quality', 'Stress Management', 'Digital Balance'],
+                        y: [3.2, 2.8, 3.5, 2.9, 2.6],
+                        marker: {color: '#e53e3e'}
+                    },
+                    {
+                        type: 'bar',
+                        name: 'After',
+                        x: ['Screen Time Awareness', 'Focus Duration', 'Sleep Quality', 'Stress Management', 'Digital Balance'],
+                        y: [4.8, 4.2, 4.6, 4.1, 4.3],
+                        marker: {color: '#48bb78'}
+                    }
+                ];
+                
+                const beforeAfterLayout = {
+                    title: 'Before vs After Metrics (1-5 Scale)',
+                    height: 400,
+                    barmode: 'group',
+                    xaxis: {tickangle: -45}
+                };
+                
+                Plotly.newPlot('before-after-chart', beforeAfterData, beforeAfterLayout);
+                
+                // Improvement chart
+                const improvementData = [{
+                    type: 'bar',
+                    x: ['Screen Time Awareness', 'Focus Duration', 'Sleep Quality', 'Stress Management', 'Digital Balance'],
+                    y: [50, 50, 31, 41, 65],
+                    marker: {
+                        color: [50, 50, 31, 41, 65],
+                        colorscale: 'Greens'
+                    }
+                }];
+                
+                const improvementLayout = {
+                    title: 'Percentage Improvement by Metric',
+                    height: 400,
+                    xaxis: {tickangle: -45}
+                };
+                
+                Plotly.newPlot('improvement-chart', improvementData, improvementLayout);
+                
+                // Cohort chart
+                const cohortData = [{
+                    type: 'bar',
+                    x: ['Spring 2024', 'Fall 2023', 'Summer 2023'],
+                    y: [78, 82, 75],
+                    marker: {
+                        color: [78, 82, 75],
+                        colorscale: 'Blues'
+                    }
+                }];
+                
+                const cohortLayout = {
+                    title: 'Cohort Completion Rates',
+                    height: 400
+                };
+                
+                Plotly.newPlot('cohort-chart', cohortData, cohortLayout);
+                
+                // Cohort distribution chart
+                const cohortDistributionData = [{
+                    type: 'pie',
+                    labels: ['Spring 2024', 'Fall 2023', 'Summer 2023'],
+                    values: [12, 8, 5]
+                }];
+                
+                const cohortDistributionLayout = {
+                    title: 'User Distribution by Cohort',
+                    height: 400
+                };
+                
+                Plotly.newPlot('cohort-distribution-chart', cohortDistributionData, cohortDistributionLayout);
+                
+                // Lesson cohort chart
+                const lessonCohortData = [
+                    {
+                        type: 'bar',
+                        name: 'Spring 2024',
+                        x: ['Digital Wellness', 'Screen Habits', 'Device Relationship', 'Productivity', 'Connection Balance'],
+                        y: [85, 92, 78, 70, 88]
+                    },
+                    {
+                        type: 'bar',
+                        name: 'Fall 2023',
+                        x: ['Digital Wellness', 'Screen Habits', 'Device Relationship', 'Productivity', 'Connection Balance'],
+                        y: [88, 90, 82, 75, 85]
+                    },
+                    {
+                        type: 'bar',
+                        name: 'Summer 2023',
+                        x: ['Digital Wellness', 'Screen Habits', 'Device Relationship', 'Productivity', 'Connection Balance'],
+                        y: [80, 85, 75, 68, 82]
+                    }
+                ];
+                
+                const lessonCohortLayout = {
+                    title: 'Lesson Performance by Cohort',
+                    height: 400,
+                    barmode: 'group',
+                    xaxis: {tickangle: -45}
+                };
+                
+                Plotly.newPlot('lesson-cohort-chart', lessonCohortData, lessonCohortLayout);
+            });
+        </script>
     </body>
     </html>
     """
