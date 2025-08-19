@@ -17,10 +17,12 @@ router = APIRouter()
 def get_db_connection():
     """Get database connection."""
     DATABASE_URL = os.getenv('DATABASE_URL')
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL environment variable is not set")
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg2.connect(DATABASE_URL, sslmode=os.getenv('PGSSLMODE', 'require'))
 
 @router.get("/api/data-explorer/lessons")
 async def get_lessons():

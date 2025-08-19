@@ -46,10 +46,12 @@ async def dashboard():
         
         # Database connection
         DATABASE_URL = os.getenv('DATABASE_URL')
+        if not DATABASE_URL:
+            raise ValueError("DATABASE_URL environment variable is not set")
         if DATABASE_URL.startswith('postgres://'):
             DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
         
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, sslmode=os.getenv('PGSSLMODE', 'require'))
         cursor = conn.cursor()
         
         # Get real metrics
@@ -965,10 +967,12 @@ async def test_database():
         import os
         
         DATABASE_URL = os.getenv('DATABASE_URL')
+        if not DATABASE_URL:
+            raise ValueError("DATABASE_URL environment variable is not set")
         if DATABASE_URL.startswith('postgres://'):
             DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
         
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, sslmode=os.getenv('PGSSLMODE', 'require'))
         cursor = conn.cursor()
         
         # Test basic queries
@@ -999,11 +1003,7 @@ async def test_database():
             "database": "failed"
         }
 
-@app.get("/chat", response_class=HTMLResponse)
-async def chat_interface():
-    """Chat interface for AI analytics assistant"""
-    with open("chat_interface.html", "r") as f:
-        return HTMLResponse(content=f.read())
+
 
 # Import and include routers
 from app.api.etl import router as etl_router
