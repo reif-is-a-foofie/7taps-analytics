@@ -276,9 +276,9 @@
         
         <div class="sidebar-section">
             <h4>Quick Links</h4>
-            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/docs" target="_blank" class="sidebar-link">API Documentation</a>
-            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/data/schema" target="_blank" class="sidebar-link">Database Schema</a>
-            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/ui/admin" target="_blank" class="sidebar-link">Admin Dashboard</a>
+            <a href="https://seventaps-analytics.herokuapp.com/docs" target="_blank" class="sidebar-link">API Documentation</a>
+            <a href="https://seventaps-analytics.herokuapp.com/api/data/schema" target="_blank" class="sidebar-link">Database Schema</a>
+            <a href="https://seventaps-analytics.herokuapp.com/ui/admin" target="_blank" class="sidebar-link">Admin Dashboard</a>
         </div>
         
         <div class="sidebar-section">
@@ -302,7 +302,7 @@
         
         <div class="messages" id="messages">
             <div class="message assistant">
-                <div class="avatar assistant">S</div>
+                <div class="avatar assistant">7</div>
                 <div class="message-content">
                     Hi, I'm Seven, your AI analytics assistant! I can help you explore your learning data, create visualizations, and answer questions about engagement patterns. What would you like to know about your learning analytics?
                 </div>
@@ -355,7 +355,7 @@
             
             const avatar = document.createElement('div');
             avatar.className = `avatar ${isUser ? 'user' : 'assistant'}`;
-            avatar.textContent = isUser ? 'U' : '7';
+            avatar.textContent = isUser ? 'U' : 'S';
             
             const messageContent = document.createElement('div');
             messageContent.className = 'message-content';
@@ -375,11 +375,11 @@
             
             const avatar = document.createElement('div');
             avatar.className = 'avatar assistant';
-            avatar.textContent = '7';
+            avatar.textContent = 'S';
             
             const typingContent = document.createElement('div');
             typingContent.className = 'message-content';
-            typingContent.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div><div style="font-size: 0.9rem; color: #718096; margin-top: 0.5rem;">Seven is thinking...</div>';
+            typingContent.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
             
             typingDiv.appendChild(avatar);
             typingDiv.appendChild(typingContent);
@@ -416,9 +416,6 @@
             showTypingIndicator();
 
             try {
-                // Add a minimum delay to show thinking indicator
-                const startTime = Date.now();
-                
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: {
@@ -435,13 +432,6 @@
                 }
 
                 const data = await response.json();
-                
-                // Ensure thinking indicator shows for at least 1 second
-                const elapsed = Date.now() - startTime;
-                if (elapsed < 1000) {
-                    await new Promise(resolve => setTimeout(resolve, 1000 - elapsed));
-                }
-                
                 hideTypingIndicator();
                 addMessage(data.response);
 
@@ -478,15 +468,15 @@
         // Load data status
         async function loadDataStatus() {
             try {
-                const response = await fetch('https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/data/status');
+                const response = await fetch('https://seventaps-analytics.herokuapp.com/api/data/status');
                 if (response.ok) {
                     const data = await response.json();
                     dataStatus.innerHTML = `
                         <div style="color: #48bb78;">✓ Connected</div>
                         <div style="font-size: 0.8rem; color: #718096;">
-                            ${data.total_statements || 0} statements<br>
-                            ${data.unique_users || 0} users<br>
-                            ${data.total_lessons || 0} lessons
+                            ${data.total_statements} statements<br>
+                            ${data.unique_users} users<br>
+                            ${data.total_lessons} lessons
                         </div>
                     `;
                 } else {

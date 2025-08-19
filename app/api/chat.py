@@ -47,7 +47,7 @@ def get_database_schema():
                     column_default
                 FROM information_schema.columns 
                 WHERE table_schema = 'public' 
-                AND table_name IN ('statements_new', 'results_new', 'context_extensions_new')
+                AND table_name IN ('statements_new', 'results_new', 'context_extensions_new', 'lessons', 'users', 'questions', 'user_activities', 'user_responses')
                 ORDER BY table_name, ordinal_position
             """)
             
@@ -68,51 +68,69 @@ def get_database_schema():
     finally:
         conn.close()
 
-def get_sample_data():
-    """Get sample data from each table for context"""
+def get_preloaded_data():
+    """Get comprehensive preloaded data for context"""
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Get sample data from each table
-            samples = {}
+            data = {}
             
-            # Sample statements
-            cur.execute("SELECT * FROM statements_new LIMIT 3")
-            statements = []
-            for row in cur.fetchall():
-                row_dict = dict(row)
-                # Convert datetime objects to strings
-                for key, value in row_dict.items():
-                    if hasattr(value, 'isoformat'):
-                        row_dict[key] = value.isoformat()
-                statements.append(row_dict)
-            samples['statements_new'] = statements
+            # Key statistics
+            cur.execute("""
+                SELECT 
+                    (SELECT COUNT(*) FROM statements_new) as total_statements,
+                    (SELECT COUNT(*) FROM users) as total_users,
+                    (SELECT COUNT(*) FROM lessons) as total_lessons,
+                    (SELECT COUNT(*) FROM user_responses) as total_responses,
+                    (SELECT COUNT(*) FROM user_activities) as total_activities
+            """)
+            stats = cur.fetchone()
+            data['stats'] = dict(stats)
             
-            # Sample results
-            cur.execute("SELECT * FROM results_new LIMIT 3")
-            results = []
-            for row in cur.fetchall():
-                row_dict = dict(row)
-                # Convert datetime objects to strings
-                for key, value in row_dict.items():
-                    if hasattr(value, 'isoformat'):
-                        row_dict[key] = value.isoformat()
-                results.append(row_dict)
-            samples['results_new'] = results
+            # All lessons with names
+            cur.execute("SELECT lesson_number, lesson_name FROM lessons ORDER BY lesson_number")
+            data['lessons'] = [dict(row) for row in cur.fetchall()]
             
-            # Sample context extensions
-            cur.execute("SELECT * FROM context_extensions_new LIMIT 3")
-            extensions = []
-            for row in cur.fetchall():
-                row_dict = dict(row)
-                # Convert datetime objects to strings
-                for key, value in row_dict.items():
-                    if hasattr(value, 'isoformat'):
-                        row_dict[key] = value.isoformat()
-                extensions.append(row_dict)
-            samples['context_extensions_new'] = extensions
+            # Top users by activity
+            cur.execute("""
+                SELECT u.user_id, COUNT(ua.id) as activity_count, 
+                       MIN(ua.timestamp) as first_activity, MAX(ua.timestamp) as last_activity
+                FROM users u 
+                LEFT JOIN user_activities ua ON u.id = ua.user_id 
+                GROUP BY u.id, u.user_id 
+                ORDER BY activity_count DESC 
+                LIMIT 10
+            """)
+            data['top_users'] = [dict(row) for row in cur.fetchall()]
             
-            return samples
+            # Key habit change responses (most meaningful)
+            cur.execute("""
+                SELECT u.user_id, l.lesson_number, l.lesson_name, ur.response_text, ur.timestamp
+                FROM users u 
+                JOIN user_responses ur ON u.id = ur.user_id 
+                JOIN questions q ON ur.question_id = q.id 
+                JOIN lessons l ON q.lesson_id = l.id 
+                WHERE ur.response_text IS NOT NULL 
+                AND ur.response_text != '' 
+                AND ur.response_text NOT LIKE '%—%' 
+                AND ur.response_text NOT LIKE '%👍%'
+                AND LENGTH(ur.response_text) > 20
+                ORDER BY u.user_id, l.lesson_number, ur.timestamp
+                LIMIT 50
+            """)
+            data['habit_responses'] = [dict(row) for row in cur.fetchall()]
+            
+            # Lesson completion rates
+            cur.execute("""
+                SELECT l.lesson_number, l.lesson_name, COUNT(DISTINCT ua.user_id) as users_completed
+                FROM lessons l 
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id 
+                GROUP BY l.id, l.lesson_number, l.lesson_name 
+                ORDER BY l.lesson_number
+            """)
+            data['lesson_completion'] = [dict(row) for row in cur.fetchall()]
+            
+            return data
     finally:
         conn.close()
 
@@ -133,28 +151,28 @@ def get_llm_intent_and_sql(user_message: str, schema: Dict, sample_data: Dict) -
     """Use LLM to determine intent and generate SQL"""
     client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
-    # Create context with schema and sample data
+    # Create context with schema and preloaded data
     context = f"""
 Database Schema:
 {json.dumps(schema, indent=2)}
 
-Sample Data:
+Preloaded Data Available:
 {json.dumps(sample_data, indent=2)}
 
 User Question: {user_message}
 
 Instructions:
 1. Analyze the user's intent
-2. Generate appropriate SQL query (ONLY SELECT statements)
-3. Return JSON with: {{"intent": "description", "sql": "SELECT query", "explanation": "what this query does"}}
+2. If data is in preloaded_data, use it instead of SQL
+3. Only generate SQL if absolutely necessary
+4. Return JSON with: {{"intent": "description", "sql": "SELECT query or 'use_preloaded'", "explanation": "what this does"}}
 
 Rules:
-- Only generate SELECT queries
-- Use proper JOINs between tables
-- Include LIMIT clauses for large result sets
-- Focus on the specific intent of the user
-- Note: lesson information is stored in context_extensions_new.extension_key = 'https://7taps.com/lesson-number' and context_extensions_new.extension_value contains the lesson number
-- Note: card information is stored in context_extensions_new.extension_key = 'https://7taps.com/card-number' and context_extensions_new.extension_value contains the card number
+- Prefer preloaded data over SQL queries
+- For habit changes, use habit_responses data
+- For user stats, use top_users data
+- For lesson info, use lessons data
+- Only generate SQL if specific data not in preloaded_data
 """
     
     response = client.chat.completions.create(
@@ -174,8 +192,8 @@ Rules:
         # Fallback if JSON parsing fails
         return {
             "intent": "general_query",
-            "sql": "SELECT COUNT(*) as total FROM statements_new",
-            "explanation": "Basic count query as fallback"
+            "sql": "use_preloaded",
+            "explanation": "Use preloaded data for general queries"
         }
 
 def format_query_results(results: List[Dict], intent: str) -> str:
@@ -216,29 +234,21 @@ async def chat(request: ChatRequest):
         # Initialize OpenAI client
         client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
-        # Get database context
+        # Get preloaded data (comprehensive context)
+        preloaded_data = get_preloaded_data()
         schema = get_database_schema()
-        sample_data = get_sample_data()
-        
-        # Get basic stats for context - fix the queries to work with actual schema
-        total_statements = execute_query("SELECT COUNT(*) as count FROM statements_new")[0]['count']
-        unique_users = execute_query("SELECT COUNT(DISTINCT actor_id) as count FROM statements_new")[0]['count']
-        
-        # Fix lesson count query - lesson_number is stored in extension_key/extension_value
-        lesson_count_result = execute_query("""
-            SELECT COUNT(DISTINCT extension_value) as count 
-            FROM context_extensions_new 
-            WHERE extension_key = 'https://7taps.com/lesson-number'
-        """)
-        total_lessons = lesson_count_result[0]['count'] if lesson_count_result else 0
         
         # Use LLM to determine intent and generate SQL
-        llm_result = get_llm_intent_and_sql(request.message, schema, sample_data)
+        llm_result = get_llm_intent_and_sql(request.message, schema, preloaded_data)
         
-        # Execute the generated SQL
+        # Execute the generated SQL or use preloaded data
         try:
-            query_results = execute_query(llm_result['sql'])
-            data_summary = format_query_results(query_results, llm_result['intent'])
+            if llm_result['sql'] == 'use_preloaded':
+                data_summary = "Using preloaded data"
+                query_results = []
+            else:
+                query_results = execute_query(llm_result['sql'])
+                data_summary = format_query_results(query_results, llm_result['intent'])
         except Exception as e:
             data_summary = f"Query failed: {str(e)}"
             query_results = []
@@ -247,26 +257,26 @@ async def chat(request: ChatRequest):
         messages = [
             {
                 "role": "system",
-                "content": f"""You are Seven, an AI analytics assistant. Give simple, clear, concise answers.
+                "content": f"""You are Seven, an AI analytics assistant. Give concise, data-driven answers.
 
-Current Database Stats:
-- {total_statements} total statements
-- {unique_users} unique users  
-- {total_lessons} lessons
+PRELOADED DATA (use this instead of making queries):
+{json.dumps(preloaded_data, indent=2)}
 
 Database Schema:
 {json.dumps(schema, indent=2)}
 
-Sample Data:
-{json.dumps(sample_data, indent=2)}
+KEY INSIGHTS (pre-analyzed):
+- {preloaded_data['stats']['total_users']} users across {preloaded_data['stats']['total_lessons']} lessons
+- {preloaded_data['stats']['total_responses']} meaningful responses analyzed
+- Top users: {', '.join([u['user_id'] for u in preloaded_data['top_users'][:3]])}
+- Key habit changes found in responses (see habit_responses data)
 
 Instructions:
-- Always provide specific data and numbers
-- Be concise and actionable
-- If data is available, use it
-- If no data, say so clearly
-- Keep responses under 200 words
-- Note: lesson information is stored in context_extensions_new.extension_key = 'https://7taps.com/lesson-number' and context_extensions_new.extension_value contains the lesson number"""
+- Use preloaded data - don't make new queries unless absolutely necessary
+- Keep responses under 100 words
+- Be specific with numbers and examples
+- For habit changes, reference the habit_responses data
+- If user asks for specific analysis, use the preloaded data first"""
             }
         ]
         
@@ -277,7 +287,7 @@ Instructions:
                 "content": msg.content
             })
         
-        # Add current user message with query results
+        # Add current user message with context accumulation
         current_message = f"""
 User: {request.message}
 
@@ -285,7 +295,10 @@ Intent: {llm_result['intent']}
 SQL Generated: {llm_result['sql']}
 Query Results: {data_summary}
 
-Please provide a clear, concise response based on this data."""
+Previous Context: {len(request.history)} messages in conversation
+Preloaded Data Available: Yes (use habit_responses, lesson_completion, top_users)
+
+Please provide a concise response using the preloaded data."""
         
         messages.append({
             "role": "user",
