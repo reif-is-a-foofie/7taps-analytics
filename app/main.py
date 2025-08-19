@@ -70,9 +70,8 @@ async def dashboard():
                 l.lesson_name,
                 COUNT(DISTINCT ur.user_id) as response_count
             FROM lessons l
-            LEFT JOIN questions q ON l.id = q.lesson_id
-            LEFT JOIN user_responses ur ON q.id = ur.question_id
-            GROUP BY l.id, l.lesson_name
+            LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
+            GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
         """)
         lesson_data = cursor.fetchall()
