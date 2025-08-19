@@ -68,43 +68,23 @@ def get_database_schema():
     finally:
         conn.close()
 
-def get_preloaded_data():
-    """Get comprehensive preloaded data for context"""
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cur:
-            data = {}
-            
-            # Key statistics
-            cur.execute("""
+def get_preloaded_queries():
+    """Get preloaded SQL queries for common analytics"""
+    return {
+        "stats": {
+            "description": "Get current database statistics",
+            "sql": """
                 SELECT 
                     (SELECT COUNT(*) FROM statements_new) as total_statements,
                     (SELECT COUNT(*) FROM users) as total_users,
                     (SELECT COUNT(*) FROM lessons) as total_lessons,
                     (SELECT COUNT(*) FROM user_responses) as total_responses,
                     (SELECT COUNT(*) FROM user_activities) as total_activities
-            """)
-            stats = cur.fetchone()
-            data['stats'] = dict(stats)
-            
-            # All lessons with names
-            cur.execute("SELECT lesson_number, lesson_name FROM lessons ORDER BY lesson_number")
-            data['lessons'] = [dict(row) for row in cur.fetchall()]
-            
-            # Top users by activity
-            cur.execute("""
-                SELECT u.user_id, COUNT(ua.id) as activity_count, 
-                       MIN(ua.timestamp) as first_activity, MAX(ua.timestamp) as last_activity
-                FROM users u 
-                LEFT JOIN user_activities ua ON u.id = ua.user_id 
-                GROUP BY u.id, u.user_id 
-                ORDER BY activity_count DESC 
-                LIMIT 10
-            """)
-            data['top_users'] = [dict(row) for row in cur.fetchall()]
-            
-            # Key habit change responses (most meaningful)
-            cur.execute("""
+            """
+        },
+        "habit_changes": {
+            "description": "Get evidence of habit changes across lessons",
+            "sql": """
                 SELECT u.user_id, l.lesson_number, l.lesson_name, ur.response_text, ur.timestamp
                 FROM users u 
                 JOIN user_responses ur ON u.id = ur.user_id 
@@ -117,22 +97,57 @@ def get_preloaded_data():
                 AND LENGTH(ur.response_text) > 20
                 ORDER BY u.user_id, l.lesson_number, ur.timestamp
                 LIMIT 50
-            """)
-            data['habit_responses'] = [dict(row) for row in cur.fetchall()]
-            
-            # Lesson completion rates
-            cur.execute("""
+            """
+        },
+        "top_users": {
+            "description": "Get most engaged users",
+            "sql": """
+                SELECT u.user_id, COUNT(ua.id) as activity_count, 
+                       MIN(ua.timestamp) as first_activity, MAX(ua.timestamp) as last_activity
+                FROM users u 
+                LEFT JOIN user_activities ua ON u.id = ua.user_id 
+                GROUP BY u.id, u.user_id 
+                ORDER BY activity_count DESC 
+                LIMIT 10
+            """
+        },
+        "lesson_completion": {
+            "description": "Get lesson completion rates",
+            "sql": """
                 SELECT l.lesson_number, l.lesson_name, COUNT(DISTINCT ua.user_id) as users_completed
                 FROM lessons l 
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id 
                 GROUP BY l.id, l.lesson_number, l.lesson_name 
                 ORDER BY l.lesson_number
-            """)
-            data['lesson_completion'] = [dict(row) for row in cur.fetchall()]
-            
-            return data
-    finally:
-        conn.close()
+            """
+        },
+        "recent_activity": {
+            "description": "Get recent user activity",
+            "sql": """
+                SELECT u.user_id, l.lesson_name, ua.activity_type, ua.timestamp
+                FROM users u 
+                JOIN user_activities ua ON u.id = ua.user_id 
+                JOIN lessons l ON ua.lesson_id = l.id 
+                ORDER BY ua.timestamp DESC 
+                LIMIT 20
+            """
+        },
+        "screen_time_responses": {
+            "description": "Get responses about screen time habits",
+            "sql": """
+                SELECT u.user_id, l.lesson_number, ur.response_text, ur.timestamp
+                FROM users u 
+                JOIN user_responses ur ON u.id = ur.user_id 
+                JOIN questions q ON ur.question_id = q.id 
+                JOIN lessons l ON q.lesson_id = l.id 
+                WHERE ur.response_text ILIKE '%screen%' 
+                OR ur.response_text ILIKE '%phone%' 
+                OR ur.response_text ILIKE '%device%'
+                ORDER BY ur.timestamp DESC 
+                LIMIT 30
+            """
+        }
+    }
 
 def execute_query(sql_query):
     """Execute a SQL query and return results"""
@@ -141,7 +156,17 @@ def execute_query(sql_query):
         with conn.cursor() as cur:
             cur.execute(sql_query)
             results = cur.fetchall()
-            return [dict(row) for row in results]
+            
+            # Convert datetime objects to strings for JSON serialization
+            def convert_datetime(obj):
+                if hasattr(obj, 'isoformat'):
+                    return obj.isoformat()
+                return obj
+            
+            def clean_dict(d):
+                return {k: convert_datetime(v) for k, v in d.items()}
+            
+            return [clean_dict(dict(row)) for row in results]
     except Exception as e:
         raise Exception(f"Query execution failed: {str(e)}")
     finally:
@@ -151,28 +176,33 @@ def get_llm_intent_and_sql(user_message: str, schema: Dict, sample_data: Dict) -
     """Use LLM to determine intent and generate SQL"""
     client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
-    # Create context with schema and preloaded data
+    # Create context with schema and preloaded queries
     context = f"""
 Database Schema:
 {json.dumps(schema, indent=2)}
 
-Preloaded Data Available:
+Preloaded Queries Available:
 {json.dumps(sample_data, indent=2)}
 
 User Question: {user_message}
 
 Instructions:
 1. Analyze the user's intent
-2. If data is in preloaded_data, use it instead of SQL
-3. Only generate SQL if absolutely necessary
-4. Return JSON with: {{"intent": "description", "sql": "SELECT query or 'use_preloaded'", "explanation": "what this does"}}
+2. Choose the most appropriate preloaded query OR generate custom SQL
+3. Return JSON with: {{"intent": "description", "sql": "query_name or custom SQL", "explanation": "what this does"}}
+
+Available Preloaded Queries:
+- stats: Get current database statistics
+- habit_changes: Get evidence of habit changes across lessons
+- top_users: Get most engaged users
+- lesson_completion: Get lesson completion rates
+- recent_activity: Get recent user activity
+- screen_time_responses: Get responses about screen time habits
 
 Rules:
-- Prefer preloaded data over SQL queries
-- For habit changes, use habit_responses data
-- For user stats, use top_users data
-- For lesson info, use lessons data
-- Only generate SQL if specific data not in preloaded_data
+- Use preloaded query names when they match the intent
+- Generate custom SQL only if no preloaded query fits
+- Always execute fresh queries for live data
 """
     
     response = client.chat.completions.create(
@@ -234,19 +264,22 @@ async def chat(request: ChatRequest):
         # Initialize OpenAI client
         client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
-        # Get preloaded data (comprehensive context)
-        preloaded_data = get_preloaded_data()
+        # Get preloaded queries and schema
+        preloaded_queries = get_preloaded_queries()
         schema = get_database_schema()
         
         # Use LLM to determine intent and generate SQL
-        llm_result = get_llm_intent_and_sql(request.message, schema, preloaded_data)
+        llm_result = get_llm_intent_and_sql(request.message, schema, preloaded_queries)
         
-        # Execute the generated SQL or use preloaded data
+        # Execute the generated SQL or use preloaded queries
         try:
-            if llm_result['sql'] == 'use_preloaded':
-                data_summary = "Using preloaded data"
-                query_results = []
+            if llm_result['sql'] in preloaded_queries:
+                # Use preloaded query
+                query_sql = preloaded_queries[llm_result['sql']]['sql']
+                query_results = execute_query(query_sql)
+                data_summary = format_query_results(query_results, llm_result['intent'])
             else:
+                # Execute custom SQL
                 query_results = execute_query(llm_result['sql'])
                 data_summary = format_query_results(query_results, llm_result['intent'])
         except Exception as e:
@@ -259,24 +292,20 @@ async def chat(request: ChatRequest):
                 "role": "system",
                 "content": f"""You are Seven, an AI analytics assistant. Give concise, data-driven answers.
 
-PRELOADED DATA (use this instead of making queries):
-{json.dumps(preloaded_data, indent=2)}
+PRELOADED QUERIES (use these for live data):
+{json.dumps(preloaded_queries, indent=2)}
 
 Database Schema:
 {json.dumps(schema, indent=2)}
 
-KEY INSIGHTS (pre-analyzed):
-- {preloaded_data['stats']['total_users']} users across {preloaded_data['stats']['total_lessons']} lessons
-- {preloaded_data['stats']['total_responses']} meaningful responses analyzed
-- Top users: {', '.join([u['user_id'] for u in preloaded_data['top_users'][:3]])}
-- Key habit changes found in responses (see habit_responses data)
-
 Instructions:
-- Use preloaded data - don't make new queries unless absolutely necessary
+- Use preloaded query names (stats, habit_changes, top_users, etc.) when they match the intent
+- Always execute fresh queries for live data - never use stale data
 - Keep responses under 100 words
 - Be specific with numbers and examples
-- For habit changes, reference the habit_responses data
-- If user asks for specific analysis, use the preloaded data first"""
+- For habit changes, use the habit_changes query
+- For user engagement, use the top_users query
+- For recent activity, use the recent_activity query"""
             }
         ]
         
