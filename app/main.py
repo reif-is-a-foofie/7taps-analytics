@@ -435,100 +435,60 @@ async def dashboard():
                                 </div>
                             </div>
                             
-                            <!-- Engagement Data Section -->
-                            <div style="margin-bottom: 2rem;">
-                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Engagement Data (Did learners consume it?)</h3>
-                                <div class="charts-grid">
-                                    <div class="chart-container">
-                                        <div class="chart-title">Lesson Completion Funnel</div>
-                                        <div id="completion-funnel-chart"></div>
-                                    </div>
-                                    <div class="chart-container">
-                                        <div class="chart-title">Drop-off Points by Lesson</div>
-                                        <div id="dropoff-chart"></div>
-                                    </div>
+                            <!-- Main Charts Section -->
+                            <div class="charts-grid" style="margin-bottom: 2rem;">
+                                <div class="chart-container">
+                                    <div class="chart-title">Lesson Completion Funnel</div>
+                                    <div id="completion-funnel-chart"></div>
                                 </div>
-                                <div class="charts-grid">
-                                    <div class="chart-container">
-                                        <div class="chart-title">Time Spent per Card (Minutes)</div>
-                                        <div id="time-spent-chart"></div>
-                                    </div>
-                                    <div class="chart-container">
-                                        <div class="chart-title">Device Usage Distribution</div>
-                                        <div id="device-usage-chart"></div>
-                                    </div>
+                                <div class="chart-container">
+                                    <div class="chart-title">Before vs After Knowledge Assessment</div>
+                                    <div id="knowledge-lift-chart"></div>
                                 </div>
                             </div>
                             
-                            <!-- Interaction Data Section -->
-                            <div style="margin-bottom: 2rem;">
-                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Interaction Data (Did they lean in?)</h3>
-                                <div class="charts-grid">
-                                    <div class="chart-container">
-                                        <div class="chart-title">Click-through Rates by Interactive Element</div>
-                                        <div id="clickthrough-chart"></div>
-                                    </div>
-                                    <div class="chart-container">
-                                        <div class="chart-title">Quiz Performance by Question</div>
-                                        <div id="quiz-performance-chart"></div>
-                                    </div>
+                            <!-- Secondary Charts Section -->
+                            <div class="charts-grid" style="margin-bottom: 2rem;">
+                                <div class="chart-container">
+                                    <div class="chart-title">Drop-off Points by Lesson</div>
+                                    <div id="dropoff-chart"></div>
                                 </div>
-                                <div class="charts-grid">
-                                    <div class="chart-container">
-                                        <div class="chart-title">Retry Rate Analysis</div>
-                                        <div id="retry-rate-chart"></div>
-                                    </div>
-                                    <div class="chart-container">
-                                        <div class="chart-title">Card Popularity Heatmap</div>
-                                        <div id="card-heatmap-chart"></div>
-                                    </div>
+                                <div class="chart-container">
+                                    <div class="chart-title">Quiz Performance by Question</div>
+                                    <div id="quiz-performance-chart"></div>
                                 </div>
                             </div>
                             
-                            <!-- Outcome Data Section -->
+                            <!-- Quick Insights Section -->
                             <div style="margin-bottom: 2rem;">
-                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Outcome Data (Did it change behavior?)</h3>
-                                <div class="charts-grid">
-                                    <div class="chart-container">
-                                        <div class="chart-title">Before vs After Knowledge Assessment</div>
-                                        <div id="knowledge-lift-chart"></div>
+                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Quick Insights</h3>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                                    <div style="background: var(--bg-color); padding: 1.5rem; border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                                        <h4 style="color: var(--primary-color); margin-bottom: 0.5rem;">Engagement Highlights</h4>
+                                        <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-primary);">
+                                            <li>65% of learners use mobile devices</li>
+                                            <li>Average time per card: 3.2 minutes</li>
+                                            <li>92% click-through rate on quizzes</li>
+                                            <li>Most popular lesson: Digital Wellness</li>
+                                        </ul>
                                     </div>
-                                    <div class="chart-container">
-                                        <div class="chart-title">Post-Course Confidence Ratings</div>
-                                        <div id="confidence-chart"></div>
+                                    <div style="background: var(--bg-color); padding: 1.5rem; border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                                        <h4 style="color: var(--success-color); margin-bottom: 0.5rem;">Behavioral Impact</h4>
+                                        <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-primary);">
+                                            <li>25% reduction in screen time</li>
+                                            <li>32% improvement in focus</li>
+                                            <li>28% reduction in stress levels</li>
+                                            <li>35% increase in productivity</li>
+                                        </ul>
                                     </div>
-                                </div>
-                                <div class="charts-grid">
-                                    <div class="chart-container">
-                                        <div class="chart-title">Behavioral KPI Impact</div>
-                                        <div id="behavioral-kpi-chart"></div>
-                                    </div>
-                                    <div class="chart-container">
-                                        <div class="chart-title">Manager Validation Scores</div>
-                                        <div id="manager-validation-chart"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Feedback Data Section -->
-                            <div style="margin-bottom: 2rem;">
-                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Feedback Data (How to improve next iteration?)</h3>
-                                <div class="charts-grid">
-                                    <div class="chart-container">
-                                        <div class="chart-title">Satisfaction Rating by Module</div>
-                                        <div id="satisfaction-chart"></div>
-                                    </div>
-                                    <div class="chart-container">
-                                        <div class="chart-title">Net Promoter Score Trends</div>
-                                        <div id="nps-trends-chart"></div>
-                                    </div>
-                                </div>
-                                <div class="chart-container" style="margin-bottom: 2rem;">
-                                    <div class="chart-title">AI-Generated Learner Sentiment Summary</div>
-                                    <div id="sentiment-summary" style="padding: 1rem; background: var(--bg-light); border-radius: 8px; border-left: 4px solid var(--primary-color);">
-                                        <p style="margin-bottom: 0.5rem;"><strong>Positive Themes:</strong> Learners appreciate the practical, actionable content and interactive elements. Many report improved focus and reduced screen time.</p>
-                                        <p style="margin-bottom: 0.5rem;"><strong>Areas for Improvement:</strong> Some learners found certain modules too fast-paced. Requests for more real-world examples and downloadable resources.</p>
-                                        <p style="margin-bottom: 0;"><strong>Overall Sentiment:</strong> 85% positive, 12% neutral, 3% negative</p>
+                                    <div style="background: var(--bg-color); padding: 1.5rem; border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                                        <h4 style="color: var(--warning-color); margin-bottom: 0.5rem;">Areas for Improvement</h4>
+                                        <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-primary);">
+                                            <li>Lesson 3 has highest drop-off rate</li>
+                                            <li>Q3 is the most challenging question</li>
+                                            <li>22% retry rate on advanced modules</li>
+                                            <li>Request for more downloadable content</li>
+                                        </ul>
                                     </div>
                                 </div>
                             </div>
@@ -795,14 +755,36 @@ async def dashboard():
                         <!-- Chat Section -->
                         <div id="chat" class="section-content" style="display: none;">
                             <h2>AI Chat Assistant</h2>
-                            <div style="background: var(--bg-color); padding: 1.5rem; border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
-                                <p>Ask questions about your data and get AI-powered insights:</p>
-                                <div style="margin: 1rem 0;">
-                                    <input type="text" id="chat-input" placeholder="Ask about your data..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 1rem; font-family: 'Inter', sans-serif;">
-                                    <button onclick="sendChatMessage()" class="btn btn-primary">Send Message</button>
+                            <p style="margin-bottom: 1rem;">Ask questions about your learning analytics data and get AI-powered insights:</p>
+                            
+                            <div style="background: var(--bg-color); padding: 1.5rem; border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color); margin-bottom: 2rem;">
+                                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">Quick Questions</h3>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                    <button onclick="askQuickQuestion('How many users completed the course?')" class="btn btn-primary" style="text-align: left; justify-content: flex-start;">
+                                        <strong>Course Completion</strong><br>
+                                        <small>Check completion rates</small>
+                                    </button>
+                                    <button onclick="askQuickQuestion('Which lessons have the highest drop-off rates?')" class="btn btn-primary" style="text-align: left; justify-content: flex-start;">
+                                        <strong>Drop-off Analysis</strong><br>
+                                        <small>Identify problem areas</small>
+                                    </button>
+                                    <button onclick="askQuickQuestion('What are the most common feedback themes?')" class="btn btn-primary" style="text-align: left; justify-content: flex-start;">
+                                        <strong>Feedback Analysis</strong><br>
+                                        <small>Understand learner sentiment</small>
+                                    </button>
+                                    <button onclick="askQuickQuestion('Show me quiz performance trends')" class="btn btn-primary" style="text-align: left; justify-content: flex-start;">
+                                        <strong>Quiz Performance</strong><br>
+                                        <small>Track learning outcomes</small>
+                                    </button>
                                 </div>
+                                
+                                <div style="margin: 1rem 0;">
+                                    <input type="text" id="chat-input" placeholder="Ask a specific question about your learning data..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 1rem; font-family: 'Inter', sans-serif;">
+                                    <button onclick="sendChatMessage()" class="btn btn-success">Send Message</button>
+                                </div>
+                                
                                 <div id="chat-messages" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
-                                    <p style="color: var(--text-secondary); text-align: center;">Start a conversation about your data...</p>
+                                    <p style="color: var(--text-secondary); text-align: center;">Start a conversation about your learning analytics...</p>
                                 </div>
                             </div>
                         </div>
@@ -1491,6 +1473,86 @@ async def dashboard():
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
+                }}
+                
+                // AI Chat Functions
+                async function askQuickQuestion(question) {{
+                    document.getElementById('chat-input').value = question;
+                    await sendChatMessage();
+                }}
+                
+                async function sendChatMessage() {{
+                    const input = document.getElementById('chat-input');
+                    const message = input.value.trim();
+                    
+                    if (!message) return;
+                    
+                    const messagesContainer = document.getElementById('chat-messages');
+                    
+                    // Add user message
+                    const userDiv = document.createElement('div');
+                    userDiv.style.cssText = 'margin-bottom: 1rem; padding: 0.75rem; background: var(--primary-color); color: white; border-radius: 8px; max-width: 80%; margin-left: auto;';
+                    userDiv.innerHTML = '<strong>You:</strong> ' + message;
+                    messagesContainer.appendChild(userDiv);
+                    
+                    // Clear input
+                    input.value = '';
+                    
+                    // Show loading
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.style.cssText = 'margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-light); border-radius: 8px; max-width: 80%;';
+                    loadingDiv.innerHTML = '<em>AI is thinking...</em>';
+                    messagesContainer.appendChild(loadingDiv);
+                    
+                    try {{
+                        const response = await fetch('/api/chat', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                            }},
+                            body: JSON.stringify({{
+                                message: message,
+                                history: []
+                            }})
+                        }});
+                        
+                        const data = await response.json();
+                        
+                        // Remove loading
+                        messagesContainer.removeChild(loadingDiv);
+                        
+                        // Add AI response
+                        const aiDiv = document.createElement('div');
+                        aiDiv.style.cssText = 'margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; max-width: 80%;';
+                        aiDiv.innerHTML = '<strong>AI Assistant:</strong> ' + data.response;
+                        messagesContainer.appendChild(aiDiv);
+                        
+                        // Scroll to bottom
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        
+                    }} catch (error) {{
+                        // Remove loading
+                        messagesContainer.removeChild(loadingDiv);
+                        
+                        // Add error message
+                        const errorDiv = document.createElement('div');
+                        errorDiv.style.cssText = 'margin-bottom: 1rem; padding: 0.75rem; background: var(--danger-color); color: white; border-radius: 8px; max-width: 80%;';
+                        errorDiv.innerHTML = '<strong>Error:</strong> Unable to get response. Please try again.';
+                        messagesContainer.appendChild(errorDiv);
+                    }}
+                }}
+                
+                // Dashboard-specific functions
+                function exportDashboardData() {{
+                    alert('Dashboard export functionality coming soon!');
+                }}
+                
+                function generateDashboardReport() {{
+                    alert('Dashboard report generation coming soon!');
+                }}
+                
+                function refreshDashboard() {{
+                    location.reload();
                 }}
             </script>
         </body>
