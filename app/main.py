@@ -65,17 +65,20 @@ async def dashboard():
         metrics = cursor.fetchone()
         
         # Get lesson engagement data from new normalized tables
-        cursor.execute("""
+        from app.config import get_extension_key
+        lesson_number_key = get_extension_key("lesson_number")
+        
+        cursor.execute(f"""
             SELECT 
                 l.lesson_name,
                 COUNT(DISTINCT s.actor_id) as response_count
             FROM lessons l
             LEFT JOIN context_extensions_new ce ON l.lesson_number = CAST(ce.extension_value AS INTEGER)
             LEFT JOIN statements_new s ON ce.statement_id = s.statement_id
-            WHERE ce.extension_key = 'https://7taps.com/lesson-number'
+            WHERE ce.extension_key = %s
             GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
-        """)
+        """, (lesson_number_key,))
         lesson_data = cursor.fetchall()
         
         # Get behavior priorities
@@ -277,45 +280,94 @@ async def dashboard():
                 </div>
                 
                 <div id="explorer" class="tab-content" style="display: none;">
-                    <h2>🔍 Data Explorer</h2>
-                    <p style="margin-bottom: 1rem;">Interactive data exploration with filtering, sorting, and export capabilities:</p>
+                    <h2>🔍 HR Analytics Explorer</h2>
+                    <p style="margin-bottom: 1rem;">Interactive analytics for HR insights - click charts to filter data, export reports, and drill down into employee engagement:</p>
                     
-                    <div class="explorer-controls" style="margin-bottom: 2rem;">
+                    <!-- Quick Insights Panel -->
+                    <div class="quick-insights" style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
+                        <h3 style="margin-bottom: 1rem;">📊 Quick Insights</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                            <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                                <div style="font-size: 2rem; font-weight: bold;" id="total-participants">-</div>
+                                <div style="font-size: 0.9rem;">Total Participants</div>
+                            </div>
+                            <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                                <div style="font-size: 2rem; font-weight: bold;" id="avg-engagement">-</div>
+                                <div style="font-size: 0.9rem;">Avg Engagement</div>
+                            </div>
+                            <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                                <div style="font-size: 2rem; font-weight: bold;" id="completion-rate">-</div>
+                                <div style="font-size: 0.9rem;">Completion Rate</div>
+                            </div>
+                            <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                                <div style="font-size: 2rem; font-weight: bold;" id="top-lesson">-</div>
+                                <div style="font-size: 0.9rem;">Top Lesson</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Interactive Charts Section -->
+                    <div class="charts-section" style="margin-bottom: 2rem;">
+                        <h3 style="margin-bottom: 1rem;">📈 Interactive Analytics</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+                            <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <h4 style="margin-bottom: 1rem;">Lesson Engagement (Click to Filter)</h4>
+                                <div id="interactive-lesson-chart"></div>
+                            </div>
+                            <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <h4 style="margin-bottom: 1rem;">Response Patterns</h4>
+                                <div id="response-pattern-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Enhanced Filter Panel -->
+                    <div class="explorer-controls" style="margin-bottom: 2rem; padding: 1.5rem; background: #f7fafc; border-radius: 8px;">
+                        <h3 style="margin-bottom: 1rem;">🔍 Filter & Explore Data</h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                             <div>
-                                <label for="data-table-select" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Data Table:</label>
+                                <label for="data-table-select" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">📋 Data View:</label>
                                 <select id="data-table-select" onchange="loadTableData()" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 4px;">
-                                    <option value="">Select a table...</option>
-                                    <option value="lessons">Lessons</option>
-                                    <option value="questions">Questions</option>
-                                    <option value="users">Users</option>
-                                    <option value="user_activities">User Activities</option>
-                                    <option value="user_responses">User Responses</option>
+                                    <option value="">Choose what to explore...</option>
+                                    <option value="user_responses">📝 Employee Responses</option>
+                                    <option value="lessons">📚 Lesson Overview</option>
+                                    <option value="users">👥 Participant List</option>
+                                    <option value="user_activities">📊 Activity Log</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="lesson-filter" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Filter by Lesson:</label>
+                                <label for="lesson-filter" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">📚 Filter by Lesson:</label>
                                 <select id="lesson-filter" onchange="applyFilters()" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 4px;">
                                     <option value="">All Lessons</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="user-filter" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Filter by User:</label>
+                                <label for="user-filter" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">👤 Filter by Participant:</label>
                                 <select id="user-filter" onchange="applyFilters()" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 4px;">
-                                    <option value="">All Users</option>
+                                    <option value="">All Participants</option>
                                 </select>
                             </div>
+                            <div>
+                                <label for="search-filter" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">🔍 Search Responses:</label>
+                                <input type="text" id="search-filter" placeholder="Search in responses..." onkeyup="applyFilters()" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 4px;">
+                            </div>
                         </div>
-                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                            <button onclick="exportData()" style="padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">📊 Export CSV</button>
-                            <button onclick="refreshData()" style="padding: 0.5rem 1rem; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer;">🔄 Refresh</button>
-                            <button onclick="clearFilters()" style="padding: 0.5rem 1rem; background: #e53e3e; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Clear Filters</button>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button onclick="exportData()" style="padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">📊 Export to Excel</button>
+                            <button onclick="generateReport()" style="padding: 0.75rem 1.5rem; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">📋 Generate Report</button>
+                            <button onclick="refreshData()" style="padding: 0.75rem 1.5rem; background: #ed8936; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">🔄 Refresh Data</button>
+                            <button onclick="clearFilters()" style="padding: 0.75rem 1.5rem; background: #e53e3e; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">🗑️ Clear All</button>
                         </div>
+                    </div>
+                    
+                    <!-- Status Display -->
+                    <div id="filter-status" style="margin-bottom: 1rem; padding: 0.75rem; background: #e6fffa; border-left: 4px solid #38b2ac; border-radius: 4px; color: #2c7a7b;">
+                        📊 Ready to explore data
                     </div>
                     
                     <div class="data-table-container" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
                         <div id="data-table" style="padding: 1rem;">
-                            <p style="text-align: center; color: #718096;">Select a data table to begin exploring...</p>
+                            <p style="text-align: center; color: #718096;">Select a data view to begin exploring...</p>
                         </div>
                     </div>
                     
@@ -444,14 +496,72 @@ async def dashboard():
                     initializeDataExplorer();
                 }});
                 
-                // Data Explorer Functions
+                // Enhanced HR Analytics Explorer Functions
                 let currentData = [];
                 let currentTable = '';
+                let filteredData = [];
                 
                 async function initializeDataExplorer() {{
                     // Load lesson options
                     await loadLessonOptions();
                     await loadUserOptions();
+                    
+                    // Initialize interactive charts
+                    createInteractiveCharts();
+                    updateQuickInsights();
+                }}
+                
+                function createInteractiveCharts() {{
+                    // Interactive lesson engagement chart
+                    Plotly.newPlot('interactive-lesson-chart', [{{
+                        type: 'bar',
+                        x: lessonNames,
+                        y: lessonCounts,
+                        marker: {{color: lessonCounts, colorscale: 'Blues'}},
+                        hovertemplate: '<b>%{x}</b><br>Engagement: %{y} participants<extra></extra>'
+                    }}], {{
+                        title: 'Click any bar to filter data',
+                        height: 300,
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Participants'}},
+                        clickmode: 'event'
+                    }});
+                    
+                    // Response pattern chart
+                    Plotly.newPlot('response-pattern-chart', [{{
+                        type: 'pie',
+                        labels: behaviorLabels,
+                        values: behaviorValues,
+                        hole: 0.4,
+                        hovertemplate: '<b>%{label}</b><br>Responses: %{value}<extra></extra>'
+                    }}], {{
+                        title: 'Response Patterns by Category',
+                        height: 300
+                    }});
+                    
+                    // Add click handlers for interactive filtering
+                    document.getElementById('interactive-lesson-chart').on('plotly_click', function(data) {{
+                        const lessonName = data.points[0].x;
+                        const lessonIndex = lessonNames.indexOf(lessonName);
+                        if (lessonIndex !== -1) {{
+                            document.getElementById('lesson-filter').value = lessonIndex + 1;
+                            applyFilters();
+                        }}
+                    }});
+                }}
+                
+                function updateQuickInsights() {{
+                    // Calculate insights from current data
+                    const totalParticipants = lessonCounts.reduce((a, b) => a + b, 0);
+                    const avgEngagement = totalParticipants / lessonNames.length;
+                    const completionRate = Math.round((totalParticipants / (lessonNames.length * 10)) * 100);
+                    const topLessonIndex = lessonCounts.indexOf(Math.max(...lessonCounts));
+                    const topLesson = lessonNames[topLessonIndex];
+                    
+                    document.getElementById('total-participants').textContent = totalParticipants;
+                    document.getElementById('avg-engagement').textContent = avgEngagement.toFixed(1);
+                    document.getElementById('completion-rate').textContent = completionRate + '%';
+                    document.getElementById('top-lesson').textContent = topLesson.split(' ')[0] + '...';
                 }}
                 
                 async function loadTableData() {{
@@ -575,17 +685,37 @@ async def dashboard():
                 async function applyFilters() {{
                     const lessonFilter = document.getElementById('lesson-filter').value;
                     const userFilter = document.getElementById('user-filter').value;
+                    const searchFilter = document.getElementById('search-filter').value.toLowerCase();
                     
                     if (!currentTable || currentData.length === 0) return;
                     
-                    let filteredData = [...currentData];
+                    filteredData = [...currentData];
                     
+                    // Apply lesson filter
                     if (lessonFilter) {{
-                        filteredData = filteredData.filter(row => row.lesson_id == lessonFilter);
+                        filteredData = filteredData.filter(row => {{
+                            if (row.lesson_number) return row.lesson_number == lessonFilter;
+                            if (row.lesson_id) return row.lesson_id == lessonFilter;
+                            return false;
+                        }});
                     }}
                     
+                    // Apply user filter
                     if (userFilter) {{
-                        filteredData = filteredData.filter(row => row.user_id == userFilter);
+                        filteredData = filteredData.filter(row => {{
+                            if (row.user_id) return row.user_id == userFilter;
+                            if (row.id) return row.id == userFilter;
+                            return false;
+                        }});
+                    }}
+                    
+                    // Apply search filter
+                    if (searchFilter) {{
+                        filteredData = filteredData.filter(row => {{
+                            return Object.values(row).some(value => 
+                                value && value.toString().toLowerCase().includes(searchFilter)
+                            );
+                        }});
                     }}
                     
                     // Re-render with filtered data
@@ -602,17 +732,122 @@ async def dashboard():
                     document.getElementById('filtered-rows').textContent = filteredRows;
                     document.getElementById('unique-users').textContent = uniqueUsers;
                     document.getElementById('avg-responses').textContent = avgResponses;
+                    
+                    // Show filter status
+                    showFilterStatus();
+                }}
+                
+                function showFilterStatus() {{
+                    const lessonFilter = document.getElementById('lesson-filter').value;
+                    const userFilter = document.getElementById('user-filter').value;
+                    const searchFilter = document.getElementById('search-filter').value;
+                    
+                    let statusText = '';
+                    if (lessonFilter || userFilter || searchFilter) {{
+                        statusText = '🔍 Filters applied: ';
+                        const filters = [];
+                        if (lessonFilter) filters.push('Lesson ' + lessonFilter);
+                        if (userFilter) filters.push('User ' + userFilter);
+                        if (searchFilter) filters.push('Search: "' + searchFilter + '"');
+                        statusText += filters.join(', ');
+                    }} else {{
+                        statusText = '📊 Showing all data';
+                    }}
+                    
+                    // Update status display
+                    const statusElement = document.getElementById('filter-status');
+                    if (statusElement) {{
+                        statusElement.textContent = statusText;
+                    }}
                 }}
                 
                 function clearFilters() {{
                     document.getElementById('lesson-filter').value = '';
                     document.getElementById('user-filter').value = '';
+                    document.getElementById('search-filter').value = '';
                     
                     if (currentData.length > 0) {{
+                        filteredData = [...currentData];
                         const columns = Object.keys(currentData[0] || {{}});
                         renderDataTable(currentData, columns);
                         updateTableStats(currentData);
+                        showFilterStatus();
                     }}
+                }}
+                
+                function generateReport() {{
+                    if (!currentData || currentData.length === 0) {{
+                        alert('No data available to generate report');
+                        return;
+                    }}
+                    
+                    // Create a comprehensive HR report
+                    const reportData = {{
+                        generated: new Date().toISOString(),
+                        totalParticipants: new Set(currentData.map(row => row.user_id || row.id)).size,
+                        totalResponses: currentData.length,
+                        lessonBreakdown: {{}},
+                        topInsights: []
+                    }};
+                    
+                    // Analyze lesson breakdown
+                    currentData.forEach(row => {{
+                        const lessonNum = row.lesson_number || row.lesson_id;
+                        if (lessonNum) {{
+                            if (!reportData.lessonBreakdown[lessonNum]) {{
+                                reportData.lessonBreakdown[lessonNum] = 0;
+                            }}
+                            reportData.lessonBreakdown[lessonNum]++;
+                        }}
+                    }});
+                    
+                    // Generate insights
+                    const totalLessons = Object.keys(reportData.lessonBreakdown).length;
+                    const avgResponsesPerLesson = totalLessons > 0 ? (reportData.totalResponses / totalLessons).toFixed(1) : 0;
+                    
+                    reportData.topInsights = [
+                        'Total engagement: ' + reportData.totalParticipants + ' participants',
+                        'Average responses per lesson: ' + avgResponsesPerLesson,
+                        'Most active lesson: Lesson ' + Object.keys(reportData.lessonBreakdown).reduce((a, b) => reportData.lessonBreakdown[a] > reportData.lessonBreakdown[b] ? a : b),
+                        'Data freshness: Generated on ' + new Date().toLocaleDateString()
+                    ];
+                    
+                    // Create report HTML
+                    let reportHTML = '<html><head><title>HR Analytics Report</title></head>';
+                    reportHTML += '<body style="font-family: Arial, sans-serif; padding: 20px;">';
+                    reportHTML += '<h1>📊 HR Analytics Report</h1>';
+                    reportHTML += '<p><strong>Generated:</strong> ' + new Date().toLocaleString() + '</p>';
+                    reportHTML += '<h2>📈 Executive Summary</h2><ul>';
+                    reportData.topInsights.forEach(insight => {{
+                        reportHTML += '<li>' + insight + '</li>';
+                    }});
+                    reportHTML += '</ul>';
+                    reportHTML += '<h2>📚 Lesson Breakdown</h2>';
+                    reportHTML += '<table border="1" style="border-collapse: collapse; width: 100%;">';
+                    reportHTML += '<tr><th>Lesson</th><th>Responses</th></tr>';
+                    Object.entries(reportData.lessonBreakdown).forEach(([lesson, count]) => {{
+                        reportHTML += '<tr><td>Lesson ' + lesson + '</td><td>' + count + '</td></tr>';
+                    }});
+                    reportHTML += '</table>';
+                    reportHTML += '<h2>📝 Sample Responses</h2>';
+                    reportHTML += '<div style="max-height: 300px; overflow-y: auto;">';
+                    currentData.slice(0, 10).forEach(row => {{
+                        reportHTML += '<p><strong>' + (row.user_id || 'Anonymous') + ':</strong> ' + (row.response_text || row.response || 'No response text') + '</p>';
+                    }});
+                    reportHTML += '</div></body></html>';
+                    
+                    // Download report
+                    const blob = new Blob([reportHTML], {{ type: 'text/html' }});
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'HR_Analytics_Report_' + new Date().toISOString().split('T')[0] + '.html';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    alert('📋 HR Report generated and downloaded!');
                 }}
                 
                 function refreshData() {{
@@ -1059,4 +1294,5 @@ app.include_router(data_import_ui_router, tags=["Data Import UI"])
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    from app.config import settings
+    uvicorn.run(app, host="0.0.0.0", port=settings.APP_PORT) 
