@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seven Analytics - AI Assistant</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -19,8 +20,7 @@
         }
 
         .chat-container {
-            max-width: 800px;
-            margin: 0 auto;
+            margin-left: 280px;
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -184,31 +184,13 @@
             position: fixed;
             left: 0;
             top: 0;
-            width: 250px;
+            width: 280px;
             height: 100vh;
             background: #f7fafc;
             border-right: 1px solid #e2e8f0;
-            padding: 1rem;
+            padding: 1.5rem;
             overflow-y: auto;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar.open {
-            transform: translateX(0);
-        }
-
-        .sidebar-toggle {
-            position: fixed;
-            left: 1rem;
-            top: 1rem;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            z-index: 1000;
+            z-index: 999;
         }
 
         .sidebar h3 {
@@ -240,6 +222,26 @@
         .sidebar-link:hover {
             background: #edf2f7;
         }
+        
+        .insight-btn {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        
+        .insight-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
 
         .suggested-query {
             display: block;
@@ -269,10 +271,21 @@
     </style>
 </head>
 <body>
-    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <!-- Sidebar always visible -->
     
     <div class="sidebar" id="sidebar">
         <h3>Seven Analytics</h3>
+        
+        <div class="sidebar-section">
+            <h4>Quick Insights</h4>
+            <button class="insight-btn" onclick="askQuestion('how many users do we have')">📊 User Count</button>
+            <button class="insight-btn" onclick="askQuestion('what behaviors matter most to this cohort')">🎯 Behavior Priorities</button>
+            <button class="insight-btn" onclick="askQuestion('which lessons are most engaging')">📈 Lesson Engagement</button>
+            <button class="insight-btn" onclick="askQuestion('show me engagement health')">❤️ Engagement Health</button>
+            <button class="insight-btn" onclick="askQuestion('did students change behavior')">🔄 Student Impact</button>
+            <button class="insight-btn" onclick="askQuestion('show me unique student insights')">💡 Unique Insights</button>
+            <button class="insight-btn" onclick="askQuestion('show me habit changes')">🌱 Habit Changes</button>
+        </div>
         
         <div class="sidebar-section">
             <h4>Quick Links</h4>
@@ -344,18 +357,18 @@
             }
         }
 
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('open');
+        function askQuestion(question) {
+            document.getElementById('messageInput').value = question;
+            sendMessage();
         }
 
-        function addMessage(content, isUser = false) {
+        function addMessage(content, isUser = false, visualization = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
             
             const avatar = document.createElement('div');
             avatar.className = `avatar ${isUser ? 'user' : 'assistant'}`;
-            avatar.textContent = isUser ? 'U' : 'S';
+            avatar.textContent = isUser ? 'U' : '7';
             
             const messageContent = document.createElement('div');
             messageContent.className = 'message-content';
@@ -363,8 +376,26 @@
             
             messageDiv.appendChild(avatar);
             messageDiv.appendChild(messageContent);
-            messagesContainer.appendChild(messageDiv);
             
+            // Add visualization if provided
+            if (visualization && !isUser) {
+                try {
+                    const vizDiv = document.createElement('div');
+                    vizDiv.className = 'visualization';
+                    vizDiv.style.marginTop = '10px';
+                    vizDiv.style.width = '100%';
+                    vizDiv.style.height = '400px';
+                    
+                    const plotData = JSON.parse(visualization);
+                    Plotly.newPlot(vizDiv, plotData.data, plotData.layout, {responsive: true});
+                    
+                    messageDiv.appendChild(vizDiv);
+                } catch (error) {
+                    console.error('Visualization error:', error);
+                }
+            }
+            
+            messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
@@ -433,7 +464,7 @@
 
                 const data = await response.json();
                 hideTypingIndicator();
-                addMessage(data.response);
+                addMessage(data.response, false, data.visualization);
 
             } catch (error) {
                 console.error('Error:', error);
