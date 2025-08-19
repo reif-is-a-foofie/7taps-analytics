@@ -146,6 +146,47 @@ def get_preloaded_queries():
                 ORDER BY ur.timestamp DESC 
                 LIMIT 30
             """
+        },
+        "lesson_details": {
+            "description": "Get lesson details with questions and sample responses",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    q.question_number,
+                    q.question_text,
+                    ur.response_text,
+                    u.user_id,
+                    ur.timestamp
+                FROM lessons l
+                LEFT JOIN questions q ON l.id = q.lesson_id
+                LEFT JOIN user_responses ur ON q.id = ur.question_id
+                LEFT JOIN users u ON ur.user_id = u.id
+                WHERE l.lesson_number = 1
+                ORDER BY q.question_number, ur.timestamp DESC
+                LIMIT 20
+            """
+        },
+        "lesson_details": {
+            "description": "Get lesson details with questions and sample responses",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    q.question_number,
+                    q.question_text,
+                    COUNT(DISTINCT ur.user_id) as response_count,
+                    ur.response_text as sample_response,
+                    ur.timestamp
+                FROM lessons l
+                LEFT JOIN questions q ON l.id = q.lesson_id
+                LEFT JOIN user_responses ur ON q.id = ur.question_id
+                WHERE l.lesson_number = 1
+                AND ur.response_text IS NOT NULL
+                AND ur.response_text != ''
+                ORDER BY l.lesson_number, q.question_number, ur.timestamp DESC
+                LIMIT 20
+            """
         }
     }
 
@@ -207,6 +248,7 @@ EXAMPLE RESPONSES:
 - "how many users" → {{"intent": "user_count", "sql": "stats", "explanation": "Get total user count from database"}}
 - "show habit changes" → {{"intent": "habit_analysis", "sql": "habit_changes", "explanation": "Get evidence of habit changes"}}
 - "most engaged users" → {{"intent": "engagement_analysis", "sql": "top_users", "explanation": "Get most engaged users"}}
+- "first lesson details" → {{"intent": "lesson_analysis", "sql": "lesson_details", "explanation": "Get first lesson with questions and responses"}}
 """
     
     response = client.chat.completions.create(
@@ -302,18 +344,27 @@ async def chat(request: ChatRequest):
             data_summary = f"Query failed: {str(e)}"
             query_results = []
         
-        # Prepare conversation history with simplified context
+        # Prepare conversation history with dynamic schema context
+        # Create a simplified schema summary for the LLM
+        schema_summary = {}
+        for table_name, columns in schema.items():
+            schema_summary[table_name] = [col['column'] for col in columns[:5]]  # Limit to first 5 columns
+        
         messages = [
             {
                 "role": "system",
                 "content": f"""You are Seven, an AI analytics assistant. Give concise, data-driven answers.
 
-Available Queries: stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses
+Database Schema:
+{json.dumps(schema_summary, indent=2)}
+
+Available Queries: stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses, lesson_details
 
 Instructions:
 - Keep responses under 100 words
 - Be specific with numbers and examples
-- Use the query results provided to answer questions"""
+- Use the query results provided to answer questions
+- Reference the schema above to understand available data"""
             }
         ]
         
