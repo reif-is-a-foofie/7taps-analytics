@@ -74,10 +74,10 @@ async def dashboard():
             FROM lessons l
             LEFT JOIN context_extensions_new ce ON l.lesson_number = CAST(ce.extension_value AS INTEGER)
             LEFT JOIN statements_new s ON ce.statement_id = s.statement_id
-            WHERE ce.extension_key = %s
+            WHERE ce.extension_key = 'https://7taps.com/lesson-number'
             GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
-        """, (lesson_number_key,))
+        """)
         lesson_data = cursor.fetchall()
         
         # Get behavior priorities
