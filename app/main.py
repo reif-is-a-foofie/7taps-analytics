@@ -265,23 +265,23 @@ async def dashboard():
                 <p style="margin-bottom: 1rem;">Sample anonymized student reflections showing the impact of digital wellness lessons:</p>
                 <div class="insights">
                     <div style="margin-bottom: 1rem;">
-                        <strong>Digital Wellness Foundations:</strong>
+                        <strong>You're Here: Start Strong:</strong>
                         <p>"I realized how much time I spend on my phone without even thinking about it. This lesson helped me become more mindful."</p>
                     </div>
                     <div style="margin-bottom: 1rem;">
-                        <strong>Screen Habits Awareness:</strong>
+                        <strong>Where Is Your Attention Going?:</strong>
                         <p>"The screen time tracking exercise was eye-opening. I'm now setting daily limits and sticking to them."</p>
                     </div>
                     <div style="margin-bottom: 1rem;">
-                        <strong>Device Relationship:</strong>
+                        <strong>Own Your Mindset, Own Your Life:</strong>
                         <p>"I never thought about my relationship with technology before. Now I'm more intentional about when and how I use devices."</p>
                     </div>
                     <div style="margin-bottom: 1rem;">
-                        <strong>Productivity Focus:</strong>
+                        <strong>Focus = Superpower:</strong>
                         <p>"The focus techniques really work. I'm getting more done in less time and feeling less stressed."</p>
                     </div>
                     <div>
-                        <strong>Connection Balance:</strong>
+                        <strong>Boost IRL Connection:</strong>
                         <p>"I'm spending more quality time with family and less time scrolling. The difference is amazing."</p>
                     </div>
                 </div>
@@ -310,8 +310,8 @@ async def dashboard():
                 // Funnel chart
                 const funnelData = [{
                     type: 'funnel',
-                    y: ['Screen Habits Awareness', 'Connection Balance', 'Device Relationship', 'Digital Wellness Foundations', 'Productivity Focus'],
-                    x: [4900, 3481, 2916, 1600, 900],
+                    y: ['You\'re Here: Start Strong', 'Where Is Your Attention Going?', 'Own Your Mindset, Own Your Life', 'Future-Proof Your Health', 'Reclaim Your Rest', 'Focus = Superpower', 'Social Media + You', 'Less Stress. More Calm.', 'Boost IRL Connection', 'Celebrate Your Wins'],
+                    x: [4900, 4200, 3800, 3200, 2800, 2400, 2000, 1600, 1200, 900],
                     textinfo: 'value+percent initial'
                 }];
                 
@@ -325,10 +325,10 @@ async def dashboard():
                 // Completion chart
                 const completionData = [{
                     type: 'bar',
-                    x: ['Screen Habits Awareness', 'Connection Balance', 'Device Relationship', 'Digital Wellness Foundations', 'Productivity Focus'],
-                    y: [4900, 3481, 2916, 1600, 900],
+                    x: ['You\'re Here: Start Strong', 'Where Is Your Attention Going?', 'Own Your Mindset, Own Your Life', 'Future-Proof Your Health', 'Reclaim Your Rest', 'Focus = Superpower', 'Social Media + You', 'Less Stress. More Calm.', 'Boost IRL Connection', 'Celebrate Your Wins'],
+                    y: [4900, 4200, 3800, 3200, 2800, 2400, 2000, 1600, 1200, 900],
                     marker: {
-                        color: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe']
+                        color: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe']
                     }
                 }];
                 
@@ -358,9 +358,9 @@ async def dashboard():
                 // Heatmap chart
                 const heatmapData = [{
                     type: 'heatmap',
-                    z: [[1600, 4900, 2916, 900, 3481]],
-                    x: [1, 2, 3, 4, 5],
-                    y: ['Digital Wellness', 'Screen Habits', 'Device Relationship', 'Productivity', 'Connection Balance'],
+                    z: [[4900, 4200, 3800, 3200, 2800, 2400, 2000, 1600, 1200, 900]],
+                    x: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                    y: ['You\'re Here: Start Strong', 'Where Is Your Attention Going?', 'Own Your Mindset, Own Your Life', 'Future-Proof Your Health', 'Reclaim Your Rest', 'Focus = Superpower', 'Social Media + You', 'Less Stress. More Calm.', 'Boost IRL Connection', 'Celebrate Your Wins'],
                     colorscale: 'Blues'
                 }];
                 
@@ -472,20 +472,20 @@ async def dashboard():
                     {
                         type: 'bar',
                         name: 'Spring 2024',
-                        x: ['Digital Wellness', 'Screen Habits', 'Device Relationship', 'Productivity', 'Connection Balance'],
-                        y: [85, 92, 78, 70, 88]
+                        x: ['You\'re Here: Start Strong', 'Where Is Your Attention Going?', 'Own Your Mindset, Own Your Life', 'Future-Proof Your Health', 'Reclaim Your Rest', 'Focus = Superpower', 'Social Media + You', 'Less Stress. More Calm.', 'Boost IRL Connection', 'Celebrate Your Wins'],
+                        y: [85, 92, 78, 70, 88, 82, 75, 79, 84, 90]
                     },
                     {
                         type: 'bar',
                         name: 'Fall 2023',
-                        x: ['Digital Wellness', 'Screen Habits', 'Device Relationship', 'Productivity', 'Connection Balance'],
-                        y: [88, 90, 82, 75, 85]
+                        x: ['You\'re Here: Start Strong', 'Where Is Your Attention Going?', 'Own Your Mindset, Own Your Life', 'Future-Proof Your Health', 'Reclaim Your Rest', 'Focus = Superpower', 'Social Media + You', 'Less Stress. More Calm.', 'Boost IRL Connection', 'Celebrate Your Wins'],
+                        y: [88, 90, 82, 75, 85, 80, 78, 82, 87, 92]
                     },
                     {
                         type: 'bar',
                         name: 'Summer 2023',
-                        x: ['Digital Wellness', 'Screen Habits', 'Device Relationship', 'Productivity', 'Connection Balance'],
-                        y: [80, 85, 75, 68, 82]
+                        x: ['You\'re Here: Start Strong', 'Where Is Your Attention Going?', 'Own Your Mindset, Own Your Life', 'Future-Proof Your Health', 'Reclaim Your Rest', 'Focus = Superpower', 'Social Media + You', 'Less Stress. More Calm.', 'Boost IRL Connection', 'Celebrate Your Wins'],
+                        y: [80, 85, 75, 68, 82, 76, 72, 78, 83, 88]
                     }
                 ];
                 
