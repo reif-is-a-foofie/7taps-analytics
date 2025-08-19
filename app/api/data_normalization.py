@@ -50,12 +50,17 @@ class NormalizationStats(BaseModel):
     timestamp: datetime = datetime.utcnow()
 
 # Global normalizer instance
-normalizer = DataNormalizer()
+try:
+    normalizer = DataNormalizer()
+except Exception:
+    normalizer = None
 
 @router.post("/normalize/statement", response_model=NormalizationResponse)
 async def normalize_statement(request: NormalizationRequest):
     """Normalize a single xAPI statement."""
     try:
+        if not normalizer:
+            raise HTTPException(status_code=503, detail="Database not configured")
         await normalizer.process_statement_normalization(request.statement)
         
         return NormalizationResponse(
@@ -74,6 +79,8 @@ async def normalize_statement(request: NormalizationRequest):
 async def normalize_batch_statements(request: BatchNormalizationRequest):
     """Normalize a batch of xAPI statements."""
     try:
+        if not normalizer:
+            raise HTTPException(status_code=503, detail="Database not configured")
         processed_count = 0
         error_count = 0
         
@@ -100,6 +107,8 @@ async def normalize_batch_statements(request: BatchNormalizationRequest):
 async def setup_normalization_tables():
     """Create normalized tables for analytics."""
     try:
+        if not normalizer:
+            raise HTTPException(status_code=503, detail="Database not configured")
         await normalizer.create_normalized_tables()
         
         return NormalizationResponse(
@@ -115,6 +124,8 @@ async def setup_normalization_tables():
 async def get_normalization_stats():
     """Get normalization statistics."""
     try:
+        if not normalizer:
+            raise HTTPException(status_code=503, detail="Database not configured")
         stats = await normalizer.get_normalization_stats()
         
         return NormalizationStats(**stats)
