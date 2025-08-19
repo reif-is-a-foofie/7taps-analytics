@@ -355,7 +355,7 @@
             
             const avatar = document.createElement('div');
             avatar.className = `avatar ${isUser ? 'user' : 'assistant'}`;
-            avatar.textContent = isUser ? 'U' : 'S';
+            avatar.textContent = isUser ? 'U' : '7';
             
             const messageContent = document.createElement('div');
             messageContent.className = 'message-content';
@@ -375,11 +375,11 @@
             
             const avatar = document.createElement('div');
             avatar.className = 'avatar assistant';
-            avatar.textContent = 'S';
+            avatar.textContent = '7';
             
             const typingContent = document.createElement('div');
             typingContent.className = 'message-content';
-            typingContent.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+            typingContent.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div><div style="font-size: 0.9rem; color: #718096; margin-top: 0.5rem;">Seven is thinking...</div>';
             
             typingDiv.appendChild(avatar);
             typingDiv.appendChild(typingContent);
@@ -416,6 +416,9 @@
             showTypingIndicator();
 
             try {
+                // Add a minimum delay to show thinking indicator
+                const startTime = Date.now();
+                
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: {
@@ -432,6 +435,13 @@
                 }
 
                 const data = await response.json();
+                
+                // Ensure thinking indicator shows for at least 1 second
+                const elapsed = Date.now() - startTime;
+                if (elapsed < 1000) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 - elapsed));
+                }
+                
                 hideTypingIndicator();
                 addMessage(data.response);
 
@@ -474,9 +484,9 @@
                     dataStatus.innerHTML = `
                         <div style="color: #48bb78;">✓ Connected</div>
                         <div style="font-size: 0.8rem; color: #718096;">
-                            ${data.total_statements} statements<br>
-                            ${data.unique_users} users<br>
-                            ${data.total_lessons} lessons
+                            ${data.total_statements || 0} statements<br>
+                            ${data.unique_users || 0} users<br>
+                            ${data.total_lessons || 0} lessons
                         </div>
                     `;
                 } else {
