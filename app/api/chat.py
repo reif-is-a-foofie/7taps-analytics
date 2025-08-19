@@ -129,6 +129,8 @@ Rules:
 - Use proper JOINs between tables
 - Include LIMIT clauses for large result sets
 - Focus on the specific intent of the user
+- Note: lesson information is stored in context_extensions_new.extension_key = 'lesson_number' and context_extensions_new.extension_value contains the lesson number
+- Note: card information is stored in context_extensions_new.extension_key = 'card_number' and context_extensions_new.extension_value contains the card number
 """
     
     response = client.chat.completions.create(
@@ -183,10 +185,17 @@ async def chat(request: ChatRequest):
         schema = get_database_schema()
         sample_data = get_sample_data()
         
-        # Get basic stats for context
+        # Get basic stats for context - fix the queries to work with actual schema
         total_statements = execute_query("SELECT COUNT(*) as count FROM statements_new")[0]['count']
         unique_users = execute_query("SELECT COUNT(DISTINCT actor_id) as count FROM statements_new")[0]['count']
-        total_lessons = execute_query("SELECT COUNT(DISTINCT lesson_number) as count FROM context_extensions_new WHERE lesson_number IS NOT NULL")[0]['count']
+        
+        # Fix lesson count query - lesson_number is stored in extension_key/extension_value
+        lesson_count_result = execute_query("""
+            SELECT COUNT(DISTINCT extension_value) as count 
+            FROM context_extensions_new 
+            WHERE extension_key = 'lesson_number'
+        """)
+        total_lessons = lesson_count_result[0]['count'] if lesson_count_result else 0
         
         # Use LLM to determine intent and generate SQL
         llm_result = get_llm_intent_and_sql(request.message, schema, sample_data)
@@ -221,7 +230,8 @@ Instructions:
 - Be concise and actionable
 - If data is available, use it
 - If no data, say so clearly
-- Keep responses under 200 words"""
+- Keep responses under 200 words
+- Note: lesson information is stored in context_extensions_new.extension_key = 'lesson_number' and context_extensions_new.extension_value contains the lesson number"""
             }
         ]
         
