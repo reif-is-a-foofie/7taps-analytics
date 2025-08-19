@@ -167,6 +167,102 @@ def get_preloaded_queries():
                 LIMIT 20
             """
         },
+        "engagement_health": {
+            "description": "Overall engagement health - completion rates and drop-off analysis",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_reached,
+                    COUNT(DISTINCT ur.user_id) as users_responded,
+                    ROUND(COUNT(DISTINCT ur.user_id) * 100.0 / COUNT(DISTINCT ua.user_id), 1) as completion_rate
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                LEFT JOIN user_responses ur ON l.id = ur.lesson_id
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY l.lesson_number
+            """
+        },
+        "lesson_engagement": {
+            "description": "Which lessons are most/least engaging - response counts and activity",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(ua.id) as total_activities,
+                    COUNT(ur.id) as total_responses,
+                    COUNT(DISTINCT ua.user_id) as unique_users,
+                    ROUND(AVG(LENGTH(ur.response_text)), 1) as avg_response_length
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                LEFT JOIN user_responses ur ON l.id = ur.lesson_id
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY COUNT(ur.id) DESC
+            """
+        },
+        "behavior_priorities": {
+            "description": "Which behaviors (sleep, stress, focus) resonate most with cohort",
+            "sql": """
+                SELECT 
+                    CASE 
+                        WHEN ur.response_text ILIKE '%sleep%' THEN 'Sleep'
+                        WHEN ur.response_text ILIKE '%stress%' THEN 'Stress'
+                        WHEN ur.response_text ILIKE '%focus%' OR ur.response_text ILIKE '%productivity%' THEN 'Focus/Productivity'
+                        WHEN ur.response_text ILIKE '%screen%' OR ur.response_text ILIKE '%device%' THEN 'Screen Time'
+                        ELSE 'Other'
+                    END as behavior_category,
+                    COUNT(*) as mention_count,
+                    COUNT(DISTINCT ur.user_id) as unique_users
+                FROM user_responses ur
+                WHERE ur.response_text IS NOT NULL 
+                AND ur.response_text != ''
+                AND LENGTH(ur.response_text) > 10
+                GROUP BY behavior_category
+                ORDER BY mention_count DESC
+            """
+        },
+        "student_impact": {
+            "description": "Did students actually change behavior - pre/post insights",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ur.user_id) as students_engaged,
+                    COUNT(ur.id) as total_responses,
+                    COUNT(CASE WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 1 END) as positive_changes,
+                    ROUND(COUNT(CASE WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 1 END) * 100.0 / COUNT(ur.id), 1) as improvement_rate
+                FROM lessons l
+                LEFT JOIN user_responses ur ON l.id = ur.lesson_id
+                WHERE ur.response_text IS NOT NULL
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY l.lesson_number
+            """
+        },
+        "unique_insights": {
+            "description": "What unique student insights can we provide - vulnerability and reflection themes",
+            "sql": """
+                SELECT 
+                    ur.response_text,
+                    u.user_id,
+                    l.lesson_name,
+                    ur.timestamp
+                FROM user_responses ur
+                JOIN users u ON ur.user_id = u.id
+                JOIN questions q ON ur.question_id = q.id
+                JOIN lessons l ON q.lesson_id = l.id
+                WHERE ur.response_text IS NOT NULL 
+                AND ur.response_text != ''
+                AND LENGTH(ur.response_text) > 50
+                AND (ur.response_text ILIKE '%struggle%' 
+                     OR ur.response_text ILIKE '%difficult%'
+                     OR ur.response_text ILIKE '%challenge%'
+                     OR ur.response_text ILIKE '%hard%'
+                     OR ur.response_text ILIKE '%need%'
+                     OR ur.response_text ILIKE '%want%')
+                ORDER BY ur.timestamp DESC
+                LIMIT 15
+            """
+        },
         "lesson_details": {
             "description": "Get lesson details with questions and sample responses",
             "sql": """
@@ -249,6 +345,11 @@ EXAMPLE RESPONSES:
 - "show habit changes" → {{"intent": "habit_analysis", "sql": "habit_changes", "explanation": "Get evidence of habit changes"}}
 - "most engaged users" → {{"intent": "engagement_analysis", "sql": "top_users", "explanation": "Get most engaged users"}}
 - "first lesson details" → {{"intent": "lesson_analysis", "sql": "lesson_details", "explanation": "Get first lesson with questions and responses"}}
+- "engagement health" → {{"intent": "engagement_analysis", "sql": "engagement_health", "explanation": "Get completion rates and drop-off analysis"}}
+- "which lessons are most engaging" → {{"intent": "lesson_analysis", "sql": "lesson_engagement", "explanation": "Get lesson engagement rankings"}}
+- "what behaviors matter most" → {{"intent": "behavior_analysis", "sql": "behavior_priorities", "explanation": "Get behavior priority analysis"}}
+- "did students change behavior" → {{"intent": "impact_analysis", "sql": "student_impact", "explanation": "Get student behavior change evidence"}}
+- "unique student insights" → {{"intent": "insight_analysis", "sql": "unique_insights", "explanation": "Get vulnerable student reflections"}}
 """
     
     response = client.chat.completions.create(
@@ -268,7 +369,7 @@ EXAMPLE RESPONSES:
             raise ValueError("Invalid response format")
         
         # Ensure sql field is a valid preloaded query name
-        valid_queries = ['stats', 'habit_changes', 'top_users', 'lesson_completion', 'recent_activity', 'screen_time_responses', 'lesson_details']
+        valid_queries = ['stats', 'habit_changes', 'top_users', 'lesson_completion', 'recent_activity', 'screen_time_responses', 'lesson_details', 'engagement_health', 'lesson_engagement', 'behavior_priorities', 'student_impact', 'unique_insights']
         if result.get('sql') not in valid_queries:
             # Force use of stats query if invalid
             result['sql'] = 'stats'
@@ -358,7 +459,7 @@ async def chat(request: ChatRequest):
 Database Schema:
 {json.dumps(schema_summary, indent=2)}
 
-Available Queries: stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses, lesson_details
+Available Queries: stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses, lesson_details, engagement_health, lesson_engagement, behavior_priorities, student_impact, unique_insights
 
 Instructions:
 - Keep responses under 100 words
