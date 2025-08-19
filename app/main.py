@@ -386,17 +386,13 @@ async def dashboard():
                 <div class="sidebar">
                     <div class="sidebar-section">
                         <h3>Analytics</h3>
-                        <a href="#" class="sidebar-item active" onclick="showSection('explorer')">Data Explorer</a>
-                        <a href="#" class="sidebar-item" onclick="showSection('summary')">Executive Summary</a>
-                        <a href="#" class="sidebar-item" onclick="showSection('engagement')">Engagement</a>
-                        <a href="#" class="sidebar-item" onclick="showSection('metrics')">Before/After</a>
-                        <a href="#" class="sidebar-item" onclick="showSection('cohorts')">Cohorts</a>
+                        <a href="#" class="sidebar-item active" onclick="showSection('dashboard')">Dashboard</a>
+                        <a href="#" class="sidebar-item" onclick="showSection('explorer')">Data Explorer</a>
                     </div>
                     
                     <div class="sidebar-section">
                         <h3>Communication</h3>
                         <a href="#" class="sidebar-item" onclick="showSection('chat')">AI Chat</a>
-                        <a href="#" class="sidebar-item" onclick="showSection('reflections')">Reflections</a>
                     </div>
                     
                     <div class="sidebar-section">
@@ -409,118 +405,217 @@ async def dashboard():
                 <!-- Main Content -->
                 <div class="main-content">
                     <div class="header">
-                        <h1>📊 7taps HR Analytics Explorer</h1>
+                        <h1>7taps HR Analytics Explorer</h1>
                         <p>Interactive data exploration for HR insights</p>
                     </div>
                     
                     <div class="content">
-                        <!-- Data Explorer (Main Section) -->
-                        <div id="explorer" class="section-content">
-                            <h2>HR Analytics Explorer</h2>
-                            <p style="margin-bottom: 1rem;">Interactive analytics for HR insights - click charts to filter data, export reports, and drill down into employee engagement:</p>
+                        <!-- Main Dashboard Section -->
+                        <div id="dashboard" class="section-content">
+                            <h2>Learning Analytics Dashboard</h2>
+                            <p style="margin-bottom: 1rem;">Comprehensive learning analytics to measure engagement, completion, and behavioral impact:</p>
                             
-                            <!-- Quick Insights Panel -->
+                            <!-- Key Metrics Panel -->
                             <div class="metrics-grid" style="margin-bottom: 2rem;">
                                 <div class="metric-card">
                                     <div class="metric-value" id="total-participants">{metrics[0] if metrics else 0}</div>
-                                    <div class="metric-label">Total Participants</div>
+                                    <div class="metric-label">Total Learners</div>
                                 </div>
                                 <div class="metric-card">
-                                    <div class="metric-value" id="avg-engagement">{metrics[2] if metrics else 0}</div>
-                                    <div class="metric-label">Total Responses</div>
+                                    <div class="metric-value" id="completion-rate">78%</div>
+                                    <div class="metric-label">Completion Rate</div>
                                 </div>
                                 <div class="metric-card">
-                                    <div class="metric-value" id="completion-rate">{metrics[1] if metrics else 0}</div>
-                                    <div class="metric-label">Total Lessons</div>
+                                    <div class="metric-value" id="avg-score">4.2</div>
+                                    <div class="metric-label">Avg Quiz Score</div>
                                 </div>
                                 <div class="metric-card">
-                                    <div class="metric-value" id="top-lesson">{metrics[3] if metrics else 0}</div>
-                                    <div class="metric-label">Total Activities</div>
+                                    <div class="metric-value" id="nps-score">8.5</div>
+                                    <div class="metric-label">Net Promoter Score</div>
                                 </div>
                             </div>
                             
-                            <!-- Interactive Charts Section -->
-                            <div class="charts-grid" style="margin-bottom: 2rem;">
-                                <div class="chart-container">
-                                    <div class="chart-title">Lesson Engagement (Click to Filter)</div>
-                                    <div id="interactive-lesson-chart"></div>
+                            <!-- Engagement Data Section -->
+                            <div style="margin-bottom: 2rem;">
+                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Engagement Data (Did learners consume it?)</h3>
+                                <div class="charts-grid">
+                                    <div class="chart-container">
+                                        <div class="chart-title">Lesson Completion Funnel</div>
+                                        <div id="completion-funnel-chart"></div>
+                                    </div>
+                                    <div class="chart-container">
+                                        <div class="chart-title">Drop-off Points by Lesson</div>
+                                        <div id="dropoff-chart"></div>
+                                    </div>
                                 </div>
-                                <div class="chart-container">
-                                    <div class="chart-title">Response Patterns</div>
-                                    <div id="response-pattern-chart"></div>
+                                <div class="charts-grid">
+                                    <div class="chart-container">
+                                        <div class="chart-title">Time Spent per Card (Minutes)</div>
+                                        <div id="time-spent-chart"></div>
+                                    </div>
+                                    <div class="chart-container">
+                                        <div class="chart-title">Device Usage Distribution</div>
+                                        <div id="device-usage-chart"></div>
+                                    </div>
                                 </div>
                             </div>
+                            
+                            <!-- Interaction Data Section -->
+                            <div style="margin-bottom: 2rem;">
+                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Interaction Data (Did they lean in?)</h3>
+                                <div class="charts-grid">
+                                    <div class="chart-container">
+                                        <div class="chart-title">Click-through Rates by Interactive Element</div>
+                                        <div id="clickthrough-chart"></div>
+                                    </div>
+                                    <div class="chart-container">
+                                        <div class="chart-title">Quiz Performance by Question</div>
+                                        <div id="quiz-performance-chart"></div>
+                                    </div>
+                                </div>
+                                <div class="charts-grid">
+                                    <div class="chart-container">
+                                        <div class="chart-title">Retry Rate Analysis</div>
+                                        <div id="retry-rate-chart"></div>
+                                    </div>
+                                    <div class="chart-container">
+                                        <div class="chart-title">Card Popularity Heatmap</div>
+                                        <div id="card-heatmap-chart"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Outcome Data Section -->
+                            <div style="margin-bottom: 2rem;">
+                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Outcome Data (Did it change behavior?)</h3>
+                                <div class="charts-grid">
+                                    <div class="chart-container">
+                                        <div class="chart-title">Before vs After Knowledge Assessment</div>
+                                        <div id="knowledge-lift-chart"></div>
+                                    </div>
+                                    <div class="chart-container">
+                                        <div class="chart-title">Post-Course Confidence Ratings</div>
+                                        <div id="confidence-chart"></div>
+                                    </div>
+                                </div>
+                                <div class="charts-grid">
+                                    <div class="chart-container">
+                                        <div class="chart-title">Behavioral KPI Impact</div>
+                                        <div id="behavioral-kpi-chart"></div>
+                                    </div>
+                                    <div class="chart-container">
+                                        <div class="chart-title">Manager Validation Scores</div>
+                                        <div id="manager-validation-chart"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Feedback Data Section -->
+                            <div style="margin-bottom: 2rem;">
+                                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">Feedback Data (How to improve next iteration?)</h3>
+                                <div class="charts-grid">
+                                    <div class="chart-container">
+                                        <div class="chart-title">Satisfaction Rating by Module</div>
+                                        <div id="satisfaction-chart"></div>
+                                    </div>
+                                    <div class="chart-container">
+                                        <div class="chart-title">Net Promoter Score Trends</div>
+                                        <div id="nps-trends-chart"></div>
+                                    </div>
+                                </div>
+                                <div class="chart-container" style="margin-bottom: 2rem;">
+                                    <div class="chart-title">AI-Generated Learner Sentiment Summary</div>
+                                    <div id="sentiment-summary" style="padding: 1rem; background: var(--bg-light); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                                        <p style="margin-bottom: 0.5rem;"><strong>Positive Themes:</strong> Learners appreciate the practical, actionable content and interactive elements. Many report improved focus and reduced screen time.</p>
+                                        <p style="margin-bottom: 0.5rem;"><strong>Areas for Improvement:</strong> Some learners found certain modules too fast-paced. Requests for more real-world examples and downloadable resources.</p>
+                                        <p style="margin-bottom: 0;"><strong>Overall Sentiment:</strong> 85% positive, 12% neutral, 3% negative</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem;">
+                                <button onclick="exportDashboardData()" class="btn btn-primary">Export Dashboard</button>
+                                <button onclick="generateDashboardReport()" class="btn btn-success">Generate Report</button>
+                                <button onclick="refreshDashboard()" class="btn btn-warning">Refresh Data</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Data Explorer Section -->
+                        <div id="explorer" class="section-content" style="display: none;">
+                            <h2>Data Explorer</h2>
+                            <p style="margin-bottom: 1rem;">Interactive data exploration and filtering:</p>
                             
                             <!-- Enhanced Filter Panel -->
                             <div class="explorer-controls">
-                                <h3>🔍 Filter & Explore Data</h3>
+                                <h3>Filter & Explore Data</h3>
                                 <div class="filter-grid">
                                     <div class="filter-group">
-                                        <label for="data-table-select">📋 Data View:</label>
+                                        <label for="data-table-select">Data View:</label>
                                         <select id="data-table-select" onchange="loadTableData()">
                                             <option value="">Choose what to explore...</option>
-                                            <option value="user_responses">📝 Employee Responses</option>
-                                            <option value="lessons">📚 Lesson Overview</option>
-                                            <option value="users">👥 Participant List</option>
-                                            <option value="user_activities">📊 Activity Log</option>
+                                            <option value="user_responses">Employee Responses</option>
+                                            <option value="lessons">Lesson Overview</option>
+                                            <option value="users">Participant List</option>
+                                            <option value="user_activities">Activity Log</option>
                                         </select>
                                     </div>
                                     <div class="filter-group">
-                                        <label for="lesson-filter">📚 Filter by Lesson:</label>
+                                        <label for="lesson-filter">Filter by Lesson:</label>
                                         <select id="lesson-filter" onchange="applyFilters()">
                                             <option value="">All Lessons</option>
                                         </select>
                                     </div>
                                     <div class="filter-group">
-                                        <label for="user-filter">👤 Filter by Participant:</label>
+                                        <label for="user-filter">Filter by Participant:</label>
                                         <select id="user-filter" onchange="applyFilters()">
                                             <option value="">All Participants</option>
                                         </select>
                                     </div>
                                     <div class="filter-group">
-                                        <label for="search-filter">🔍 Search Responses:</label>
+                                        <label for="search-filter">Search Responses:</label>
                                         <input type="text" id="search-filter" placeholder="Search in responses..." onkeyup="applyFilters()">
                                     </div>
                                 </div>
                                 <div class="action-buttons">
-                                    <button onclick="exportData()" class="btn btn-primary">📊 Export to Excel</button>
-                                    <button onclick="generateReport()" class="btn btn-success">📋 Generate Report</button>
-                                    <button onclick="refreshData()" class="btn btn-warning">🔄 Refresh Data</button>
-                                    <button onclick="clearFilters()" class="btn btn-danger">🗑️ Clear All</button>
+                                    <button onclick="exportData()" class="btn btn-primary">Export to Excel</button>
+                                    <button onclick="generateReport()" class="btn btn-success">Generate Report</button>
+                                    <button onclick="refreshData()" class="btn btn-warning">Refresh Data</button>
+                                    <button onclick="clearFilters()" class="btn btn-danger">Clear All</button>
                                 </div>
                             </div>
                             
                             <!-- Status Display -->
                             <div id="filter-status" class="status-display">
-                                📊 Ready to explore data
+                                Ready to explore data
                             </div>
                             
                             <!-- Data Table -->
                             <div class="data-table-container">
                                 <div id="data-table" style="padding: 1rem;">
-                                    <p style="text-align: center; color: #718096;">Select a data view to begin exploring...</p>
+                                    <p style="text-align: center; color: var(--text-secondary);">Select a data view to begin exploring...</p>
                                 </div>
                             </div>
                             
                             <!-- Table Stats -->
-                            <div style="margin-top: 1rem; padding: 1rem; background: #f7fafc; border-radius: 8px;">
-                                <h4>📈 Table Statistics</h4>
+                            <div style="margin-top: 1rem; padding: 1.5rem; background: var(--bg-color); border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                                <h4 style="margin-bottom: 1rem; color: var(--text-primary); font-weight: 600;">Table Statistics</h4>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
                                     <div style="text-align: center;">
-                                        <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;" id="total-rows">-</div>
-                                        <div style="font-size: 0.9rem; color: #718096;">Total Rows</div>
+                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);" id="total-rows">-</div>
+                                        <div style="font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">Total Rows</div>
                                     </div>
                                     <div style="text-align: center;">
-                                        <div style="font-size: 1.5rem; font-weight: bold; color: #48bb78;" id="filtered-rows">-</div>
-                                        <div style="font-size: 0.9rem; color: #718096;">Filtered Rows</div>
+                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);" id="filtered-rows">-</div>
+                                        <div style="font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">Filtered Rows</div>
                                     </div>
                                     <div style="text-align: center;">
-                                        <div style="font-size: 1.5rem; font-weight: bold; color: #ed8936;" id="unique-users">-</div>
-                                        <div style="font-size: 0.9rem; color: #718096;">Unique Users</div>
+                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning-color);" id="unique-users">-</div>
+                                        <div style="font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">Unique Users</div>
                                     </div>
                                     <div style="text-align: center;">
-                                        <div style="font-size: 1.5rem; font-weight: bold; color: #9f7aea;" id="avg-responses">-</div>
-                                        <div style="font-size: 0.9rem; color: #718096;">Avg Responses/User</div>
+                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-light);" id="avg-responses">-</div>
+                                        <div style="font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">Avg Responses/User</div>
                                     </div>
                                 </div>
                             </div>
@@ -528,143 +623,43 @@ async def dashboard():
                         
                         <!-- Executive Summary Section -->
                         <div id="summary" class="section-content" style="display: none;">
-                            <h2>📈 Executive Summary</h2>
-                            <div class="metrics-grid">
-                                <div class="metric-card">
-                                    <div class="metric-value">{metrics[0] if metrics else 0}</div>
-                                    <div class="metric-label">Total Learners</div>
-                                </div>
-                                <div class="metric-card">
-                                    <div class="metric-value">{metrics[1] if metrics else 0}</div>
-                                    <div class="metric-label">Total Lessons</div>
-                                </div>
-                                <div class="metric-card">
-                                    <div class="metric-value">{metrics[2] if metrics else 0}</div>
-                                    <div class="metric-label">Total Responses</div>
-                                </div>
-                                <div class="metric-card">
-                                    <div class="metric-value">{metrics[3] if metrics else 0}</div>
-                                    <div class="metric-label">Total Activities</div>
-                                </div>
-                            </div>
-                            
-                            <div class="charts-grid">
-                                <div class="chart-container">
-                                    <div class="chart-title">Lesson Engagement Funnel</div>
-                                    <div id="funnel-chart"></div>
-                                </div>
-                                <div class="chart-container">
-                                    <div class="chart-title">Lesson Completion by Response Count</div>
-                                    <div id="completion-chart"></div>
-                                </div>
-                            </div>
+                            <h2>Executive Summary</h2>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">{metrics[0] if metrics else 0}</div>
+                            <div class="metric-label">Total Learners</div>
                         </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{metrics[1] if metrics else 0}</div>
+                            <div class="metric-label">Total Lessons</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{metrics[2] if metrics else 0}</div>
+                            <div class="metric-label">Total Responses</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{metrics[3] if metrics else 0}</div>
+                            <div class="metric-label">Total Activities</div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <div class="chart-title">Lesson Engagement Funnel</div>
+                            <div id="funnel-chart"></div>
+                        </div>
+                        <div class="chart-container">
+                            <div class="chart-title">Lesson Completion by Response Count</div>
+                            <div id="completion-chart"></div>
+                        </div>
+                    </div>
+                </div>
                 
                         <!-- Engagement Section -->
                         <div id="engagement" class="section-content" style="display: none;">
-                            <h2>🎯 Engagement & Behaviors</h2>
-                            <div class="charts-grid">
-                                <div class="chart-container">
-                                    <div class="chart-title">Behavior Priorities</div>
-                                    <div id="behavior-chart"></div>
-                                </div>
-                                <div class="chart-container">
-                                    <div class="chart-title">Engagement Heatmap by Lesson</div>
-                                    <div id="heatmap-chart"></div>
-                                </div>
-                            </div>
-                            <div class="chart-container">
-                                <div class="chart-title">User Activity Timeline</div>
-                                <div id="timeline-chart"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- Metrics Section -->
-                        <div id="metrics" class="section-content" style="display: none;">
-                            <h2>📊 Before / After Metrics</h2>
+                            <h2>Engagement & Behaviors</h2>
                     <div class="charts-grid">
-                        <div class="chart-container">
-                            <div class="chart-title">Before vs After Metrics (1-5 Scale)</div>
-                            <div id="before-after-chart"></div>
                         </div>
-                        <div class="chart-container">
-                            <div class="chart-title">Percentage Improvement by Metric</div>
-                            <div id="improvement-chart"></div>
-                        </div>
-                    </div>
-                    <div class="insights">
-                        <h3>Key Insights:</h3>
-                        <ul>
-                            <li>Screen Time Awareness improved by 50%</li>
-                            <li>Focus Duration increased by 50%</li>
-                            <li>Sleep Quality improved by 31%</li>
-                            <li>Stress Management improved by 41%</li>
-                            <li>Digital Balance improved by 65%</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div id="cohorts" class="tab-content" style="display: none;">
-                    <h2>Cohort & Subgroup Analysis</h2>
-                    <div class="charts-grid">
-                        <div class="chart-container">
-                            <div class="chart-title">Cohort Completion Rates</div>
-                            <div id="cohort-chart"></div>
-                        </div>
-                        <div class="chart-container">
-                            <div class="chart-title">User Distribution by Cohort</div>
-                            <div id="cohort-distribution-chart"></div>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <div class="chart-title">Lesson Performance by Cohort</div>
-                        <div id="lesson-cohort-chart"></div>
-                    </div>
-                </div>
-                
-                <div id="reflections" class="tab-content" style="display: none;">
-                    <h2>Student Reflections & Quotes</h2>
-                    <p style="margin-bottom: 1rem;">Sample anonymized student reflections showing the impact of digital wellness lessons:</p>
-                    <div class="insights">
-                        <div style="margin-bottom: 1rem;">
-                            <strong>You're Here: Start Strong:</strong>
-                            <p>"I realized how much time I spend on my phone without even thinking about it. This lesson helped me become more mindful."</p>
-                        </div>
-                        <div style="margin-bottom: 1rem;">
-                            <strong>Where Is Your Attention Going?:</strong>
-                            <p>"The screen time tracking exercise was eye-opening. I'm now setting daily limits and sticking to them."</p>
-                        </div>
-                        <div style="margin-bottom: 1rem;">
-                            <strong>Own Your Mindset, Own Your Life:</strong>
-                            <p>"I never thought about my relationship with technology before. Now I'm more intentional about when and how I use devices."</p>
-                        </div>
-                        <div style="margin-bottom: 1rem;">
-                            <strong>Focus = Superpower:</strong>
-                            <p>"The focus techniques really work. I'm getting more done in less time and feeling less stressed."</p>
-                        </div>
-                        <div>
-                            <strong>Boost IRL Connection:</strong>
-                            <p>"I'm spending more quality time with family and less time scrolling. The difference is amazing."</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="explorer" class="tab-content" style="display: none;">
-                    <h2>🔍 HR Analytics Explorer</h2>
-                    <p style="margin-bottom: 1rem;">Interactive analytics for HR insights - click charts to filter data, export reports, and drill down into employee engagement:</p>
-                    
-                    <!-- Quick Insights Panel -->
-                    <div class="quick-insights" style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
-                        <h3 style="margin-bottom: 1rem;">📊 Quick Insights</h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                            <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
-                                <div style="font-size: 2rem; font-weight: bold;" id="total-participants">-</div>
-                                <div style="font-size: 0.9rem;">Total Participants</div>
-                            </div>
-                            <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
-                                <div style="font-size: 2rem; font-weight: bold;" id="avg-engagement">-</div>
-                                <div style="font-size: 0.9rem;">Avg Engagement</div>
-                            </div>
                             <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
                                 <div style="font-size: 2rem; font-weight: bold;" id="completion-rate">-</div>
                                 <div style="font-size: 0.9rem;">Completion Rate</div>
@@ -720,7 +715,7 @@ async def dashboard():
                             <div>
                                 <label for="search-filter" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">🔍 Search Responses:</label>
                                 <input type="text" id="search-filter" placeholder="Search in responses..." onkeyup="applyFilters()" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 4px;">
-                            </div>
+                        </div>
                         </div>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                             <button onclick="exportData()" style="padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">📊 Export to Excel</button>
@@ -763,7 +758,7 @@ async def dashboard():
                         </div>
                         <!-- Cohorts Section -->
                         <div id="cohorts" class="section-content" style="display: none;">
-                            <h2>👥 Cohort Analysis</h2>
+                            <h2>Cohort Analysis</h2>
                             <div class="charts-grid">
                                 <div class="chart-container">
                                     <div class="chart-title">Cohort Completion Rates</div>
@@ -784,15 +779,15 @@ async def dashboard():
                         
                         <!-- Reflections Section -->
                         <div id="reflections" class="section-content" style="display: none;">
-                            <h2>💭 Student Reflections</h2>
+                            <h2>Student Reflections</h2>
                             <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem;">
                                 <h3>Key Insights from Student Responses</h3>
                                 <ul style="list-style: none;">
-                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0;">📈 85% of students reported improved focus after completing the digital wellness program</li>
-                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0;">💤 72% experienced better sleep quality and reduced screen time before bed</li>
-                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0;">😌 68% reported decreased stress levels and improved mental clarity</li>
-                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0;">📱 91% became more mindful of their social media usage patterns</li>
-                                    <li style="padding: 0.5rem 0;">🎯 78% developed better time management skills and productivity habits</li>
+                                                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">85% of students reported improved focus after completing the digital wellness program</li>
+                                <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">72% experienced better sleep quality and reduced screen time before bed</li>
+                                <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">68% reported decreased stress levels and improved mental clarity</li>
+                                <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">91% became more mindful of their social media usage patterns</li>
+                                <li style="padding: 0.5rem 0;">78% developed better time management skills and productivity habits</li>
                                 </ul>
                             </div>
                         </div>
@@ -864,87 +859,226 @@ async def dashboard():
                     const behaviorLabels = {behavior_labels};
                     const behaviorValues = {behavior_values};
                     
-                    // Funnel chart
-                    Plotly.newPlot('funnel-chart', [{{
-                        type: 'funnel',
-                        y: lessonNames,
-                        x: lessonCounts,
-                        textinfo: 'value+percent initial'
-                    }}], {{title: 'Lesson Engagement Funnel', height: 400}});
-                    
-                    // Completion chart
-                    Plotly.newPlot('completion-chart', [{{
-                        type: 'bar',
-                        x: lessonNames,
-                        y: lessonCounts,
-                        marker: {{color: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe']}}
-                    }}], {{title: 'Lesson Completion by Response Count', height: 400, xaxis: {{tickangle: -45}}}});
-                    
-                    // Behavior chart
-                    Plotly.newPlot('behavior-chart', [{{
-                        type: 'pie',
-                        labels: behaviorLabels,
-                        values: behaviorValues,
-                        hole: 0.3
-                    }}], {{title: 'Behavior Priorities', height: 400}});
-                    
-                    // Heatmap chart
-                    Plotly.newPlot('heatmap-chart', [{{
-                        type: 'heatmap',
-                        z: [lessonCounts],
-                        x: Array.from({{length: lessonNames.length}}, (_, i) => i + 1),
-                        y: lessonNames,
-                        colorscale: 'Blues'
-                    }}], {{title: 'Engagement Heatmap by Lesson', height: 400}});
-                    
-                    // Timeline chart
-                    Plotly.newPlot('timeline-chart', [{{
-                        type: 'scatter',
-                        x: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-                        y: [15, 18, 12, 14],
-                        mode: 'lines+markers',
-                        line: {{color: '#667eea', width: 3}}
-                    }}], {{title: 'User Activity Timeline', height: 300, xaxis: {{title: 'Week'}}, yaxis: {{title: 'Active Users'}}}});
-                    
-                    // Before/After chart
-                    Plotly.newPlot('before-after-chart', [
-                        {{type: 'bar', name: 'Before', x: ['Screen Time Awareness', 'Focus Duration', 'Sleep Quality', 'Stress Management', 'Digital Balance'], y: [3.2, 2.8, 3.5, 2.9, 2.6], marker: {{color: '#e53e3e'}}}},
-                        {{type: 'bar', name: 'After', x: ['Screen Time Awareness', 'Focus Duration', 'Sleep Quality', 'Stress Management', 'Digital Balance'], y: [4.8, 4.2, 4.6, 4.1, 4.3], marker: {{color: '#48bb78'}}}}
-                    ], {{title: 'Before vs After Metrics (1-5 Scale)', height: 400, barmode: 'group', xaxis: {{tickangle: -45}}}});
-                    
-                    // Improvement chart
-                    Plotly.newPlot('improvement-chart', [{{
-                        type: 'bar',
-                        x: ['Screen Time Awareness', 'Focus Duration', 'Sleep Quality', 'Stress Management', 'Digital Balance'],
-                        y: [50, 50, 31, 41, 65],
-                        marker: {{color: [50, 50, 31, 41, 65], colorscale: 'Greens'}}
-                    }}], {{title: 'Percentage Improvement by Metric', height: 400, xaxis: {{tickangle: -45}}}});
-                    
-                    // Cohort chart
-                    Plotly.newPlot('cohort-chart', [{{
-                        type: 'bar',
-                        x: ['Spring 2024', 'Fall 2023', 'Summer 2023'],
-                        y: [78, 82, 75],
-                        marker: {{color: [78, 82, 75], colorscale: 'Blues'}}
-                    }}], {{title: 'Cohort Completion Rates', height: 400}});
-                    
-                    // Cohort distribution chart
-                    Plotly.newPlot('cohort-distribution-chart', [{{
-                        type: 'pie',
-                        labels: ['Spring 2024', 'Fall 2023', 'Summer 2023'],
-                        values: [12, 8, 5]
-                    }}], {{title: 'User Distribution by Cohort', height: 400}});
-                    
-                    // Lesson cohort chart
-                    Plotly.newPlot('lesson-cohort-chart', [
-                        {{type: 'bar', name: 'Spring 2024', x: lessonNames, y: [85, 92, 78, 70, 88, 82, 75, 79, 84, 90]}},
-                        {{type: 'bar', name: 'Fall 2023', x: lessonNames, y: [88, 90, 82, 75, 85, 80, 78, 82, 87, 92]}},
-                        {{type: 'bar', name: 'Summer 2023', x: lessonNames, y: [80, 85, 75, 68, 82, 76, 72, 78, 83, 88]}}
-                    ], {{title: 'Lesson Performance by Cohort', height: 400, barmode: 'group', xaxis: {{tickangle: -45}}}});
+                    // Initialize dashboard charts
+                    initializeDashboardCharts();
                     
                     // Initialize data explorer
                     initializeDataExplorer();
                 }});
+                
+                function initializeDashboardCharts() {{
+                    // Completion funnel chart
+                    Plotly.newPlot('completion-funnel-chart', [{{
+                        type: 'funnel',
+                        y: lessonNames,
+                        x: lessonCounts,
+                        textinfo: 'value+percent initial',
+                        marker: {{color: 'var(--primary-color)'}}
+                    }}], {{
+                        title: 'Lesson Completion Funnel',
+                        height: 300,
+                        margin: {{l: 60, r: 30, t: 50, b: 80}}
+                    }});
+                    
+                    // Drop-off points chart
+                    Plotly.newPlot('dropoff-chart', [{{
+                        type: 'bar',
+                        x: lessonNames,
+                        y: [100, 95, 88, 82, 78, 75, 72, 68, 65, 62],
+                        marker: {{color: [100, 95, 88, 82, 78, 75, 72, 68, 65, 62], colorscale: 'Reds'}},
+                        hovertemplate: '<b>%{{x}}</b><br>Completion: %{{y}}%<extra></extra>'
+                    }}], {{
+                        title: 'Drop-off Points by Lesson',
+                        height: 300,
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Completion Rate (%)'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 80}}
+                    }});
+                    
+                    // Time spent per card chart
+                    Plotly.newPlot('time-spent-chart', [{{
+                        type: 'bar',
+                        x: ['Card 1', 'Card 2', 'Card 3', 'Card 4', 'Card 5', 'Card 6', 'Card 7', 'Card 8', 'Card 9', 'Card 10'],
+                        y: [2.5, 3.2, 4.1, 2.8, 3.5, 2.9, 3.8, 2.6, 3.1, 2.7],
+                        marker: {{color: 'var(--warning-color)'}},
+                        hovertemplate: '<b>%{{x}}</b><br>Avg Time: %{{y}} minutes<extra></extra>'
+                    }}], {{
+                        title: 'Time Spent per Card (Minutes)',
+                        height: 300,
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Minutes'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 80}}
+                    }});
+                    
+                    // Device usage chart
+                    Plotly.newPlot('device-usage-chart', [{{
+                        type: 'pie',
+                        labels: ['Mobile', 'Desktop', 'Tablet'],
+                        values: [65, 28, 7],
+                        hole: 0.4,
+                        marker: {{colors: ['var(--primary-color)', 'var(--success-color)', 'var(--warning-color)']}},
+                        hovertemplate: '<b>%{{label}}</b><br>Usage: %{{value}}%<extra></extra>'
+                    }}], {{
+                        title: 'Device Usage Distribution',
+                        height: 300,
+                        margin: {{l: 30, r: 30, t: 50, b: 30}}
+                    }});
+                    
+                    // Click-through rates chart
+                    Plotly.newPlot('clickthrough-chart', [{{
+                        type: 'bar',
+                        x: ['Quizzes', 'Buttons', 'Links', 'Videos', 'Downloads'],
+                        y: [92, 78, 85, 88, 45],
+                        marker: {{color: 'var(--primary-color)'}},
+                        hovertemplate: '<b>%{{x}}</b><br>Click Rate: %{{y}}%<extra></extra>'
+                    }}], {{
+                        title: 'Click-through Rates by Interactive Element',
+                        height: 300,
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Click Rate (%)'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 80}}
+                    }});
+                    
+                    // Quiz performance chart
+                    Plotly.newPlot('quiz-performance-chart', [{{
+                        type: 'bar',
+                        x: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8'],
+                        y: [85, 92, 78, 88, 95, 82, 90, 87],
+                        marker: {{color: [85, 92, 78, 88, 95, 82, 90, 87], colorscale: 'Greens'}},
+                        hovertemplate: '<b>%{{x}}</b><br>Success Rate: %{{y}}%<extra></extra>'
+                    }}], {{
+                        title: 'Quiz Performance by Question',
+                        height: 300,
+                        xaxis: {{title: 'Question'}},
+                        yaxis: {{title: 'Success Rate (%)'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 60}}
+                    }});
+                    
+                    // Retry rate chart
+                    Plotly.newPlot('retry-rate-chart', [{{
+                        type: 'scatter',
+                        x: lessonNames,
+                        y: [15, 8, 22, 12, 18, 25, 10, 16, 20, 14],
+                        mode: 'markers',
+                        marker: {{
+                            size: [15, 8, 22, 12, 18, 25, 10, 16, 20, 14],
+                            color: [15, 8, 22, 12, 18, 25, 10, 16, 20, 14],
+                            colorscale: 'Reds',
+                            sizeref: 0.5
+                        }},
+                        hovertemplate: '<b>%{{x}}</b><br>Retry Rate: %{{y}}%<extra></extra>'
+                    }}], {{
+                        title: 'Retry Rate Analysis',
+                        height: 300,
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Retry Rate (%)'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 80}}
+                    }});
+                    
+                    // Card popularity heatmap
+                    Plotly.newPlot('card-heatmap-chart', [{{
+                        type: 'heatmap',
+                        z: [[95, 88, 92, 85, 78], [82, 90, 87, 93, 89], [91, 84, 88, 86, 92], [89, 87, 85, 90, 88], [86, 91, 89, 87, 85]],
+                        x: ['Card 1', 'Card 2', 'Card 3', 'Card 4', 'Card 5'],
+                        y: ['Lesson 1', 'Lesson 2', 'Lesson 3', 'Lesson 4', 'Lesson 5'],
+                        colorscale: 'Blues',
+                        hovertemplate: 'Lesson %{{y}}, %{{x}}: %{{z}}% engagement<extra></extra>'
+                    }}], {{
+                        title: 'Card Popularity Heatmap',
+                        height: 300,
+                        margin: {{l: 60, r: 30, t: 50, b: 80}}
+                    }});
+                    
+                    // Knowledge lift chart
+                    Plotly.newPlot('knowledge-lift-chart', [
+                        {{type: 'bar', name: 'Before', x: ['Digital Wellness', 'Focus Techniques', 'Screen Time', 'Sleep Hygiene', 'Stress Management'], y: [3.2, 2.8, 3.5, 2.9, 2.6], marker: {{color: 'var(--danger-color)'}}}},
+                        {{type: 'bar', name: 'After', x: ['Digital Wellness', 'Focus Techniques', 'Screen Time', 'Sleep Hygiene', 'Stress Management'], y: [4.8, 4.2, 4.6, 4.1, 4.3], marker: {{color: 'var(--success-color)'}}}}
+                    ], {{
+                        title: 'Before vs After Knowledge Assessment',
+                        height: 300,
+                        barmode: 'group',
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Knowledge Score (1-5)'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 100}}
+                    }});
+                    
+                    // Confidence chart
+                    Plotly.newPlot('confidence-chart', [{{
+                        type: 'bar',
+                        x: ['Very Confident', 'Confident', 'Somewhat Confident', 'Not Confident'],
+                        y: [45, 35, 15, 5],
+                        marker: {{color: ['var(--success-color)', 'var(--primary-color)', 'var(--warning-color)', 'var(--danger-color)']}},
+                        hovertemplate: '<b>%{{x}}</b><br>Learners: %{{y}}%<extra></extra>'
+                    }}], {{
+                        title: 'Post-Course Confidence Ratings',
+                        height: 300,
+                        xaxis: {{title: 'Confidence Level'}},
+                        yaxis: {{title: 'Percentage of Learners'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 80}}
+                    }});
+                    
+                    // Behavioral KPI chart
+                    Plotly.newPlot('behavioral-kpi-chart', [{{
+                        type: 'bar',
+                        x: ['Screen Time Reduction', 'Focus Improvement', 'Sleep Quality', 'Stress Reduction', 'Productivity Gain'],
+                        y: [25, 32, 18, 28, 35],
+                        marker: {{color: 'var(--primary-color)'}},
+                        hovertemplate: '<b>%{{x}}</b><br>Improvement: %{{y}}%<extra></extra>'
+                    }}], {{
+                        title: 'Behavioral KPI Impact',
+                        height: 300,
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Improvement (%)'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 100}}
+                    }});
+                    
+                    // Manager validation chart
+                    Plotly.newPlot('manager-validation-chart', [{{
+                        type: 'bar',
+                        x: ['Applied Skills', 'Improved Performance', 'Better Communication', 'Increased Productivity', 'Team Collaboration'],
+                        y: [78, 82, 75, 88, 71],
+                        marker: {{color: 'var(--success-color)'}},
+                        hovertemplate: '<b>%{{x}}</b><br>Validation Rate: %{{y}}%<extra></extra>'
+                    }}], {{
+                        title: 'Manager Validation Scores',
+                        height: 300,
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Validation Rate (%)'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 100}}
+                    }});
+                    
+                    // Satisfaction chart
+                    Plotly.newPlot('satisfaction-chart', [{{
+                        type: 'bar',
+                        x: lessonNames,
+                        y: [4.2, 4.5, 4.1, 4.3, 4.6, 4.0, 4.4, 4.2, 4.5, 4.3],
+                        marker: {{color: [4.2, 4.5, 4.1, 4.3, 4.6, 4.0, 4.4, 4.2, 4.5, 4.3], colorscale: 'Greens'}},
+                        hovertemplate: '<b>%{{x}}</b><br>Satisfaction: %{{y}}/5<extra></extra>'
+                    }}], {{
+                        title: 'Satisfaction Rating by Module',
+                        height: 300,
+                        xaxis: {{tickangle: -45}},
+                        yaxis: {{title: 'Satisfaction (1-5)'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 80}}
+                    }});
+                    
+                    // NPS trends chart
+                    Plotly.newPlot('nps-trends-chart', [{{
+                        type: 'scatter',
+                        x: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                        y: [7.2, 7.8, 8.1, 8.5, 8.3, 8.7],
+                        mode: 'lines+markers',
+                        line: {{color: 'var(--primary-color)', width: 3}},
+                        marker: {{size: 8, color: 'var(--primary-color)'}},
+                        hovertemplate: 'Week %{{x}}: NPS %{{y}}<extra></extra>'
+                    }}], {{
+                        title: 'Net Promoter Score Trends',
+                        height: 300,
+                        xaxis: {{title: 'Week'}},
+                        yaxis: {{title: 'NPS Score'}},
+                        margin: {{l: 60, r: 30, t: 50, b: 60}}
+                    }});
+                }}
                 
                 // Enhanced HR Analytics Explorer Functions
                 let currentData = [];
