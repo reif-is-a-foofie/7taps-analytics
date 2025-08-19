@@ -28,6 +28,24 @@ async def chat_interface():
     with open("chat_interface.html", "r") as f:
         return HTMLResponse(content=f.read())
 
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_redirect():
+    """Redirect to the Dash dashboard"""
+    dashboard_url = "https://seventaps-analytics-5135b3a0701a.herokuapp.com:8050"
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Redirecting to Dashboard...</title>
+        <meta http-equiv="refresh" content="0; url={dashboard_url}">
+    </head>
+    <body>
+        <p>Redirecting to <a href="{dashboard_url}">7taps Analytics Dashboard</a>...</p>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Root endpoint with HTML landing page"""
@@ -98,6 +116,14 @@ async def root():
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
                 padding: 12px 24px;
+                text-decoration: none;
+                border-radius: 6px;
+                transition: all 0.3s ease;
+            }
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            }
                 text-decoration: none;
                 border-radius: 6px;
                 font-weight: 500;
@@ -178,7 +204,7 @@ async def root():
                 <div class="card">
                     <h2>📊 Analytics Dashboard</h2>
                     <p>Real-time metrics and insights for xAPI learning analytics with interactive charts and visualizations.</p>
-                    <a href="/ui/dashboard" class="btn">Open Dashboard</a>
+                    <a href="/dashboard" class="btn">Open Dashboard</a>
                 </div>
                 
                 <div class="card">
