@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import os
 from app.config import settings
 
@@ -18,6 +19,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/chat", response_class=HTMLResponse)
+async def chat_interface():
+    """Chat interface endpoint"""
+    with open("chat_interface.html", "r") as f:
+        return HTMLResponse(content=f.read())
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
