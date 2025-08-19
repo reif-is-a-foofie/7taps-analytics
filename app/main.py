@@ -65,8 +65,7 @@ async def dashboard():
         metrics = cursor.fetchone()
         
         # Get lesson engagement data from new normalized tables
-        from app.config import get_extension_key
-        lesson_number_key = get_extension_key("lesson_number")
+        # Removed unused import to fix dashboard error
         
         cursor.execute(f"""
             SELECT 
