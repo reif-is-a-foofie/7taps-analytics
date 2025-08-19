@@ -120,10 +120,7 @@ FROM (
         AND ce.extension_key = 'https://7taps.com/cohort'
     WHERE s.actor_id IS NOT NULL
     GROUP BY s.actor_id, ce.extension_value
-) user_stats
-ON CONFLICT (user_id) DO UPDATE SET
-    last_seen = EXCLUDED.last_seen,
-    cohort = COALESCE(EXCLUDED.cohort, users.cohort);
+) user_stats;
 
 -- Insert questions from existing data
 INSERT INTO questions (lesson_id, question_number, question_text, question_type)
