@@ -276,9 +276,9 @@
         
         <div class="sidebar-section">
             <h4>Quick Links</h4>
-            <a href="https://seventaps-analytics.herokuapp.com/docs" target="_blank" class="sidebar-link">API Documentation</a>
-            <a href="https://seventaps-analytics.herokuapp.com/api/data/schema" target="_blank" class="sidebar-link">Database Schema</a>
-            <a href="https://seventaps-analytics.herokuapp.com/ui/admin" target="_blank" class="sidebar-link">Admin Dashboard</a>
+            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/docs" target="_blank" class="sidebar-link">API Documentation</a>
+            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/data/schema" target="_blank" class="sidebar-link">Database Schema</a>
+            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/ui/admin" target="_blank" class="sidebar-link">Admin Dashboard</a>
         </div>
         
         <div class="sidebar-section">
@@ -468,7 +468,7 @@
         // Load data status
         async function loadDataStatus() {
             try {
-                const response = await fetch('https://seventaps-analytics.herokuapp.com/api/data/status');
+                const response = await fetch('https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/data/status');
                 if (response.ok) {
                     const data = await response.json();
                     dataStatus.innerHTML = `
