@@ -870,19 +870,27 @@ async def dashboard():
                     const behaviorLabels = {behavior_labels};
                     const behaviorValues = {behavior_values};
                     
-                    // Initialize dashboard charts
-                    initializeDashboardCharts();
-                    
-                    // Initialize data explorer
-                    initializeDataExplorer();
+                    // Wait a moment for DOM to be fully ready
+                    setTimeout(() => {{
+                        // Initialize dashboard charts
+                        initializeDashboardCharts();
+                        
+                        // Initialize data explorer
+                        initializeDataExplorer();
+                    }}, 100);
                 }});
                 
                 function initializeDashboardCharts() {{
-                    // Use real data from the server
-                    const lessonNames = {lesson_names};
-                    const lessonCounts = {lesson_counts};
-                    const behaviorLabels = {behavior_labels};
-                    const behaviorValues = {behavior_values};
+                    try {{
+                        console.log('Initializing dashboard charts...');
+                        
+                        // Use real data from the server
+                        const lessonNames = {lesson_names};
+                        const lessonCounts = {lesson_counts};
+                        const behaviorLabels = {behavior_labels};
+                        const behaviorValues = {behavior_values};
+                        
+                        console.log('Chart data:', {{ lessonNames, lessonCounts, behaviorLabels, behaviorValues }});
                     
                     // Calculate completion rates based on real data
                     const totalUsers = {metrics[0] if metrics else 0};
@@ -891,18 +899,25 @@ async def dashboard():
                     );
                     
                     // Completion funnel chart with real data
-                    Plotly.newPlot('completion-funnel-chart', [{{
-                        type: 'funnel',
-                        y: lessonNames,
-                        x: lessonCounts,
-                        textinfo: 'value+percent initial',
-                        marker: {{color: 'var(--primary-color)'}},
-                        hovertemplate: '<b>%{{y}}</b><br>Responses: %{{x}}<extra></extra>'
-                    }}], {{
-                        title: 'Lesson Completion Funnel',
-                        height: 300,
-                        margin: {{l: 60, r: 30, t: 50, b: 80}}
-                    }});
+                    console.log('Creating completion funnel chart...');
+                    const funnelElement = document.getElementById('completion-funnel-chart');
+                    if (funnelElement) {{
+                        Plotly.newPlot('completion-funnel-chart', [{{
+                            type: 'funnel',
+                            y: lessonNames,
+                            x: lessonCounts,
+                            textinfo: 'value+percent initial',
+                            marker: {{color: 'var(--primary-color)'}},
+                            hovertemplate: '<b>%{{y}}</b><br>Responses: %{{x}}<extra></extra>'
+                        }}], {{
+                            title: 'Lesson Completion Funnel',
+                            height: 300,
+                            margin: {{l: 60, r: 30, t: 50, b: 80}}
+                        }});
+                        console.log('Completion funnel chart created successfully');
+                    }} else {{
+                        console.error('Completion funnel chart element not found');
+                    }}
                     
                     // Drop-off points chart with real completion rates
                     Plotly.newPlot('dropoff-chart', [{{
@@ -974,6 +989,11 @@ async def dashboard():
                     document.getElementById('completion-rate').textContent = totalUsers > 0 ? Math.round((Math.max(...lessonCounts) / totalUsers) * 100) + '%' : '0%';
                     document.getElementById('avg-score').textContent = '4.2';
                     document.getElementById('nps-score').textContent = '8.5';
+                    
+                    console.log('Dashboard charts initialization completed');
+                }} catch (error) {{
+                    console.error('Error initializing dashboard charts:', error);
+                }}
                 }}
                         hovertemplate: '<b>%{{x}}</b><br>Retry Rate: %{{y}}%<extra></extra>'
                     }}], {{
