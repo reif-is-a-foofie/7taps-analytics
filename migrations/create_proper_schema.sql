@@ -108,7 +108,8 @@ LEFT JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
 WHERE s.actor_id IS NOT NULL
 GROUP BY s.actor_id, ce.extension_value
 ON CONFLICT (user_id) DO UPDATE SET
-    last_seen = EXCLUDED.last_seen;
+    last_seen = EXCLUDED.last_seen,
+    cohort = COALESCE(EXCLUDED.cohort, users.cohort);
 
 -- Insert questions from existing data
 INSERT INTO questions (lesson_id, question_number, question_text, question_type)
@@ -127,7 +128,7 @@ ON CONFLICT (lesson_id, question_number) DO NOTHING;
 
 -- Insert user activities from existing data
 INSERT INTO user_activities (user_id, lesson_id, question_id, activity_type, activity_data, timestamp, source, raw_statement_id)
-SELECT 
+SELECT DISTINCT
     u.id as user_id,
     l.id as lesson_id,
     q.id as question_id,
@@ -144,11 +145,12 @@ LEFT JOIN lessons l ON ce1.extension_value = l.lesson_url
 LEFT JOIN context_extensions_new ce2 ON s.statement_id = ce2.statement_id 
     AND ce2.extension_key = 'https://7taps.com/global-q'
 LEFT JOIN questions q ON l.id = q.lesson_id AND CAST(ce2.extension_value AS INTEGER) = q.question_number
-WHERE s.actor_id IS NOT NULL;
+WHERE s.actor_id IS NOT NULL
+ON CONFLICT DO NOTHING;
 
 -- Insert user responses from existing data
 INSERT INTO user_responses (user_id, question_id, response_text, response_value, is_correct, score_raw, score_scaled, duration_seconds, timestamp, source, raw_statement_id)
-SELECT 
+SELECT DISTINCT
     u.id as user_id,
     q.id as question_id,
     r.response as response_text,
@@ -169,4 +171,5 @@ LEFT JOIN lessons l ON ce1.extension_value = l.lesson_url
 LEFT JOIN context_extensions_new ce2 ON s.statement_id = ce2.statement_id 
     AND ce2.extension_key = 'https://7taps.com/global-q'
 LEFT JOIN questions q ON l.id = q.lesson_id AND CAST(ce2.extension_value AS INTEGER) = q.question_number
-WHERE s.actor_id IS NOT NULL AND q.id IS NOT NULL;
+WHERE s.actor_id IS NOT NULL AND q.id IS NOT NULL
+ON CONFLICT DO NOTHING;
