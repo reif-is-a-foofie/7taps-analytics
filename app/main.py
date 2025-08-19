@@ -683,7 +683,7 @@ from app.api.data_access import router as data_access_router
 from app.api.chat import router as chat_router
 from app.api.public import router as public_router
 from app.ui.admin import router as admin_router
-from app.ui.dashboard import router as dashboard_router
+# from app.ui.dashboard import router as dashboard_router
 from app.ui.data_import import router as data_import_ui_router
 # from app.api.monitoring import router as monitoring_router
 # from app.ui.production_dashboard import router as production_dashboard_router
@@ -704,7 +704,7 @@ app.include_router(data_access_router, prefix="/api", tags=["Data Access"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(health_router, tags=["Health"])
 app.include_router(admin_router, tags=["Admin"])
-app.include_router(dashboard_router, tags=["Dashboard"])
+# app.include_router(dashboard_router, tags=["Dashboard"])
 app.include_router(data_import_ui_router, tags=["Data Import UI"])
 # app.include_router(monitoring_router, prefix="/api", tags=["Monitoring"])
 # app.include_router(production_dashboard_router, tags=["Production Dashboard"])
