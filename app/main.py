@@ -142,6 +142,7 @@ async def dashboard():
                 <div class="tab" onclick="showTab('metrics')">📊 Before / After Metrics</div>
                 <div class="tab" onclick="showTab('cohorts')">👥 Cohort Analysis</div>
                 <div class="tab" onclick="showTab('reflections')">💭 Student Reflections</div>
+                <div class="tab" onclick="showTab('explorer')">🔍 Data Explorer</div>
             </div>
             
             <div class="content">
@@ -264,6 +265,72 @@ async def dashboard():
                         </div>
                     </div>
                 </div>
+                
+                <div id="explorer" class="tab-content" style="display: none;">
+                    <h2>🔍 Data Explorer</h2>
+                    <p style="margin-bottom: 1rem;">Interactive data exploration with filtering, sorting, and export capabilities:</p>
+                    
+                    <div class="explorer-controls" style="margin-bottom: 2rem;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <label for="data-table-select" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Data Table:</label>
+                                <select id="data-table-select" onchange="loadTableData()" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                    <option value="">Select a table...</option>
+                                    <option value="lessons">Lessons</option>
+                                    <option value="questions">Questions</option>
+                                    <option value="users">Users</option>
+                                    <option value="user_activities">User Activities</option>
+                                    <option value="user_responses">User Responses</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="lesson-filter" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Filter by Lesson:</label>
+                                <select id="lesson-filter" onchange="applyFilters()" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                    <option value="">All Lessons</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="user-filter" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Filter by User:</label>
+                                <select id="user-filter" onchange="applyFilters()" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                    <option value="">All Users</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <button onclick="exportData()" style="padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">📊 Export CSV</button>
+                            <button onclick="refreshData()" style="padding: 0.5rem 1rem; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer;">🔄 Refresh</button>
+                            <button onclick="clearFilters()" style="padding: 0.5rem 1rem; background: #e53e3e; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Clear Filters</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table-container" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                        <div id="data-table" style="padding: 1rem;">
+                            <p style="text-align: center; color: #718096;">Select a data table to begin exploring...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="table-stats" style="margin-top: 1rem; padding: 1rem; background: #f7fafc; border-radius: 8px;">
+                        <h4>📈 Table Statistics</h4>
+                        <div id="table-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;" id="total-rows">-</div>
+                                <div style="font-size: 0.9rem; color: #718096;">Total Rows</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #48bb78;" id="filtered-rows">-</div>
+                                <div style="font-size: 0.9rem; color: #718096;">Filtered Rows</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #ed8936;" id="unique-users">-</div>
+                                <div style="font-size: 0.9rem; color: #718096;">Unique Users</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #9f7aea;" id="avg-responses">-</div>
+                                <div style="font-size: 0.9rem; color: #718096;">Avg Responses/User</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <script>
@@ -362,7 +429,230 @@ async def dashboard():
                         {{type: 'bar', name: 'Fall 2023', x: lessonNames, y: [88, 90, 82, 75, 85, 80, 78, 82, 87, 92]}},
                         {{type: 'bar', name: 'Summer 2023', x: lessonNames, y: [80, 85, 75, 68, 82, 76, 72, 78, 83, 88]}}
                     ], {{title: 'Lesson Performance by Cohort', height: 400, barmode: 'group', xaxis: {{tickangle: -45}}}});
+                    
+                    // Initialize data explorer
+                    initializeDataExplorer();
                 }});
+                
+                // Data Explorer Functions
+                let currentData = [];
+                let currentTable = '';
+                
+                async function initializeDataExplorer() {{
+                    // Load lesson options
+                    await loadLessonOptions();
+                    await loadUserOptions();
+                }}
+                
+                async function loadTableData() {{
+                    const tableSelect = document.getElementById('data-table-select');
+                    const selectedTable = tableSelect.value;
+                    
+                    if (!selectedTable) {{
+                        document.getElementById('data-table').innerHTML = '<p style="text-align: center; color: #718096;">Select a data table to begin exploring...</p>';
+                        return;
+                    }}
+                    
+                    currentTable = selectedTable;
+                    
+                    try {{
+                        const response = await fetch('/api/data-explorer/table/' + selectedTable);
+                        const data = await response.json();
+                        
+                        if (data.success) {{
+                            currentData = data.data;
+                            renderDataTable(data.data, data.columns);
+                            updateTableStats(data.data);
+                        }} else {{
+                            document.getElementById('data-table').innerHTML = '<p style="text-align: center; color: #e53e3e;">Error loading data: ' + data.error + '</p>';
+                        }}
+                    }} catch (error) {{
+                        document.getElementById('data-table').innerHTML = '<p style="text-align: center; color: #e53e3e;">Error loading data: ' + error.message + '</p>';
+                    }}
+                }}
+                
+                async function loadLessonOptions() {{
+                    try {{
+                        const response = await fetch('/api/data-explorer/lessons');
+                        const data = await response.json();
+                        
+                        const lessonFilter = document.getElementById('lesson-filter');
+                        lessonFilter.innerHTML = '<option value="">All Lessons</option>';
+                        
+                        if (data.success && data.lessons) {{
+                            data.lessons.forEach(lesson => {{
+                                const option = document.createElement('option');
+                                option.value = lesson.id;
+                                option.textContent = lesson.name;
+                                lessonFilter.appendChild(option);
+                            }});
+                        }}
+                    }} catch (error) {{
+                        console.error('Error loading lesson options:', error);
+                    }}
+                }}
+                
+                async function loadUserOptions() {{
+                    try {{
+                        const response = await fetch('/api/data-explorer/users');
+                        const data = await response.json();
+                        
+                        const userFilter = document.getElementById('user-filter');
+                        userFilter.innerHTML = '<option value="">All Users</option>';
+                        
+                        if (data.success && data.users) {{
+                            data.users.forEach(user => {{
+                                const option = document.createElement('option');
+                                option.value = user.id;
+                                option.textContent = user.email || user.id;
+                                userFilter.appendChild(option);
+                            }});
+                        }}
+                    }} catch (error) {{
+                        console.error('Error loading user options:', error);
+                    }}
+                }}
+                
+                function renderDataTable(data, columns) {{
+                    if (!data || data.length === 0) {{
+                        document.getElementById('data-table').innerHTML = '<p style="text-align: center; color: #718096;">No data available</p>';
+                        return;
+                    }}
+                    
+                    let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">';
+                    
+                    // Header
+                    tableHTML += '<thead><tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">';
+                    columns.forEach(col => {{
+                        tableHTML += '<th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #2d3748;">' + col + '</th>';
+                    }});
+                    tableHTML += '</tr></thead>';
+                    
+                    // Body
+                    tableHTML += '<tbody>';
+                    data.forEach((row, index) => {{
+                        tableHTML += '<tr style="border-bottom: 1px solid #e2e8f0;' + (index % 2 === 0 ? 'background: #fafafa;' : '') + '">';
+                        columns.forEach(col => {{
+                            const value = row[col] || '';
+                            tableHTML += '<td style="padding: 0.75rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' + value + '">' + value + '</td>';
+                        }});
+                        tableHTML += '</tr>';
+                    }});
+                    tableHTML += '</tbody></table>';
+                    
+                    document.getElementById('data-table').innerHTML = tableHTML;
+                }}
+                
+                function updateTableStats(data) {{
+                    if (!data || data.length === 0) {{
+                        document.getElementById('total-rows').textContent = '0';
+                        document.getElementById('filtered-rows').textContent = '0';
+                        document.getElementById('unique-users').textContent = '0';
+                        document.getElementById('avg-responses').textContent = '0';
+                        return;
+                    }}
+                    
+                    const totalRows = data.length;
+                    const uniqueUsers = new Set(data.map(row => row.user_id || row.id)).size;
+                    const avgResponses = totalRows > 0 ? (totalRows / uniqueUsers).toFixed(1) : '0';
+                    
+                    document.getElementById('total-rows').textContent = totalRows;
+                    document.getElementById('filtered-rows').textContent = totalRows;
+                    document.getElementById('unique-users').textContent = uniqueUsers;
+                    document.getElementById('avg-responses').textContent = avgResponses;
+                }}
+                
+                async function applyFilters() {{
+                    const lessonFilter = document.getElementById('lesson-filter').value;
+                    const userFilter = document.getElementById('user-filter').value;
+                    
+                    if (!currentTable || currentData.length === 0) return;
+                    
+                    let filteredData = [...currentData];
+                    
+                    if (lessonFilter) {{
+                        filteredData = filteredData.filter(row => row.lesson_id == lessonFilter);
+                    }}
+                    
+                    if (userFilter) {{
+                        filteredData = filteredData.filter(row => row.user_id == userFilter);
+                    }}
+                    
+                    // Re-render with filtered data
+                    const columns = Object.keys(currentData[0] || {{}});
+                    renderDataTable(filteredData, columns);
+                    
+                    // Update stats
+                    const totalRows = currentData.length;
+                    const filteredRows = filteredData.length;
+                    const uniqueUsers = new Set(filteredData.map(row => row.user_id || row.id)).size;
+                    const avgResponses = uniqueUsers > 0 ? (filteredRows / uniqueUsers).toFixed(1) : '0';
+                    
+                    document.getElementById('total-rows').textContent = totalRows;
+                    document.getElementById('filtered-rows').textContent = filteredRows;
+                    document.getElementById('unique-users').textContent = uniqueUsers;
+                    document.getElementById('avg-responses').textContent = avgResponses;
+                }}
+                
+                function clearFilters() {{
+                    document.getElementById('lesson-filter').value = '';
+                    document.getElementById('user-filter').value = '';
+                    
+                    if (currentData.length > 0) {{
+                        const columns = Object.keys(currentData[0] || {{}});
+                        renderDataTable(currentData, columns);
+                        updateTableStats(currentData);
+                    }}
+                }}
+                
+                function refreshData() {{
+                    if (currentTable) {{
+                        loadTableData();
+                    }}
+                }}
+                
+                function exportData() {{
+                    if (!currentData || currentData.length === 0) {{
+                        alert('No data to export');
+                        return;
+                    }}
+                    
+                    const lessonFilter = document.getElementById('lesson-filter').value;
+                    const userFilter = document.getElementById('user-filter').value;
+                    
+                    let dataToExport = [...currentData];
+                    
+                    if (lessonFilter) {{
+                        dataToExport = dataToExport.filter(row => row.lesson_id == lessonFilter);
+                    }}
+                    
+                    if (userFilter) {{
+                        dataToExport = dataToExport.filter(row => row.user_id == userFilter);
+                    }}
+                    
+                    // Convert to CSV
+                    const columns = Object.keys(dataToExport[0] || {{}});
+                    let csv = columns.join(',') + '\\n';
+                    
+                    dataToExport.forEach(row => {{
+                        const values = columns.map(col => {{
+                            const value = row[col] || '';
+                            return '"' + value.toString().replace(/"/g, '""') + '"';
+                        }});
+                        csv += values.join(',') + '\\n';
+                    }});
+                    
+                    // Download CSV
+                    const blob = new Blob([csv], {{ type: 'text/csv' }});
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = currentTable + '_export_' + new Date().toISOString().split('T')[0] + '.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }}
             </script>
         </body>
         </html>
@@ -682,6 +972,7 @@ from app.api.csv_to_xapi import router as csv_to_xapi_router
 from app.api.data_access import router as data_access_router
 from app.api.chat import router as chat_router
 from app.api.public import router as public_router
+from app.api.data_explorer import router as data_explorer_router
 from app.ui.admin import router as admin_router
 # from app.ui.dashboard import router as dashboard_router
 from app.ui.data_import import router as data_import_ui_router
@@ -702,6 +993,8 @@ app.include_router(focus_group_import_router, prefix="/api", tags=["Focus Group 
 app.include_router(csv_to_xapi_router, prefix="/api", tags=["CSV to xAPI"])
 app.include_router(data_access_router, prefix="/api", tags=["Data Access"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
+app.include_router(public_router, tags=["Public"])
+app.include_router(data_explorer_router, tags=["Data Explorer"])
 app.include_router(health_router, tags=["Health"])
 app.include_router(admin_router, tags=["Admin"])
 # app.include_router(dashboard_router, tags=["Dashboard"])
