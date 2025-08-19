@@ -78,14 +78,14 @@ CREATE INDEX IF NOT EXISTS idx_user_responses_timestamp ON user_responses(timest
 -- Insert lessons from existing data
 INSERT INTO lessons (lesson_url, lesson_number, lesson_name)
 SELECT DISTINCT 
-    extension_value as lesson_url,
+    ce1.extension_value as lesson_url,
     CAST(ce2.extension_value AS INTEGER) as lesson_number,
     CASE 
-        WHEN extension_value = 'https://7taps.com/lessons/screen-habits-awareness' THEN 'Screen Habits Awareness'
-        WHEN extension_value = 'https://7taps.com/lessons/connection-balance' THEN 'Connection Balance'
-        WHEN extension_value = 'https://7taps.com/lessons/device-relationship' THEN 'Device Relationship'
-        WHEN extension_value = 'https://7taps.com/lessons/digital-wellness-foundations' THEN 'Digital Wellness Foundations'
-        WHEN extension_value = 'https://7taps.com/lessons/productivity-focus' THEN 'Productivity Focus'
+        WHEN ce1.extension_value = 'https://7taps.com/lessons/screen-habits-awareness' THEN 'Screen Habits Awareness'
+        WHEN ce1.extension_value = 'https://7taps.com/lessons/connection-balance' THEN 'Connection Balance'
+        WHEN ce1.extension_value = 'https://7taps.com/lessons/device-relationship' THEN 'Device Relationship'
+        WHEN ce1.extension_value = 'https://7taps.com/lessons/digital-wellness-foundations' THEN 'Digital Wellness Foundations'
+        WHEN ce1.extension_value = 'https://7taps.com/lessons/productivity-focus' THEN 'Productivity Focus'
         ELSE 'Unknown Lesson'
     END as lesson_name
 FROM context_extensions_new ce1
