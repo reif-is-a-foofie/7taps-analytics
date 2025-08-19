@@ -108,109 +108,480 @@ async def dashboard():
         behavior_labels = [row[0] for row in behavior_data] if behavior_data else ['No Data']
         behavior_values = [row[1] for row in behavior_data] if behavior_data else [0]
         
-        # Create dynamic HTML with real data
+        # Create dynamic HTML with Data Explorer as main focus
         html_content = f"""
         <!DOCTYPE html>
         <html>
         <head>
-            <title>7taps Analytics Dashboard</title>
+            <title>7taps HR Analytics Explorer</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
+                :root {{
+                    --primary-color: #6A1B9A;
+                    --primary-light: #8E24AA;
+                    --primary-dark: #4A148C;
+                    --bg-color: #FFFFFF;
+                    --bg-light: #F8F9FA;
+                    --text-primary: #2D3748;
+                    --text-secondary: #718096;
+                    --border-color: #E2E8F0;
+                    --success-color: #48BB78;
+                    --warning-color: #ED8936;
+                    --danger-color: #E53E3E;
+                    --card-shadow: rgba(0, 0, 0, 0.1) 0px 2px 4px;
+                    --card-shadow-hover: rgba(0, 0, 0, 0.15) 0px 4px 8px;
+                }}
+                
                 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7fafc; color: #2d3748; }}
-                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; text-align: center; }}
-                .header h1 {{ font-size: 2.5rem; margin-bottom: 0.5rem; }}
-                .header p {{ font-size: 1.1rem; opacity: 0.9; }}
-                .tabs {{ display: flex; background: white; border-bottom: 1px solid #e2e8f0; padding: 0 2rem; }}
-                .tab {{ padding: 1rem 2rem; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.3s ease; }}
-                .tab.active {{ border-bottom-color: #667eea; color: #667eea; font-weight: 600; }}
-                .tab:hover {{ background: #f7fafc; }}
-                .content {{ padding: 2rem; max-width: 1400px; margin: 0 auto; }}
-                .metrics-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }}
-                .metric-card {{ background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }}
-                .metric-value {{ font-size: 2.5rem; font-weight: bold; color: #667eea; margin-bottom: 0.5rem; }}
-                .metric-label {{ color: #718096; font-size: 0.9rem; }}
-                .charts-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; margin-bottom: 2rem; }}
-                .chart-container {{ background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-                .chart-title {{ font-size: 1.2rem; margin-bottom: 1rem; color: #2d3748; }}
-                .insights {{ background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem; }}
-                .insights h3 {{ margin-bottom: 1rem; color: #2d3748; }}
-                .insights ul {{ list-style: none; }}
-                .insights li {{ padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0; }}
-                .insights li:last-child {{ border-bottom: none; }}
+                body {{ 
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                    background: var(--bg-light); 
+                    color: var(--text-primary); 
+                    line-height: 1.6;
+                }}
+                
+                /* Layout */
+                .app-container {{ display: flex; min-height: 100vh; }}
+                .sidebar {{ 
+                    width: 280px; 
+                    background: var(--bg-color); 
+                    border-right: 1px solid var(--border-color); 
+                    overflow-y: auto;
+                    box-shadow: var(--card-shadow);
+                }}
+                .main-content {{ flex: 1; display: flex; flex-direction: column; }}
+                
+                /* Header */
+                .header {{ 
+                    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%); 
+                    color: var(--bg-color); 
+                    padding: 2rem; 
+                    text-align: center;
+                    box-shadow: var(--card-shadow);
+                }}
+                .header h1 {{ 
+                    font-size: 2.25rem; 
+                    font-weight: 700;
+                    margin-bottom: 0.5rem; 
+                    letter-spacing: -0.025em;
+                }}
+                .header p {{ 
+                    font-size: 1.125rem; 
+                    opacity: 0.9;
+                    font-weight: 400;
+                }}
+                
+                /* Sidebar */
+                .sidebar-section {{ 
+                    padding: 1.5rem; 
+                    border-bottom: 1px solid var(--border-color); 
+                }}
+                .sidebar-section h3 {{ 
+                    font-size: 0.875rem; 
+                    font-weight: 600;
+                    margin-bottom: 1rem; 
+                    color: var(--text-secondary);
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }}
+                .sidebar-item {{ 
+                    display: block; 
+                    padding: 0.75rem 1rem; 
+                    margin: 0.25rem 0; 
+                    background: var(--bg-light); 
+                    border-radius: 8px; 
+                    text-decoration: none; 
+                    color: var(--text-primary); 
+                    transition: all 0.2s ease;
+                    font-weight: 500;
+                    font-size: 0.875rem;
+                }}
+                .sidebar-item:hover {{ 
+                    background: var(--primary-color); 
+                    color: var(--bg-color);
+                    transform: translateX(4px);
+                }}
+                .sidebar-item.active {{ 
+                    background: var(--primary-color); 
+                    color: var(--bg-color);
+                    box-shadow: var(--card-shadow);
+                }}
+                
+                /* Main Content */
+                .content {{ padding: 2rem; flex: 1; }}
+                .metrics-grid {{ 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+                    gap: 1.5rem; 
+                    margin-bottom: 2rem; 
+                }}
+                .metric-card {{ 
+                    background: var(--bg-color); 
+                    padding: 1.75rem; 
+                    border-radius: 12px; 
+                    box-shadow: var(--card-shadow); 
+                    text-align: center;
+                    transition: all 0.2s ease;
+                    border: 1px solid var(--border-color);
+                }}
+                .metric-card:hover {{
+                    box-shadow: var(--card-shadow-hover);
+                    transform: translateY(-2px);
+                }}
+                .metric-value {{ 
+                    font-size: 2.5rem; 
+                    font-weight: 700; 
+                    color: var(--primary-color); 
+                    margin-bottom: 0.5rem;
+                    line-height: 1;
+                }}
+                .metric-label {{ 
+                    color: var(--text-secondary); 
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }}
+                .charts-grid {{ 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); 
+                    gap: 1.5rem; 
+                    margin-bottom: 2rem; 
+                }}
+                .chart-container {{ 
+                    background: var(--bg-color); 
+                    padding: 1.75rem; 
+                    border-radius: 12px; 
+                    box-shadow: var(--card-shadow);
+                    border: 1px solid var(--border-color);
+                }}
+                .chart-title {{ 
+                    font-size: 1.125rem; 
+                    font-weight: 600;
+                    margin-bottom: 1rem; 
+                    color: var(--text-primary);
+                }}
+                
+                /* Data Explorer Styles */
+                .explorer-controls {{ 
+                    margin-bottom: 2rem; 
+                    padding: 1.75rem; 
+                    background: var(--bg-color); 
+                    border-radius: 12px;
+                    box-shadow: var(--card-shadow);
+                    border: 1px solid var(--border-color);
+                }}
+                .filter-grid {{ 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+                    gap: 1rem; 
+                    margin-bottom: 1.5rem; 
+                }}
+                .filter-group label {{ 
+                    display: block; 
+                    margin-bottom: 0.5rem; 
+                    font-weight: 600;
+                    font-size: 0.875rem;
+                    color: var(--text-primary);
+                }}
+                .filter-group select, .filter-group input {{ 
+                    width: 100%; 
+                    padding: 0.75rem; 
+                    border: 1px solid var(--border-color); 
+                    border-radius: 8px;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.875rem;
+                    transition: all 0.2s ease;
+                }}
+                .filter-group select:focus, .filter-group input:focus {{
+                    outline: none;
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 3px rgba(106, 27, 154, 0.1);
+                }}
+                .action-buttons {{ 
+                    display: flex; 
+                    gap: 1rem; 
+                    flex-wrap: wrap; 
+                }}
+                .btn {{ 
+                    padding: 0.75rem 1.5rem; 
+                    border: none; 
+                    border-radius: 8px; 
+                    cursor: pointer; 
+                    font-weight: 600; 
+                    color: var(--bg-color);
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.875rem;
+                    transition: all 0.2s ease;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }}
+                .btn:hover {{
+                    transform: translateY(-1px);
+                    box-shadow: var(--card-shadow-hover);
+                }}
+                .btn-primary {{ background: var(--primary-color); }}
+                .btn-primary:hover {{ background: var(--primary-light); }}
+                .btn-success {{ background: var(--success-color); }}
+                .btn-warning {{ background: var(--warning-color); }}
+                .btn-danger {{ background: var(--danger-color); }}
+                
+                /* Table Styles */
+                .data-table-container {{ 
+                    background: var(--bg-color); 
+                    border-radius: 12px; 
+                    box-shadow: var(--card-shadow); 
+                    overflow: hidden;
+                    border: 1px solid var(--border-color);
+                }}
+                .data-table {{ 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    font-size: 0.875rem; 
+                }}
+                .data-table th {{ 
+                    background: var(--bg-light); 
+                    padding: 1rem; 
+                    text-align: left; 
+                    font-weight: 600; 
+                    color: var(--text-primary); 
+                    border-bottom: 2px solid var(--border-color);
+                    font-size: 0.75rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }}
+                .data-table td {{ 
+                    padding: 1rem; 
+                    border-bottom: 1px solid var(--border-color); 
+                }}
+                .data-table tr:nth-child(even) {{ background: var(--bg-light); }}
+                .data-table tr:hover {{ background: rgba(106, 27, 154, 0.05); }}
+                
+                /* Status Display */
+                .status-display {{ 
+                    margin-bottom: 1rem; 
+                    padding: 1rem; 
+                    background: rgba(72, 187, 120, 0.1); 
+                    border-left: 4px solid var(--success-color); 
+                    border-radius: 8px; 
+                    color: var(--success-color);
+                    font-weight: 500;
+                }}
+                
+                /* Responsive */
+                @media (max-width: 768px) {{
+                    .app-container {{ flex-direction: column; }}
+                    .sidebar {{ width: 100%; }}
+                    .charts-grid {{ grid-template-columns: 1fr; }}
+                    .metrics-grid {{ grid-template-columns: repeat(2, 1fr); }}
+                }}
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>📊 7taps Analytics Dashboard</h1>
-                <p>Real-time learning analytics and behavior insights</p>
-            </div>
-            
-            <div class="tabs">
-                <div class="tab active" onclick="showTab('summary')">📈 Executive Summary</div>
-                <div class="tab" onclick="showTab('engagement')">🎯 Engagement & Behaviors</div>
-                <div class="tab" onclick="showTab('metrics')">📊 Before / After Metrics</div>
-                <div class="tab" onclick="showTab('cohorts')">👥 Cohort Analysis</div>
-                <div class="tab" onclick="showTab('reflections')">💭 Student Reflections</div>
-                <div class="tab" onclick="showTab('explorer')">🔍 Data Explorer</div>
-            </div>
-            
-            <div class="content">
-                <div id="summary" class="tab-content">
-                    <h2>Executive Summary</h2>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-value">{metrics[0] if metrics else 0}</div>
-                            <div class="metric-label">Total Learners</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value">{metrics[1] if metrics else 0}</div>
-                            <div class="metric-label">Total Lessons</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value">{metrics[2] if metrics else 0}</div>
-                            <div class="metric-label">Total Responses</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value">{metrics[3] if metrics else 0}</div>
-                            <div class="metric-label">Total Activities</div>
-                        </div>
+            <div class="app-container">
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <div class="sidebar-section">
+                        <h3>Analytics</h3>
+                        <a href="#" class="sidebar-item active" onclick="showSection('explorer')">Data Explorer</a>
+                        <a href="#" class="sidebar-item" onclick="showSection('summary')">Executive Summary</a>
+                        <a href="#" class="sidebar-item" onclick="showSection('engagement')">Engagement</a>
+                        <a href="#" class="sidebar-item" onclick="showSection('metrics')">Before/After</a>
+                        <a href="#" class="sidebar-item" onclick="showSection('cohorts')">Cohorts</a>
                     </div>
                     
-                    <div class="charts-grid">
-                        <div class="chart-container">
-                            <div class="chart-title">Lesson Engagement Funnel</div>
-                            <div id="funnel-chart"></div>
-                        </div>
-                        <div class="chart-container">
-                            <div class="chart-title">Lesson Completion by Response Count</div>
-                            <div id="completion-chart"></div>
-                        </div>
+                    <div class="sidebar-section">
+                        <h3>Communication</h3>
+                        <a href="#" class="sidebar-item" onclick="showSection('chat')">AI Chat</a>
+                        <a href="#" class="sidebar-item" onclick="showSection('reflections')">Reflections</a>
+                    </div>
+                    
+                    <div class="sidebar-section">
+                        <h3>System</h3>
+                        <a href="#" class="sidebar-item" onclick="showSection('health')">Health Check</a>
+                        <a href="#" class="sidebar-item" onclick="showSection('api')">API Docs</a>
                     </div>
                 </div>
                 
-                <div id="engagement" class="tab-content" style="display: none;">
-                    <h2>Engagement & Behaviors</h2>
-                    <div class="charts-grid">
-                        <div class="chart-container">
-                            <div class="chart-title">Behavior Priorities</div>
-                            <div id="behavior-chart"></div>
-                        </div>
-                        <div class="chart-container">
-                            <div class="chart-title">Engagement Heatmap</div>
-                            <div id="heatmap-chart"></div>
-                        </div>
+                <!-- Main Content -->
+                <div class="main-content">
+                    <div class="header">
+                        <h1>📊 7taps HR Analytics Explorer</h1>
+                        <p>Interactive data exploration for HR insights</p>
                     </div>
-                    <div class="chart-container">
-                        <div class="chart-title">User Activity Timeline</div>
-                        <div id="timeline-chart"></div>
-                    </div>
-                </div>
+                    
+                    <div class="content">
+                        <!-- Data Explorer (Main Section) -->
+                        <div id="explorer" class="section-content">
+                            <h2>HR Analytics Explorer</h2>
+                            <p style="margin-bottom: 1rem;">Interactive analytics for HR insights - click charts to filter data, export reports, and drill down into employee engagement:</p>
+                            
+                            <!-- Quick Insights Panel -->
+                            <div class="metrics-grid" style="margin-bottom: 2rem;">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="total-participants">{metrics[0] if metrics else 0}</div>
+                                    <div class="metric-label">Total Participants</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value" id="avg-engagement">{metrics[2] if metrics else 0}</div>
+                                    <div class="metric-label">Total Responses</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value" id="completion-rate">{metrics[1] if metrics else 0}</div>
+                                    <div class="metric-label">Total Lessons</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value" id="top-lesson">{metrics[3] if metrics else 0}</div>
+                                    <div class="metric-label">Total Activities</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Interactive Charts Section -->
+                            <div class="charts-grid" style="margin-bottom: 2rem;">
+                                <div class="chart-container">
+                                    <div class="chart-title">Lesson Engagement (Click to Filter)</div>
+                                    <div id="interactive-lesson-chart"></div>
+                                </div>
+                                <div class="chart-container">
+                                    <div class="chart-title">Response Patterns</div>
+                                    <div id="response-pattern-chart"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Enhanced Filter Panel -->
+                            <div class="explorer-controls">
+                                <h3>🔍 Filter & Explore Data</h3>
+                                <div class="filter-grid">
+                                    <div class="filter-group">
+                                        <label for="data-table-select">📋 Data View:</label>
+                                        <select id="data-table-select" onchange="loadTableData()">
+                                            <option value="">Choose what to explore...</option>
+                                            <option value="user_responses">📝 Employee Responses</option>
+                                            <option value="lessons">📚 Lesson Overview</option>
+                                            <option value="users">👥 Participant List</option>
+                                            <option value="user_activities">📊 Activity Log</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label for="lesson-filter">📚 Filter by Lesson:</label>
+                                        <select id="lesson-filter" onchange="applyFilters()">
+                                            <option value="">All Lessons</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label for="user-filter">👤 Filter by Participant:</label>
+                                        <select id="user-filter" onchange="applyFilters()">
+                                            <option value="">All Participants</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label for="search-filter">🔍 Search Responses:</label>
+                                        <input type="text" id="search-filter" placeholder="Search in responses..." onkeyup="applyFilters()">
+                                    </div>
+                                </div>
+                                <div class="action-buttons">
+                                    <button onclick="exportData()" class="btn btn-primary">📊 Export to Excel</button>
+                                    <button onclick="generateReport()" class="btn btn-success">📋 Generate Report</button>
+                                    <button onclick="refreshData()" class="btn btn-warning">🔄 Refresh Data</button>
+                                    <button onclick="clearFilters()" class="btn btn-danger">🗑️ Clear All</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Status Display -->
+                            <div id="filter-status" class="status-display">
+                                📊 Ready to explore data
+                            </div>
+                            
+                            <!-- Data Table -->
+                            <div class="data-table-container">
+                                <div id="data-table" style="padding: 1rem;">
+                                    <p style="text-align: center; color: #718096;">Select a data view to begin exploring...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Table Stats -->
+                            <div style="margin-top: 1rem; padding: 1rem; background: #f7fafc; border-radius: 8px;">
+                                <h4>📈 Table Statistics</h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;" id="total-rows">-</div>
+                                        <div style="font-size: 0.9rem; color: #718096;">Total Rows</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.5rem; font-weight: bold; color: #48bb78;" id="filtered-rows">-</div>
+                                        <div style="font-size: 0.9rem; color: #718096;">Filtered Rows</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.5rem; font-weight: bold; color: #ed8936;" id="unique-users">-</div>
+                                        <div style="font-size: 0.9rem; color: #718096;">Unique Users</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.5rem; font-weight: bold; color: #9f7aea;" id="avg-responses">-</div>
+                                        <div style="font-size: 0.9rem; color: #718096;">Avg Responses/User</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Executive Summary Section -->
+                        <div id="summary" class="section-content" style="display: none;">
+                            <h2>📈 Executive Summary</h2>
+                            <div class="metrics-grid">
+                                <div class="metric-card">
+                                    <div class="metric-value">{metrics[0] if metrics else 0}</div>
+                                    <div class="metric-label">Total Learners</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value">{metrics[1] if metrics else 0}</div>
+                                    <div class="metric-label">Total Lessons</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value">{metrics[2] if metrics else 0}</div>
+                                    <div class="metric-label">Total Responses</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value">{metrics[3] if metrics else 0}</div>
+                                    <div class="metric-label">Total Activities</div>
+                                </div>
+                            </div>
+                            
+                            <div class="charts-grid">
+                                <div class="chart-container">
+                                    <div class="chart-title">Lesson Engagement Funnel</div>
+                                    <div id="funnel-chart"></div>
+                                </div>
+                                <div class="chart-container">
+                                    <div class="chart-title">Lesson Completion by Response Count</div>
+                                    <div id="completion-chart"></div>
+                                </div>
+                            </div>
+                        </div>
                 
-                <div id="metrics" class="tab-content" style="display: none;">
-                    <h2>Before & After Metrics</h2>
+                        <!-- Engagement Section -->
+                        <div id="engagement" class="section-content" style="display: none;">
+                            <h2>🎯 Engagement & Behaviors</h2>
+                            <div class="charts-grid">
+                                <div class="chart-container">
+                                    <div class="chart-title">Behavior Priorities</div>
+                                    <div id="behavior-chart"></div>
+                                </div>
+                                <div class="chart-container">
+                                    <div class="chart-title">Engagement Heatmap by Lesson</div>
+                                    <div id="heatmap-chart"></div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <div class="chart-title">User Activity Timeline</div>
+                                <div id="timeline-chart"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Metrics Section -->
+                        <div id="metrics" class="section-content" style="display: none;">
+                            <h2>📊 Before / After Metrics</h2>
                     <div class="charts-grid">
                         <div class="chart-container">
                             <div class="chart-title">Before vs After Metrics (1-5 Scale)</div>
@@ -390,20 +761,100 @@ async def dashboard():
                                 <div style="font-size: 0.9rem; color: #718096;">Avg Responses/User</div>
                             </div>
                         </div>
+                        <!-- Cohorts Section -->
+                        <div id="cohorts" class="section-content" style="display: none;">
+                            <h2>👥 Cohort Analysis</h2>
+                            <div class="charts-grid">
+                                <div class="chart-container">
+                                    <div class="chart-title">Cohort Completion Rates</div>
+                                    <div id="cohort-chart"></div>
+                                </div>
+                                <div class="chart-container">
+                                    <div class="chart-title">User Distribution by Cohort</div>
+                                    <div id="cohort-distribution-chart"></div>
+                                </div>
+                            </div>
+                            <div class="charts-grid">
+                                <div class="chart-container">
+                                    <div class="chart-title">Lesson Performance by Cohort</div>
+                                    <div id="lesson-cohort-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Reflections Section -->
+                        <div id="reflections" class="section-content" style="display: none;">
+                            <h2>💭 Student Reflections</h2>
+                            <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+                                <h3>Key Insights from Student Responses</h3>
+                                <ul style="list-style: none;">
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0;">📈 85% of students reported improved focus after completing the digital wellness program</li>
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0;">💤 72% experienced better sleep quality and reduced screen time before bed</li>
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0;">😌 68% reported decreased stress levels and improved mental clarity</li>
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0;">📱 91% became more mindful of their social media usage patterns</li>
+                                    <li style="padding: 0.5rem 0;">🎯 78% developed better time management skills and productivity habits</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Chat Section -->
+                        <div id="chat" class="section-content" style="display: none;">
+                            <h2>AI Chat Assistant</h2>
+                            <div style="background: var(--bg-color); padding: 1.5rem; border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                                <p>Ask questions about your data and get AI-powered insights:</p>
+                                <div style="margin: 1rem 0;">
+                                    <input type="text" id="chat-input" placeholder="Ask about your data..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 1rem; font-family: 'Inter', sans-serif;">
+                                    <button onclick="sendChatMessage()" class="btn btn-primary">Send Message</button>
+                                </div>
+                                <div id="chat-messages" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
+                                    <p style="color: var(--text-secondary); text-align: center;">Start a conversation about your data...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Health Section -->
+                        <div id="health" class="section-content" style="display: none;">
+                            <h2>System Health</h2>
+                            <div id="health-status" style="background: var(--bg-color); padding: 1.5rem; border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                                <p>Loading system status...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- API Section -->
+                        <div id="api" class="section-content" style="display: none;">
+                            <h2>API Documentation</h2>
+                            <div style="background: var(--bg-color); padding: 1.5rem; border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                                <p>Access the full API documentation:</p>
+                                <a href="/docs" target="_blank" class="btn btn-primary" style="display: inline-block; margin-top: 1rem;">Open API Docs</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <script>
-                function showTab(tabName) {{
-                    const tabContents = document.querySelectorAll('.tab-content');
-                    tabContents.forEach(content => content.style.display = 'none');
+                function showSection(sectionName) {{
+                    // Hide all sections
+                    const sections = document.querySelectorAll('.section-content');
+                    sections.forEach(section => section.style.display = 'none');
                     
-                    const tabs = document.querySelectorAll('.tab');
-                    tabs.forEach(tab => tab.classList.remove('active'));
+                    // Remove active class from all sidebar items
+                    const sidebarItems = document.querySelectorAll('.sidebar-item');
+                    sidebarItems.forEach(item => item.classList.remove('active'));
                     
-                    document.getElementById(tabName).style.display = 'block';
+                    // Show selected section
+                    const selectedSection = document.getElementById(sectionName);
+                    if (selectedSection) {{
+                        selectedSection.style.display = 'block';
+                    }}
+                    
+                    // Add active class to clicked sidebar item
                     event.target.classList.add('active');
+                    
+                    // Initialize specific sections
+                    if (sectionName === 'health') {{
+                        loadHealthStatus();
+                    }}
                 }}
                 
                 document.addEventListener('DOMContentLoaded', function() {{
@@ -634,26 +1085,36 @@ async def dashboard():
                 
                 function renderDataTable(data, columns) {{
                     if (!data || data.length === 0) {{
-                        document.getElementById('data-table').innerHTML = '<p style="text-align: center; color: #718096;">No data available</p>';
+                        document.getElementById('data-table').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No data available</p>';
                         return;
                     }}
                     
-                    let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">';
+                    // Sort data in ascending order by first column
+                    const sortedData = [...data].sort((a, b) => {{
+                        const aVal = a[columns[0]] || '';
+                        const bVal = b[columns[0]] || '';
+                        if (typeof aVal === 'number' && typeof bVal === 'number') {{
+                            return aVal - bVal;
+                        }}
+                        return String(aVal).localeCompare(String(bVal));
+                    }});
+                    
+                    let tableHTML = '<table class="data-table">';
                     
                     // Header
-                    tableHTML += '<thead><tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">';
+                    tableHTML += '<thead><tr>';
                     columns.forEach(col => {{
-                        tableHTML += '<th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #2d3748;">' + col + '</th>';
+                        tableHTML += '<th>' + col + '</th>';
                     }});
                     tableHTML += '</tr></thead>';
                     
                     // Body
                     tableHTML += '<tbody>';
-                    data.forEach((row, index) => {{
-                        tableHTML += '<tr style="border-bottom: 1px solid #e2e8f0;' + (index % 2 === 0 ? 'background: #fafafa;' : '') + '">';
+                    sortedData.forEach((row, index) => {{
+                        tableHTML += '<tr>';
                         columns.forEach(col => {{
                             const value = row[col] || '';
-                            tableHTML += '<td style="padding: 0.75rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' + value + '">' + value + '</td>';
+                            tableHTML += '<td title="' + value + '">' + value + '</td>';
                         }});
                         tableHTML += '</tr>';
                     }});
@@ -743,14 +1204,14 @@ async def dashboard():
                     
                     let statusText = '';
                     if (lessonFilter || userFilter || searchFilter) {{
-                        statusText = '🔍 Filters applied: ';
+                        statusText = 'Filters applied: ';
                         const filters = [];
                         if (lessonFilter) filters.push('Lesson ' + lessonFilter);
                         if (userFilter) filters.push('User ' + userFilter);
                         if (searchFilter) filters.push('Search: "' + searchFilter + '"');
                         statusText += filters.join(', ');
                     }} else {{
-                        statusText = '📊 Showing all data';
+                        statusText = 'Showing all data';
                     }}
                     
                     // Update status display
