@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS questions (
 -- 3. Users table - normalized user data
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) UNIQUE NOT NULL,
-    cohort VARCHAR(100),
+    user_id VARCHAR(500) UNIQUE NOT NULL,
+    cohort VARCHAR(200),
     first_seen TIMESTAMP WITH TIME ZONE,
     last_seen TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -44,11 +44,11 @@ CREATE TABLE IF NOT EXISTS user_activities (
     user_id INTEGER REFERENCES users(id),
     lesson_id INTEGER REFERENCES lessons(id),
     question_id INTEGER REFERENCES questions(id),
-    activity_type VARCHAR(100), -- 'lesson_start', 'question_answer', 'lesson_complete', etc.
+    activity_type VARCHAR(200), -- 'lesson_start', 'question_answer', 'lesson_complete', etc.
     activity_data JSONB, -- store additional activity data
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     source VARCHAR(50), -- 'xapi' or 'csv'
-    raw_statement_id VARCHAR(255), -- keep reference to original data
+    raw_statement_id VARCHAR(500), -- keep reference to original data
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -58,14 +58,14 @@ CREATE TABLE IF NOT EXISTS user_responses (
     user_id INTEGER REFERENCES users(id),
     question_id INTEGER REFERENCES questions(id),
     response_text TEXT,
-    response_value VARCHAR(255),
+    response_value VARCHAR(500),
     is_correct BOOLEAN,
     score_raw NUMERIC,
     score_scaled NUMERIC,
     duration_seconds INTEGER,
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     source VARCHAR(50),
-    raw_statement_id VARCHAR(255),
+    raw_statement_id VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
