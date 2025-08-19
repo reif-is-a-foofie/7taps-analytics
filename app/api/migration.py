@@ -1014,3 +1014,61 @@ async def migration_health_check():
             "status": "unhealthy",
             "message": f"Migration system error: {str(e)}"
         }
+
+@router.post("/migrate-to-proper-schema")
+async def migrate_to_proper_schema():
+    """
+    Migrate data to the new proper normalized schema using lesson_url as main connector.
+    This creates clean, relational tables instead of the messy current structure.
+    """
+    conn = psycopg2.connect(settings.DATABASE_URL)
+    try:
+        with conn.cursor() as cur:
+            # Read and execute the migration SQL
+            with open("migrations/create_proper_schema.sql", "r") as f:
+                migration_sql = f.read()
+            
+            # Execute the migration
+            cur.execute(migration_sql)
+            conn.commit()
+            
+            # Get migration results
+            cur.execute("SELECT COUNT(*) as lesson_count FROM lessons")
+            lesson_count = cur.fetchone()['lesson_count']
+            
+            cur.execute("SELECT COUNT(*) as user_count FROM users")
+            user_count = cur.fetchone()['user_count']
+            
+            cur.execute("SELECT COUNT(*) as question_count FROM questions")
+            question_count = cur.fetchone()['question_count']
+            
+            cur.execute("SELECT COUNT(*) as activity_count FROM user_activities")
+            activity_count = cur.fetchone()['activity_count']
+            
+            cur.execute("SELECT COUNT(*) as response_count FROM user_responses")
+            response_count = cur.fetchone()['response_count']
+            
+            return {
+                "status": "success",
+                "message": "Successfully migrated to proper normalized schema",
+                "migration_results": {
+                    "lessons_created": lesson_count,
+                    "users_created": user_count,
+                    "questions_created": question_count,
+                    "activities_migrated": activity_count,
+                    "responses_migrated": response_count
+                },
+                "schema_info": {
+                    "lessons": "Main lesson entities with lesson_url as unique identifier",
+                    "questions": "Questions within lessons, linked by lesson_id",
+                    "users": "Normalized user data with cohort information",
+                    "user_activities": "All user interactions and activities",
+                    "user_responses": "Specific question responses with scores"
+                }
+            }
+            
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}")
+    finally:
+        conn.close()
