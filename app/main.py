@@ -660,6 +660,7 @@ async def dashboard():
         
     except Exception as e:
         # Fallback to static dashboard if database connection fails
+        error_msg = str(e)
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -680,7 +681,7 @@ async def dashboard():
             </div>
             <div class="error">
                 <h3>⚠️ Dashboard Loading Error</h3>
-                <p>Unable to load dynamic data from database. Error: {str(e)}</p>
+                <p>Unable to load dynamic data from database. Error: {error_msg}</p>
                 <p>Please check database connection and try again.</p>
             </div>
         </body>
