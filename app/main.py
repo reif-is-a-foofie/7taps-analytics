@@ -1120,48 +1120,11 @@ async def dashboard():
                     await loadUserOptions();
                     
                     // Initialize interactive charts
-                    createInteractiveCharts();
+
                     updateQuickInsights();
                 }}
                 
-                function createInteractiveCharts() {{
-                    // Interactive lesson engagement chart
-                    Plotly.newPlot('interactive-lesson-chart', [{{
-                        type: 'bar',
-                        x: lessonNames,
-                        y: lessonCounts,
-                        marker: {{color: lessonCounts, colorscale: 'Blues'}},
-                        hovertemplate: '<b>%{{x}}</b><br>Engagement: %{{y}} participants<extra></extra>'
-                    }}], {{
-                        title: 'Click any bar to filter data',
-                        height: 300,
-                        xaxis: {{tickangle: -45}},
-                        yaxis: {{title: 'Participants'}},
-                        clickmode: 'event'
-                    }});
-                    
-                    // Response pattern chart
-                    Plotly.newPlot('response-pattern-chart', [{{
-                        type: 'pie',
-                        labels: behaviorLabels,
-                        values: behaviorValues,
-                        hole: 0.4,
-                        hovertemplate: '<b>%{{label}}</b><br>Responses: %{{value}}<extra></extra>'
-                    }}], {{
-                        title: 'Response Patterns by Category',
-                        height: 300
-                    }});
-                    
-                    // Add click handlers for interactive filtering
-                    document.getElementById('interactive-lesson-chart').on('plotly_click', function(data) {{
-                        const lessonName = data.points[0].x;
-                        const lessonIndex = lessonNames.indexOf(lessonName);
-                        if (lessonIndex !== -1) {{
-                            document.getElementById('lesson-filter').value = lessonIndex + 1;
-                            applyFilters();
-                        }}
-                    }});
-                }}
+
                 
                 function updateQuickInsights() {{
                     // Calculate insights from current data
