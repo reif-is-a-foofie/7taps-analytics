@@ -67,17 +67,17 @@ async def get_users():
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT id, email, actor_id 
+            SELECT id, actor_id 
             FROM users 
-            ORDER BY email, actor_id
+            ORDER BY actor_id
         """)
         
         users = []
         for row in cursor.fetchall():
             users.append({
                 "id": row[0],
-                "email": row[1] or row[2] or f"User {row[0]}",
-                "actor_id": row[2]
+                "email": row[1] or f"User {row[0]}",
+                "actor_id": row[1]
             })
         
         cursor.close()
