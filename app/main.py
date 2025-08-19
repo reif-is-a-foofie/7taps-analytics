@@ -388,8 +388,8 @@ async def dashboard():
                         <h3>Analytics</h3>
                         <a href="#" class="sidebar-item active" onclick="showSection('dashboard')">Dashboard</a>
                         <a href="#" class="sidebar-item" onclick="showSection('explorer')">Data Explorer</a>
-                    </div>
-                    
+            </div>
+            
                     <div class="sidebar-section">
                         <h3>Communication</h3>
                         <a href="#" class="sidebar-item" onclick="showSection('chat')">AI Chat</a>
@@ -407,9 +407,9 @@ async def dashboard():
                     <div class="header">
                         <h1>7taps HR Analytics Explorer</h1>
                         <p>Interactive data exploration for HR insights</p>
-                    </div>
-                    
-                    <div class="content">
+            </div>
+            
+            <div class="content">
                         <!-- Main Dashboard Section -->
                         <div id="dashboard" class="section-content">
                             <h2>Learning Analytics Dashboard</h2>
@@ -417,47 +417,47 @@ async def dashboard():
                             
                             <!-- Key Metrics Panel -->
                             <div class="metrics-grid" style="margin-bottom: 2rem;">
-                                <div class="metric-card">
+                        <div class="metric-card">
                                     <div class="metric-value" id="total-participants">{metrics[0] if metrics else 0}</div>
-                                    <div class="metric-label">Total Learners</div>
-                                </div>
-                                <div class="metric-card">
+                            <div class="metric-label">Total Learners</div>
+                        </div>
+                        <div class="metric-card">
                                     <div class="metric-value" id="completion-rate">78%</div>
                                     <div class="metric-label">Completion Rate</div>
-                                </div>
-                                <div class="metric-card">
+                        </div>
+                        <div class="metric-card">
                                     <div class="metric-value" id="avg-score">4.2</div>
                                     <div class="metric-label">Avg Quiz Score</div>
-                                </div>
-                                <div class="metric-card">
+                        </div>
+                        <div class="metric-card">
                                     <div class="metric-value" id="nps-score">8.5</div>
                                     <div class="metric-label">Net Promoter Score</div>
-                                </div>
-                            </div>
-                            
+                        </div>
+                    </div>
+                    
                             <!-- Main Charts Section -->
                             <div class="charts-grid" style="margin-bottom: 2rem;">
-                                <div class="chart-container">
+                        <div class="chart-container">
                                     <div class="chart-title">Lesson Completion Funnel</div>
                                     <div id="completion-funnel-chart"></div>
-                                </div>
-                                <div class="chart-container">
+                        </div>
+                        <div class="chart-container">
                                     <div class="chart-title">Before vs After Knowledge Assessment</div>
                                     <div id="knowledge-lift-chart"></div>
-                                </div>
-                            </div>
-                            
+                    </div>
+                </div>
+                
                             <!-- Secondary Charts Section -->
                             <div class="charts-grid" style="margin-bottom: 2rem;">
-                                <div class="chart-container">
+                        <div class="chart-container">
                                     <div class="chart-title">Drop-off Points by Lesson</div>
                                     <div id="dropoff-chart"></div>
-                                </div>
-                                <div class="chart-container">
+                        </div>
+                        <div class="chart-container">
                                     <div class="chart-title">Quiz Performance by Question</div>
                                     <div id="quiz-performance-chart"></div>
-                                </div>
-                            </div>
+                        </div>
+                    </div>
                             
                             <!-- Quick Insights Section -->
                             <div style="margin-bottom: 2rem;">
@@ -490,15 +490,15 @@ async def dashboard():
                                             <li>Request for more downloadable content</li>
                                         </ul>
                                     </div>
-                                </div>
-                            </div>
-                            
+                    </div>
+                </div>
+                
                             <!-- Action Buttons -->
                             <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem;">
                                 <button onclick="exportDashboardData()" class="btn btn-primary">Export Dashboard</button>
                                 <button onclick="generateDashboardReport()" class="btn btn-success">Generate Report</button>
                                 <button onclick="refreshDashboard()" class="btn btn-warning">Refresh Data</button>
-                            </div>
+                        </div>
                         </div>
                         
                         <!-- Data Explorer Section -->
@@ -519,7 +519,7 @@ async def dashboard():
                                             <option value="users">Participant List</option>
                                             <option value="user_activities">Activity Log</option>
                                         </select>
-                                    </div>
+                    </div>
                                     <div class="filter-group">
                                         <label for="lesson-filter">Filter by Lesson:</label>
                                         <select id="lesson-filter" onchange="applyFilters()">
@@ -542,9 +542,9 @@ async def dashboard():
                                     <button onclick="generateReport()" class="btn btn-success">Generate Report</button>
                                     <button onclick="refreshData()" class="btn btn-warning">Refresh Data</button>
                                     <button onclick="clearFilters()" class="btn btn-danger">Clear All</button>
-                                </div>
-                            </div>
-                            
+                    </div>
+                </div>
+                
                             <!-- Status Display -->
                             <div id="filter-status" class="status-display">
                                 Ready to explore data
@@ -623,13 +623,13 @@ async def dashboard():
                             <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
                                 <div style="font-size: 2rem; font-weight: bold;" id="completion-rate">-</div>
                                 <div style="font-size: 0.9rem;">Completion Rate</div>
-                            </div>
+                        </div>
                             <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
                                 <div style="font-size: 2rem; font-weight: bold;" id="top-lesson">-</div>
                                 <div style="font-size: 0.9rem;">Top Lesson</div>
-                            </div>
                         </div>
-                    </div>
+                        </div>
+                        </div>
                     
                     <!-- Interactive Charts Section -->
                     <div class="charts-section" style="margin-bottom: 2rem;">
@@ -643,9 +643,9 @@ async def dashboard():
                                 <h4 style="margin-bottom: 1rem;">Response Patterns</h4>
                                 <div id="response-pattern-chart"></div>
                             </div>
-                        </div>
                     </div>
-                    
+                </div>
+                
                     <!-- Enhanced Filter Panel -->
                     <div class="explorer-controls" style="margin-bottom: 2rem; padding: 1.5rem; background: #f7fafc; border-radius: 8px;">
                         <h3 style="margin-bottom: 1rem;">🔍 Filter & Explore Data</h3>
@@ -1590,47 +1590,6 @@ async def dashboard():
         """
     
     return HTMLResponse(content=html_content)
-                </div>
-                
-                <div class="card">
-                    <h2>🧠 NLP Queries</h2>
-                    <p>Natural language processing for querying analytics data using conversational interfaces.</p>
-                    <a href="/docs#/NLP" class="btn">Test NLP</a>
-                </div>
-                
-                <div class="card">
-                    <h2>📊 Data Normalization</h2>
-                    <p>Comprehensive data flattening and normalization for xAPI statements with structured analytics tables.</p>
-                    <a href="/docs#/Data-Normalization" class="btn">View Normalization</a>
-                </div>
-                
-                <div class="card">
-                    <h2>📥 Data Import</h2>
-                    <p>Upload CSV polls data and audio files to integrate with your analytics system.</p>
-                    <a href="/data-import" class="btn">Import Data</a>
-                </div>
-            </div>
-            
-            <div class="api-section">
-                <h3>🔧 Key API Endpoints</h3>
-                <div class="api-endpoint">GET /health - Health check</div>
-                <div class="api-endpoint">POST /api/xapi/ingest - xAPI statement ingestion</div>
-                <div class="api-endpoint">POST /statements - 7taps xAPI statements endpoint</div>
-                <div class="api-endpoint">GET /api/dashboard/metrics - Dashboard metrics</div>
-                <div class="api-endpoint">POST /api/ui/nlp-query - NLP query processing</div>
-                <div class="api-endpoint">POST /api/normalize/statement - Data normalization</div>
-                <div class="api-endpoint">GET /api/normalize/stats - Normalization statistics</div>
-                <div class="api-endpoint">POST /api/import/polls - CSV polls import</div>
-                <div class="api-endpoint">POST /api/import/audio - Audio file upload</div>
-                <div class="api-endpoint">GET /data-import - Data import interface</div>
-                <div class="api-endpoint">GET /ui/dashboard - Analytics dashboard</div>
-                <div class="api-endpoint">GET /ui/admin - Admin panel</div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    return html_content
 
 @app.get("/api")
 async def root():
