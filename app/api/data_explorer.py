@@ -293,3 +293,46 @@ async def get_table_stats(table_name: str):
             "success": False,
             "error": str(e)
         }
+
+@router.post("/api/data-explorer/update-lessons")
+async def update_lessons():
+    """Update lesson URLs and names with correct information."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Update lesson URLs and names
+        lesson_updates = [
+            (1, "You're Here. Start Strong", "https://courses.practiceoflife.com/BppNeFkyEYF9"),
+            (2, "Where is Your Attention Going?", "https://courses.practiceoflife.com/GOOqyTkVqnIk"),
+            (3, "Own Your Mindset", "https://courses.practiceoflife.com/VyyZZTDxpncL"),
+            (4, "Future Proof Your Health", "https://courses.practiceoflife.com/krQ47COePqsY"),
+            (5, "Reclaim Your Rest", "https://courses.practiceoflife.com/4r2P3hAaMxUd"),
+            (6, "Focus = Superpower", "https://courses.practiceoflife.com/5EGM9Sj2n6To"),
+            (7, "Social Media + You", "https://courses.practiceoflife.com/Eqdrni4QVvsa"),
+            (8, "Less Stress. More Calm", "https://courses.practiceoflife.com/xxVEAHPYYOfn"),
+            (9, "Boost IRL Connection", "https://courses.practiceoflife.com/BpgMMfkyEWuv"),
+            (10, "Celebrate Your Wins", "https://courses.practiceoflife.com/qaybLiEMwZh0")
+        ]
+        
+        for lesson_num, lesson_name, lesson_url in lesson_updates:
+            cursor.execute("""
+                UPDATE lessons 
+                SET lesson_name = %s, lesson_url = %s 
+                WHERE lesson_number = %s
+            """, (lesson_name, lesson_url, lesson_num))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": f"Updated {len(lesson_updates)} lessons with correct URLs and names"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
