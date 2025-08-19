@@ -78,15 +78,39 @@ def get_sample_data():
             
             # Sample statements
             cur.execute("SELECT * FROM statements_new LIMIT 3")
-            samples['statements_new'] = [dict(row) for row in cur.fetchall()]
+            statements = []
+            for row in cur.fetchall():
+                row_dict = dict(row)
+                # Convert datetime objects to strings
+                for key, value in row_dict.items():
+                    if hasattr(value, 'isoformat'):
+                        row_dict[key] = value.isoformat()
+                statements.append(row_dict)
+            samples['statements_new'] = statements
             
             # Sample results
             cur.execute("SELECT * FROM results_new LIMIT 3")
-            samples['results_new'] = [dict(row) for row in cur.fetchall()]
+            results = []
+            for row in cur.fetchall():
+                row_dict = dict(row)
+                # Convert datetime objects to strings
+                for key, value in row_dict.items():
+                    if hasattr(value, 'isoformat'):
+                        row_dict[key] = value.isoformat()
+                results.append(row_dict)
+            samples['results_new'] = results
             
             # Sample context extensions
             cur.execute("SELECT * FROM context_extensions_new LIMIT 3")
-            samples['context_extensions_new'] = [dict(row) for row in cur.fetchall()]
+            extensions = []
+            for row in cur.fetchall():
+                row_dict = dict(row)
+                # Convert datetime objects to strings
+                for key, value in row_dict.items():
+                    if hasattr(value, 'isoformat'):
+                        row_dict[key] = value.isoformat()
+                extensions.append(row_dict)
+            samples['context_extensions_new'] = extensions
             
             return samples
     finally:
@@ -159,19 +183,30 @@ def format_query_results(results: List[Dict], intent: str) -> str:
     if not results:
         return "No data found for this query."
     
-    if len(results) == 1:
+    # Convert datetime objects to strings for JSON serialization
+    def convert_datetime(obj):
+        if hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+    
+    def clean_dict(d):
+        return {k: convert_datetime(v) for k, v in d.items()}
+    
+    cleaned_results = [clean_dict(result) for result in results]
+    
+    if len(cleaned_results) == 1:
         # Single result
-        result = results[0]
+        result = cleaned_results[0]
         if 'count' in result or 'total' in result:
             return f"Found {result.get('count', result.get('total', 0))} records."
         else:
             return f"Result: {json.dumps(result, indent=2)}"
     
     # Multiple results - summarize
-    if len(results) <= 5:
-        return f"Found {len(results)} results:\n" + "\n".join([f"- {json.dumps(r)}" for r in results])
+    if len(cleaned_results) <= 5:
+        return f"Found {len(cleaned_results)} results:\n" + "\n".join([f"- {json.dumps(r)}" for r in cleaned_results])
     else:
-        return f"Found {len(results)} results. Showing first 5:\n" + "\n".join([f"- {json.dumps(r)}" for r in results[:5]])
+        return f"Found {len(cleaned_results)} results. Showing first 5:\n" + "\n".join([f"- {json.dumps(r)}" for r in cleaned_results[:5]])
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
