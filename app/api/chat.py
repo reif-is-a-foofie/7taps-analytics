@@ -268,7 +268,7 @@ EXAMPLE RESPONSES:
             raise ValueError("Invalid response format")
         
         # Ensure sql field is a valid preloaded query name
-        valid_queries = ['stats', 'habit_changes', 'top_users', 'lesson_completion', 'recent_activity', 'screen_time_responses']
+        valid_queries = ['stats', 'habit_changes', 'top_users', 'lesson_completion', 'recent_activity', 'screen_time_responses', 'lesson_details']
         if result.get('sql') not in valid_queries:
             # Force use of stats query if invalid
             result['sql'] = 'stats'
