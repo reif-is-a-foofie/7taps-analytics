@@ -1,6 +1,13 @@
 -- Create proper normalized schema using lesson_url as main connector
 -- This replaces the messy current structure with clean, relational tables
 
+-- Drop existing tables if they exist (in reverse dependency order)
+DROP TABLE IF EXISTS user_responses CASCADE;
+DROP TABLE IF EXISTS user_activities CASCADE;
+DROP TABLE IF EXISTS questions CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS lessons CASCADE;
+
 -- 1. Lessons table - main entity
 CREATE TABLE IF NOT EXISTS lessons (
     id SERIAL PRIMARY KEY,
@@ -98,15 +105,22 @@ ON CONFLICT (lesson_url) DO NOTHING;
 -- Insert users from existing data
 INSERT INTO users (user_id, cohort, first_seen, last_seen)
 SELECT DISTINCT 
-    s.actor_id as user_id,
-    ce.extension_value as cohort,
-    MIN(s.timestamp) as first_seen,
-    MAX(s.timestamp) as last_seen
-FROM statements_new s
-LEFT JOIN context_extensions_new ce ON s.statement_id = ce.statement_id 
-    AND ce.extension_key = 'https://7taps.com/cohort'
-WHERE s.actor_id IS NOT NULL
-GROUP BY s.actor_id, ce.extension_value
+    user_stats.user_id,
+    user_stats.cohort,
+    user_stats.first_seen,
+    user_stats.last_seen
+FROM (
+    SELECT 
+        s.actor_id as user_id,
+        ce.extension_value as cohort,
+        MIN(s.timestamp) as first_seen,
+        MAX(s.timestamp) as last_seen
+    FROM statements_new s
+    LEFT JOIN context_extensions_new ce ON s.statement_id = ce.statement_id 
+        AND ce.extension_key = 'https://7taps.com/cohort'
+    WHERE s.actor_id IS NOT NULL
+    GROUP BY s.actor_id, ce.extension_value
+) user_stats
 ON CONFLICT (user_id) DO UPDATE SET
     last_seen = EXCLUDED.last_seen,
     cohort = COALESCE(EXCLUDED.cohort, users.cohort);
