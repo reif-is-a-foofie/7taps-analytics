@@ -114,13 +114,15 @@ FROM (
         s.actor_id as user_id,
         ce.extension_value as cohort,
         MIN(s.timestamp) as first_seen,
-        MAX(s.timestamp) as last_seen
+        MAX(s.timestamp) as last_seen,
+        ROW_NUMBER() OVER (PARTITION BY s.actor_id ORDER BY MIN(s.timestamp)) as rn
     FROM statements_new s
     LEFT JOIN context_extensions_new ce ON s.statement_id = ce.statement_id 
         AND ce.extension_key = 'https://7taps.com/cohort'
     WHERE s.actor_id IS NOT NULL
     GROUP BY s.actor_id, ce.extension_value
-) user_stats;
+) user_stats
+WHERE user_stats.rn = 1;
 
 -- Insert questions from existing data
 INSERT INTO questions (lesson_id, question_number, question_text, question_type)
