@@ -382,12 +382,18 @@
                 try {
                     const vizDiv = document.createElement('div');
                     vizDiv.className = 'visualization';
-                    vizDiv.style.marginTop = '10px';
+                    vizDiv.style.marginTop = '15px';
                     vizDiv.style.width = '100%';
                     vizDiv.style.height = '400px';
+                    vizDiv.style.border = '1px solid #e2e8f0';
+                    vizDiv.style.borderRadius = '8px';
+                    vizDiv.style.overflow = 'hidden';
                     
                     const plotData = JSON.parse(visualization);
-                    Plotly.newPlot(vizDiv, plotData.data, plotData.layout, {responsive: true});
+                    Plotly.newPlot(vizDiv, plotData.data, plotData.layout, {
+                        responsive: true,
+                        displayModeBar: false
+                    });
                     
                     messageDiv.appendChild(vizDiv);
                 } catch (error) {
