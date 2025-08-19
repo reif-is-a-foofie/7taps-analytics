@@ -7,6 +7,8 @@ import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
+import plotly.graph_objects as go
+import plotly.express as px
 
 router = APIRouter()
 
@@ -20,6 +22,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    visualization: Optional[str] = None
 
 def get_db_connection():
     """Get database connection"""
@@ -195,7 +198,8 @@ def get_preloaded_queries():
                     ROUND(AVG(LENGTH(ur.response_text)), 1) as avg_response_length
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-                LEFT JOIN user_responses ur ON l.id = ur.lesson_id
+                LEFT JOIN questions q ON l.id = q.lesson_id
+                LEFT JOIN user_responses ur ON q.id = ur.question_id
                 GROUP BY l.id, l.lesson_number, l.lesson_name
                 ORDER BY COUNT(ur.id) DESC
             """
@@ -385,6 +389,83 @@ EXAMPLE RESPONSES:
             "explanation": "Using stats query as fallback for general queries"
         }
 
+def generate_visualization(results: List[Dict], intent: str) -> Optional[str]:
+    """Generate Plotly visualization based on query results and intent"""
+    if not results or len(results) == 0:
+        return None
+    
+    try:
+        # Convert datetime objects for JSON serialization
+        def convert_datetime(obj):
+            if hasattr(obj, 'isoformat'):
+                return obj.isoformat()
+            return obj
+        
+        def clean_dict(d):
+            return {k: convert_datetime(v) for k, v in d.items()}
+        
+        cleaned_results = [clean_dict(result) for result in results]
+        
+        # Generate different visualizations based on intent and data structure
+        if 'engagement' in intent.lower() or 'lesson' in intent.lower():
+            if 'lesson_number' in cleaned_results[0]:
+                # Lesson engagement chart
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=[r.get('lesson_number', r.get('lesson_name', f'Lesson {i}')) for r in cleaned_results],
+                        y=[r.get('total_responses', r.get('users_reached', 0)) for r in cleaned_results],
+                        name='Responses'
+                    )
+                ])
+                fig.update_layout(
+                    title='Lesson Engagement',
+                    xaxis_title='Lesson',
+                    yaxis_title='Responses',
+                    template='plotly_white'
+                )
+                return fig.to_json()
+        
+        elif 'behavior' in intent.lower() or 'priority' in intent.lower():
+            if 'behavior_category' in cleaned_results[0]:
+                # Behavior priorities pie chart
+                fig = go.Figure(data=[
+                    go.Pie(
+                        labels=[r.get('behavior_category', 'Other') for r in cleaned_results],
+                        values=[r.get('mention_count', 0) for r in cleaned_results],
+                        hole=0.3
+                    )
+                ])
+                fig.update_layout(
+                    title='Behavior Priorities',
+                    template='plotly_white'
+                )
+                return fig.to_json()
+        
+        elif 'user' in intent.lower() or 'stats' in intent.lower():
+            # Simple bar chart for user stats
+            keys = list(cleaned_results[0].keys())
+            numeric_keys = [k for k in keys if isinstance(cleaned_results[0][k], (int, float))]
+            if numeric_keys:
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=numeric_keys,
+                        y=[cleaned_results[0][k] for k in numeric_keys],
+                        name='Count'
+                    )
+                ])
+                fig.update_layout(
+                    title='Database Statistics',
+                    xaxis_title='Metric',
+                    yaxis_title='Count',
+                    template='plotly_white'
+                )
+                return fig.to_json()
+        
+        return None
+    except Exception as e:
+        print(f"Visualization generation failed: {e}")
+        return None
+
 def format_query_results(results: List[Dict], intent: str) -> str:
     """Format query results into readable text"""
     if not results:
@@ -445,6 +526,11 @@ async def chat(request: ChatRequest):
             data_summary = f"Query failed: {str(e)}"
             query_results = []
         
+        # Generate visualization if we have results
+        visualization = None
+        if query_results:
+            visualization = generate_visualization(query_results, llm_result['intent'])
+        
         # Prepare conversation history with dynamic schema context
         # Create a simplified schema summary for the LLM
         schema_summary = {}
@@ -497,7 +583,10 @@ Please provide a concise response based on the query results."""
             temperature=0.7
         )
         
-        return ChatResponse(response=response.choices[0].message.content)
+        return ChatResponse(
+            response=response.choices[0].message.content,
+            visualization=visualization
+        )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
