@@ -64,13 +64,15 @@ async def dashboard():
         """)
         metrics = cursor.fetchone()
         
-        # Get lesson engagement data
+        # Get lesson engagement data from new normalized tables
         cursor.execute("""
             SELECT 
                 l.lesson_name,
-                COUNT(DISTINCT ur.user_id) as response_count
+                COUNT(DISTINCT s.actor_id) as response_count
             FROM lessons l
-            LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
+            LEFT JOIN context_extensions_new ce ON l.lesson_number = CAST(ce.extension_value AS INTEGER)
+            LEFT JOIN statements_new s ON ce.statement_id = s.statement_id
+            WHERE ce.extension_key = 'https://7taps.com/lesson-number'
             GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
         """)
