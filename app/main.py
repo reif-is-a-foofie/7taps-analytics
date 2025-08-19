@@ -101,12 +101,12 @@ async def dashboard():
         cursor.close()
         conn.close()
         
-        # Format data for charts
-        lesson_names = [row[0] for row in lesson_data]
-        lesson_counts = [row[1] for row in lesson_data]
+        # Format data for charts with safety checks
+        lesson_names = [row[0] for row in lesson_data] if lesson_data else ['No Data']
+        lesson_counts = [row[1] for row in lesson_data] if lesson_data else [0]
         
-        behavior_labels = [row[0] for row in behavior_data]
-        behavior_values = [row[1] for row in behavior_data]
+        behavior_labels = [row[0] for row in behavior_data] if behavior_data else ['No Data']
+        behavior_values = [row[1] for row in behavior_data] if behavior_data else [0]
         
         # Create dynamic HTML with real data
         html_content = f"""
