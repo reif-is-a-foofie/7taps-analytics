@@ -517,7 +517,7 @@ async def dashboard():
                         x: lessonNames,
                         y: lessonCounts,
                         marker: {{color: lessonCounts, colorscale: 'Blues'}},
-                        hovertemplate: '<b>%{x}</b><br>Engagement: %{y} participants<extra></extra>'
+                        hovertemplate: '<b>%{{x}}</b><br>Engagement: %{{y}} participants<extra></extra>'
                     }}], {{
                         title: 'Click any bar to filter data',
                         height: 300,
@@ -532,7 +532,7 @@ async def dashboard():
                         labels: behaviorLabels,
                         values: behaviorValues,
                         hole: 0.4,
-                        hovertemplate: '<b>%{label}</b><br>Responses: %{value}<extra></extra>'
+                        hovertemplate: '<b>%{{label}}</b><br>Responses: %{{value}}<extra></extra>'
                     }}], {{
                         title: 'Response Patterns by Category',
                         height: 300
