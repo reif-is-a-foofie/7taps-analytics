@@ -177,12 +177,7 @@ def get_preloaded_queries():
                     l.lesson_number,
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_reached,
-                    COUNT(DISTINCT ur.user_id) as users_responded,
-                    CASE 
-                        WHEN COUNT(DISTINCT ua.user_id) > 0 
-                        THEN ROUND(COUNT(DISTINCT ur.user_id) * 100.0 / COUNT(DISTINCT ua.user_id), 1)
-                        ELSE 0
-                    END as completion_rate
+                    COUNT(ur.id) as total_responses
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
                 LEFT JOIN questions q ON l.id = q.lesson_id
@@ -197,10 +192,8 @@ def get_preloaded_queries():
                 SELECT 
                     l.lesson_number,
                     l.lesson_name,
-                    COUNT(ua.id) as total_activities,
-                    COUNT(ur.id) as total_responses,
-                    COUNT(DISTINCT ua.user_id) as unique_users,
-                    ROUND(AVG(LENGTH(ur.response_text)), 1) as avg_response_length
+                    COUNT(DISTINCT ua.user_id) as users_reached,
+                    COUNT(ur.id) as total_responses
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
                 LEFT JOIN questions q ON l.id = q.lesson_id
