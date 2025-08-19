@@ -293,6 +293,7 @@ from app.api.focus_group_import import router as focus_group_import_router
 from app.api.csv_to_xapi import router as csv_to_xapi_router
 from app.api.data_access import router as data_access_router
 from app.api.chat import router as chat_router
+from app.api.public import router as public_router
 from app.ui.admin import router as admin_router
 from app.ui.dashboard import router as dashboard_router
 from app.ui.data_import import router as data_import_ui_router

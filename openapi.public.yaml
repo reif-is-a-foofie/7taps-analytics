@@ -1,0 +1,354 @@
+openapi: 3.0.3
+info:
+  title: 7taps Analytics Data API
+  version: 1.0.0
+  description: |
+    Public API for retrieving normalized analytics data from learning activities.
+    
+    This API provides access to cleaned, normalized learning analytics data including:
+    - User engagement and activity patterns
+    - Lesson completion and progress tracking
+    - Cohort analysis and user segmentation
+    
+    **Note**: All ingestion, ETL, and migration processes are abstracted away.
+    This API only exposes data querying and retrieval endpoints.
+    
+    ## Authentication
+    Currently open access. Rate limiting may apply.
+    
+    ## Rate Limits
+    - 100 requests per minute per IP
+    - 1000 requests per hour per IP
+    
+  contact:
+    name: 7taps Analytics Team
+    email: analytics@7taps.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://seventaps-analytics-5135b3a0701a.herokuapp.com
+    description: Production server
+  - url: http://localhost:8000
+    description: Development server
+
+paths:
+  /api/data/schema:
+    get:
+      summary: Get database schema
+      description: |
+        Get the current database schema for the analytics data.
+        Returns table structures and relationships for data consumers.
+      tags:
+        - Data Access
+      responses:
+        '200':
+          description: Schema information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schema:
+                    type: object
+                    description: Database schema by table
+                  description:
+                    type: string
+                    example: "Normalized analytics data schema"
+                  tables:
+                    type: object
+                    description: Table descriptions
+                    example:
+                      statements_new: "Main learning activity statements"
+                      results_new: "Learner responses and outcomes"
+                      context_extensions_new: "Metadata and context information"
+        '500':
+          description: Database connection failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/data/query:
+    post:
+      summary: Execute a data query
+      description: |
+        Execute a SQL query against the analytics data.
+        
+        **Security Note**: Only SELECT queries are allowed.
+        All queries are validated and sanitized.
+      tags:
+        - Data Access
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: SQL SELECT query to execute
+                  example: "SELECT COUNT(*) FROM statements_new"
+      responses:
+        '200':
+          description: Query executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                    description: The executed query
+                  results:
+                    type: array
+                    description: Query results
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                    description: Number of results returned
+                  executed_at:
+                    type: string
+                    format: date-time
+                    description: When the query was executed
+        '400':
+          description: Invalid query or execution failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Database connection failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/data/sample-queries:
+    get:
+      summary: Get sample queries
+      description: |
+        Get sample queries that demonstrate common data access patterns.
+        These queries can be used as templates for building custom analytics.
+      tags:
+        - Data Access
+      responses:
+        '200':
+          description: Sample queries retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sample_queries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: "User Engagement by Lesson"
+                        description:
+                          type: string
+                          example: "Show how many interactions each user had per lesson"
+                        query:
+                          type: string
+                          example: "SELECT s.actor_id, ce.lesson_number, COUNT(*) as interactions..."
+
+  /api/data/status:
+    get:
+      summary: Get data status
+      description: |
+        Get current status and statistics of the analytics data.
+        Useful for monitoring data freshness and volume.
+      tags:
+        - Data Access
+      responses:
+        '200':
+          description: Data status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  total_statements:
+                    type: integer
+                    description: Total number of learning statements
+                    example: 1234
+                  unique_users:
+                    type: integer
+                    description: Number of unique users
+                    example: 45
+                  total_lessons:
+                    type: integer
+                    description: Number of lessons in the dataset
+                    example: 10
+                  latest_activity:
+                    type: string
+                    format: date-time
+                    description: Timestamp of most recent activity
+                  last_updated:
+                    type: string
+                    format: date-time
+                    description: When this status was generated
+
+  /api/analytics/cohorts:
+    get:
+      summary: Get cohort analytics
+      description: |
+        Get analytics data grouped by user cohorts.
+        Users are automatically segmented based on activity levels.
+      tags:
+        - Analytics
+      responses:
+        '200':
+          description: Cohort analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cohorts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cohort:
+                          type: string
+                          example: "High Activity"
+                        user_count:
+                          type: integer
+                          example: 15
+                        avg_interactions:
+                          type: number
+                          format: float
+                          example: 67.3
+                  total_cohorts:
+                    type: integer
+                    example: 3
+                  generated_at:
+                    type: string
+                    format: date-time
+
+  /api/analytics/cohorts/{cohort_id}:
+    get:
+      summary: Get specific cohort details
+      description: |
+        Get detailed analytics for a specific cohort.
+        Valid cohort IDs: 'high', 'medium', 'low'
+      tags:
+        - Analytics
+      parameters:
+        - name: cohort_id
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [high, medium, low]
+          description: Cohort identifier
+      responses:
+        '200':
+          description: Cohort details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cohort_id:
+                    type: string
+                    example: "high"
+                  user_count:
+                    type: integer
+                    example: 15
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        actor_id:
+                          type: string
+                          example: "user123"
+                        interaction_count:
+                          type: integer
+                          example: 67
+                        first_activity:
+                          type: string
+                          format: date-time
+                        last_activity:
+                          type: string
+                          format: date-time
+                  generated_at:
+                    type: string
+                    format: date-time
+        '404':
+          description: Cohort not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/health:
+    get:
+      summary: Health check
+      description: |
+        Simple health check endpoint for the public API.
+        Returns basic service status information.
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  service:
+                    type: string
+                    example: "7taps-analytics-public-api"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Query execution failed: invalid syntax"
+
+  securitySchemes:
+    # Future: Add API key authentication
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (future implementation)
+
+tags:
+  - name: Data Access
+    description: Endpoints for querying and retrieving analytics data
+  - name: Analytics
+    description: Pre-built analytics and cohort analysis
+  - name: System
+    description: System health and status endpoints
+
