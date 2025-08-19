@@ -48,14 +48,10 @@ async def dashboard():
         # Get real metrics
         cursor.execute("""
             SELECT 
-                COUNT(DISTINCT u.id) as total_users,
-                COUNT(DISTINCT l.id) as total_lessons,
-                COUNT(DISTINCT ur.id) as total_responses,
-                COUNT(DISTINCT ua.id) as total_activities
-            FROM users u
-            CROSS JOIN lessons l
-            CROSS JOIN user_responses ur
-            CROSS JOIN user_activities ua
+                (SELECT COUNT(DISTINCT id) FROM users) as total_users,
+                (SELECT COUNT(DISTINCT id) FROM lessons) as total_lessons,
+                (SELECT COUNT(DISTINCT id) FROM user_responses) as total_responses,
+                (SELECT COUNT(DISTINCT id) FROM user_activities) as total_activities
         """)
         metrics = cursor.fetchone()
         
