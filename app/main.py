@@ -386,19 +386,19 @@ async def dashboard():
                 <div class="sidebar">
                     <div class="sidebar-section">
                         <h3>Analytics</h3>
-                        <a href="#" class="sidebar-item active" onclick="showSection('dashboard')">Dashboard</a>
-                        <a href="#" class="sidebar-item" onclick="showSection('explorer')">Data Explorer</a>
+                        <a href="#" class="sidebar-item active" data-section="dashboard">Dashboard</a>
+                        <a href="#" class="sidebar-item" data-section="explorer">Data Explorer</a>
             </div>
             
                     <div class="sidebar-section">
                         <h3>Communication</h3>
-                        <a href="#" class="sidebar-item" onclick="showSection('chat')">AI Chat</a>
+                        <a href="#" class="sidebar-item" data-section="chat">AI Chat</a>
                     </div>
                     
                     <div class="sidebar-section">
                         <h3>System</h3>
-                        <a href="#" class="sidebar-item" onclick="showSection('health')">Health Check</a>
-                        <a href="#" class="sidebar-item" onclick="showSection('api')">API Docs</a>
+                        <a href="#" class="sidebar-item" data-section="health">Health Check</a>
+                        <a href="#" class="sidebar-item" data-section="api">API Docs</a>
                     </div>
                 </div>
                 
@@ -869,6 +869,15 @@ async def dashboard():
                     const lessonCounts = {lesson_counts};
                     const behaviorLabels = {behavior_labels};
                     const behaviorValues = {behavior_values};
+                    
+                    // Add event listeners to sidebar items
+                    document.querySelectorAll('.sidebar-item').forEach(item => {{
+                        item.addEventListener('click', function(e) {{
+                            e.preventDefault();
+                            const sectionName = this.getAttribute('data-section');
+                            showSection(sectionName);
+                        }});
+                    }});
                     
                     // Wait a moment for DOM to be fully ready
                     setTimeout(() => {{
