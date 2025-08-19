@@ -920,7 +920,7 @@ async def dashboard():
                     }});
                     
                     // Knowledge lift chart (before vs after) - using real engagement data
-                    const avgEngagement = lessonCounts.length > 0 ? Math.round(sum(lessonCounts) / lessonCounts.length) : 0;
+                    const avgEngagement = lessonCounts.length > 0 ? Math.round(lessonCounts.reduce((a, b) => a + b, 0) / lessonCounts.length) : 0;
                     const maxEngagement = lessonCounts.length > 0 ? Math.max(...lessonCounts) : 0;
                     Plotly.newPlot('knowledge-lift-chart', [{{
                         type: 'bar',
