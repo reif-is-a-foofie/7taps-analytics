@@ -20,8 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Static files mount removed - not needed for chat interface
 
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_interface():
