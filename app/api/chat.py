@@ -47,7 +47,7 @@ def get_database_schema():
                     column_default
                 FROM information_schema.columns 
                 WHERE table_schema = 'public' 
-                AND table_name IN ('statements_new', 'results_new', 'context_extensions_new', 'lessons', 'users', 'questions', 'user_activities', 'user_responses')
+                AND table_name IN ('lessons', 'users', 'questions', 'user_activities', 'user_responses')
                 ORDER BY table_name, ordinal_position
             """)
             
@@ -302,26 +302,18 @@ async def chat(request: ChatRequest):
             data_summary = f"Query failed: {str(e)}"
             query_results = []
         
-        # Prepare conversation history with full context
+        # Prepare conversation history with simplified context
         messages = [
             {
                 "role": "system",
                 "content": f"""You are Seven, an AI analytics assistant. Give concise, data-driven answers.
 
-PRELOADED QUERIES (use these for live data):
-{json.dumps(preloaded_queries, indent=2)}
-
-Database Schema:
-{json.dumps(schema, indent=2)}
+Available Queries: stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses
 
 Instructions:
-- Use preloaded query names (stats, habit_changes, top_users, etc.) when they match the intent
-- Always execute fresh queries for live data - never use stale data
 - Keep responses under 100 words
 - Be specific with numbers and examples
-- For habit changes, use the habit_changes query
-- For user engagement, use the top_users query
-- For recent activity, use the recent_activity query"""
+- Use the query results provided to answer questions"""
             }
         ]
         
@@ -332,18 +324,13 @@ Instructions:
                 "content": msg.content
             })
         
-        # Add current user message with context accumulation
+        # Add current user message with simplified context
         current_message = f"""
 User: {request.message}
 
-Intent: {llm_result['intent']}
-SQL Generated: {llm_result['sql']}
 Query Results: {data_summary}
 
-Previous Context: {len(request.history)} messages in conversation
-Preloaded Data Available: Yes (use habit_responses, lesson_completion, top_users)
-
-Please provide a concise response using the preloaded data."""
+Please provide a concise response based on the query results."""
         
         messages.append({
             "role": "user",
