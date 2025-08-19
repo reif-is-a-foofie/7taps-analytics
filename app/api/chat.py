@@ -178,10 +178,15 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_reached,
                     COUNT(DISTINCT ur.user_id) as users_responded,
-                    ROUND(COUNT(DISTINCT ur.user_id) * 100.0 / COUNT(DISTINCT ua.user_id), 1) as completion_rate
+                    CASE 
+                        WHEN COUNT(DISTINCT ua.user_id) > 0 
+                        THEN ROUND(COUNT(DISTINCT ur.user_id) * 100.0 / COUNT(DISTINCT ua.user_id), 1)
+                        ELSE 0
+                    END as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-                LEFT JOIN user_responses ur ON l.id = ur.lesson_id
+                LEFT JOIN questions q ON l.id = q.lesson_id
+                LEFT JOIN user_responses ur ON q.id = ur.question_id
                 GROUP BY l.id, l.lesson_number, l.lesson_name
                 ORDER BY l.lesson_number
             """
@@ -408,11 +413,11 @@ def generate_visualization(results: List[Dict], intent: str) -> Optional[str]:
         
         # Generate different visualizations based on intent and data structure
         if 'engagement' in intent.lower() or 'lesson' in intent.lower():
-            if 'lesson_number' in cleaned_results[0]:
+            if cleaned_results and 'lesson_number' in cleaned_results[0]:
                 # Lesson engagement chart
                 fig = go.Figure(data=[
                     go.Bar(
-                        x=[r.get('lesson_number', r.get('lesson_name', f'Lesson {i}')) for r in cleaned_results],
+                        x=[r.get('lesson_number', r.get('lesson_name', f'Lesson {i}')) for i, r in enumerate(cleaned_results)],
                         y=[r.get('total_responses', r.get('users_reached', 0)) for r in cleaned_results],
                         name='Responses'
                     )
@@ -547,11 +552,13 @@ Database Schema:
 
 Available Queries: stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses, lesson_details, engagement_health, lesson_engagement, behavior_priorities, student_impact, unique_insights
 
-Instructions:
-- Keep responses under 100 words
-- Be specific with numbers and examples
-- Use the query results provided to answer questions
-- Reference the schema above to understand available data"""
+        Instructions:
+        - Keep responses under 100 words
+        - Be specific with numbers and examples
+        - Use the query results provided to answer questions
+        - Reference the schema above to understand available data
+        - Never use emojis in responses
+        - Keep responses professional and data-focused"""
             }
         ]
         
