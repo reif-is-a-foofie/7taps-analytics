@@ -186,44 +186,60 @@ Preloaded Queries Available:
 
 User Question: {user_message}
 
-Instructions:
-1. Analyze the user's intent
-2. Choose the most appropriate preloaded query OR generate custom SQL
-3. Return JSON with: {{"intent": "description", "sql": "query_name or custom SQL", "explanation": "what this does"}}
+CRITICAL INSTRUCTIONS:
+1. You MUST return a JSON object with exactly this format: {{"intent": "description", "sql": "query_name", "explanation": "what this does"}}
+2. For "sql" field, use ONLY the exact query name from the preloaded queries (stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses)
+3. DO NOT generate custom SQL - only use the preloaded query names
+4. DO NOT make up numbers or data - you must execute the actual query
+5. For user count questions, use "stats"
+6. For habit change questions, use "habit_changes"
+7. For engagement questions, use "top_users"
 
 Available Preloaded Queries:
-- stats: Get current database statistics
+- stats: Get current database statistics (users, lessons, activities, responses)
 - habit_changes: Get evidence of habit changes across lessons
 - top_users: Get most engaged users
 - lesson_completion: Get lesson completion rates
 - recent_activity: Get recent user activity
 - screen_time_responses: Get responses about screen time habits
 
-Rules:
-- Use preloaded query names when they match the intent
-- Generate custom SQL only if no preloaded query fits
-- Always execute fresh queries for live data
+EXAMPLE RESPONSES:
+- "how many users" → {{"intent": "user_count", "sql": "stats", "explanation": "Get total user count from database"}}
+- "show habit changes" → {{"intent": "habit_analysis", "sql": "habit_changes", "explanation": "Get evidence of habit changes"}}
+- "most engaged users" → {{"intent": "engagement_analysis", "sql": "top_users", "explanation": "Get most engaged users"}}
 """
     
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are a SQL expert. Generate only SELECT queries. Return valid JSON."},
+            {"role": "system", "content": "You are a SQL expert. You MUST return valid JSON with preloaded query names. NEVER make up data or numbers. ALWAYS use the exact query names provided."},
             {"role": "user", "content": context}
         ],
         max_tokens=500,
-        temperature=0.1
+        temperature=0.0
     )
     
     try:
         result = json.loads(response.choices[0].message.content)
+        # Validate that the result has the required fields and uses a valid query name
+        if not isinstance(result, dict) or 'sql' not in result:
+            raise ValueError("Invalid response format")
+        
+        # Ensure sql field is a valid preloaded query name
+        valid_queries = ['stats', 'habit_changes', 'top_users', 'lesson_completion', 'recent_activity', 'screen_time_responses']
+        if result.get('sql') not in valid_queries:
+            # Force use of stats query if invalid
+            result['sql'] = 'stats'
+            result['intent'] = 'fallback_query'
+            result['explanation'] = 'Using stats query as fallback'
+        
         return result
-    except json.JSONDecodeError:
-        # Fallback if JSON parsing fails
+    except (json.JSONDecodeError, ValueError, KeyError):
+        # Fallback if JSON parsing fails or invalid response
         return {
-            "intent": "general_query",
-            "sql": "use_preloaded",
-            "explanation": "Use preloaded data for general queries"
+            "intent": "fallback_query",
+            "sql": "stats",
+            "explanation": "Using stats query as fallback for general queries"
         }
 
 def format_query_results(results: List[Dict], intent: str) -> str:
