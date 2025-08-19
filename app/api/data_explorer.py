@@ -346,6 +346,13 @@ async def update_lesson_numbers():
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # First, add lesson_number column if it doesn't exist
+        cursor.execute("""
+            ALTER TABLE user_responses 
+            ADD COLUMN IF NOT EXISTS lesson_number INTEGER
+        """)
+        conn.commit()
+        
         # First, let's see what lesson numbers are available in the new data
         cursor.execute("""
             SELECT extension_value, COUNT(*) 
