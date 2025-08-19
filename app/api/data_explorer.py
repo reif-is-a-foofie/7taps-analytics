@@ -338,3 +338,75 @@ async def update_lessons():
             "success": False,
             "error": str(e)
         }
+
+@router.post("/api/data-explorer/update-lesson-numbers")
+async def update_lesson_numbers():
+    """Update user_responses table with lesson numbers from new normalized data."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # First, let's see what lesson numbers are available in the new data
+        cursor.execute("""
+            SELECT extension_value, COUNT(*) 
+            FROM context_extensions_new 
+            WHERE extension_key = 'https://7taps.com/lesson-number'
+            GROUP BY extension_value 
+            ORDER BY extension_value
+        """)
+        
+        lesson_counts = cursor.fetchall()
+        lesson_summary = {str(lesson_num): count for lesson_num, count in lesson_counts}
+        
+        # Now let's create a mapping from statement_id to lesson_number
+        cursor.execute("""
+            SELECT s.statement_id, ce.extension_value as lesson_number
+            FROM statements_new s
+            JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
+            WHERE ce.extension_key = 'https://7taps.com/lesson-number'
+        """)
+        
+        statement_lesson_map = dict(cursor.fetchall())
+        
+        # Update user_responses table with lesson numbers
+        updated_count = 0
+        
+        for statement_id, lesson_number in statement_lesson_map.items():
+            cursor.execute("""
+                UPDATE user_responses 
+                SET lesson_number = %s 
+                WHERE raw_statement_id = %s
+            """, (lesson_number, statement_id))
+            
+            if cursor.rowcount > 0:
+                updated_count += cursor.rowcount
+        
+        conn.commit()
+        
+        # Verify the update
+        cursor.execute("""
+            SELECT lesson_number, COUNT(*) 
+            FROM user_responses 
+            WHERE lesson_number IS NOT NULL
+            GROUP BY lesson_number 
+            ORDER BY lesson_number
+        """)
+        
+        updated_counts = cursor.fetchall()
+        updated_summary = {str(lesson_num): count for lesson_num, count in updated_counts}
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": f"Updated {updated_count} user_responses with lesson numbers",
+            "available_lessons": lesson_summary,
+            "updated_lessons": updated_summary
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
