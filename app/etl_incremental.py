@@ -26,7 +26,10 @@ class IncrementalETLProcessor:
     
     def __init__(self):
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        self.database_url = os.getenv("DATABASE_URL", "postgresql://analytics_user:analytics_pass@localhost:5432/7taps_analytics")
+        self.database_url = os.getenv("DATABASE_URL")
+        if not self.database_url:
+            # In Heroku, missing DATABASE_URL should not crash the app; disable pool if absent
+            self.database_url = None
         self.stream_name = "xapi_statements"
         self.group_name = "incremental_etl"
         self.consumer_name = "incremental_worker"
@@ -39,11 +42,17 @@ class IncrementalETLProcessor:
         )
         
         # Initialize database connection pool
-        self.db_pool = SimpleConnectionPool(
-            minconn=1,
-            maxconn=10,
-            dsn=self.database_url
-        )
+        self.db_pool = None
+        if self.database_url:
+            # Ensure Heroku-style URL compatibility and SSL mode by default
+            dsn = self.database_url.replace('postgres://', 'postgresql://', 1) if self.database_url.startswith('postgres://') else self.database_url
+            sslmode = os.getenv('PGSSLMODE', 'require')
+            self.db_pool = SimpleConnectionPool(
+                minconn=1,
+                maxconn=10,
+                dsn=dsn,
+                sslmode=sslmode
+            )
         
         # Processing stats
         self.processed_count = 0
@@ -52,11 +61,16 @@ class IncrementalETLProcessor:
         
     def get_db_connection(self):
         """Get database connection from pool."""
+        if not self.db_pool:
+            raise RuntimeError("Database pool is not configured; set DATABASE_URL")
+        if not self.db_pool:
+            raise RuntimeError("Database pool is not configured; set DATABASE_URL")
         return self.db_pool.getconn()
         
     def return_db_connection(self, conn):
         """Return database connection to pool."""
-        self.db_pool.putconn(conn)
+        if self.db_pool and conn:
+            self.db_pool.putconn(conn)
         
     async def process_missed_statements(self, statements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Process missed statements."""
@@ -377,7 +391,8 @@ print(json.dumps(result))
             
             if result['success']:
                 # Write to database directly
-                await self.write_batch_to_database(result['statements'])
+                if self.db_pool:
+                    await self.write_batch_to_database(result['statements'])
                 
                 self.processed_count += result['processed_count']
                 self.last_processed_time = datetime.utcnow().isoformat()

@@ -1006,7 +1006,10 @@ async def test_database():
 
 
 # Import and include routers
-from app.api.etl import router as etl_router
+try:
+    from app.api.etl import router as etl_router
+except Exception:
+    etl_router = None
 from app.api.orchestrator import router as orchestrator_router
 # from app.api.nlp import router as nlp_router
 from app.api.xapi import router as xapi_router
@@ -1029,7 +1032,8 @@ from app.ui.data_import import router as data_import_ui_router
 # from app.api.monitoring import router as monitoring_router
 # from app.ui.production_dashboard import router as production_dashboard_router
 
-app.include_router(etl_router, prefix="/ui", tags=["ETL"])
+if etl_router:
+    app.include_router(etl_router, prefix="/ui", tags=["ETL"])
 app.include_router(orchestrator_router, prefix="/api", tags=["Orchestrator"])
 # app.include_router(nlp_router, prefix="/api", tags=["NLP"])
 app.include_router(xapi_router, tags=["xAPI"])
