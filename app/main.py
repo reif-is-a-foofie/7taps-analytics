@@ -950,6 +950,48 @@ async def developer_playground():
     with open("dev/DEVELOPER_PLAYGROUND.html", "r") as f:
         return HTMLResponse(content=f.read())
 
+@app.get("/test-db")
+async def test_database():
+    """Test database connection and basic queries"""
+    try:
+        import psycopg2
+        import os
+        
+        DATABASE_URL = os.getenv('DATABASE_URL')
+        if DATABASE_URL.startswith('postgres://'):
+            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor()
+        
+        # Test basic queries
+        cursor.execute("SELECT COUNT(*) FROM lessons")
+        lesson_count = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM user_responses")
+        response_count = cursor.fetchone()[0]
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "status": "success",
+            "database": "connected",
+            "lessons": lesson_count,
+            "users": user_count,
+            "responses": response_count
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "database": "failed"
+        }
+
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_interface():
     """Chat interface for AI analytics assistant"""
