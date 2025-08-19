@@ -23,14 +23,18 @@ class DataNormalizer:
     """Comprehensive data normalizer for xAPI statements."""
     
     def __init__(self):
-        self.database_url = os.getenv("DATABASE_URL", "postgresql://analytics_user:analytics_pass@localhost:5432/7taps_analytics")
-        
-        # Connection pooling for performance
-        self.db_pool = SimpleConnectionPool(
-            minconn=1,
-            maxconn=10,
-            dsn=self.database_url
-        )
+        self.database_url = os.getenv("DATABASE_URL")
+        self.db_pool = None
+        if self.database_url:
+            dsn = self.database_url.replace('postgres://', 'postgresql://', 1) if self.database_url.startswith('postgres://') else self.database_url
+            sslmode = os.getenv('PGSSLMODE', 'require')
+            # Connection pooling for performance
+            self.db_pool = SimpleConnectionPool(
+                minconn=1,
+                maxconn=10,
+                dsn=dsn,
+                sslmode=sslmode
+            )
         
         # Performance tracking
         self.normalized_count = 0
@@ -39,6 +43,8 @@ class DataNormalizer:
     @asynccontextmanager
     async def get_db_connection(self):
         """Get database connection from pool with automatic cleanup."""
+        if not self.db_pool:
+            raise RuntimeError("Database pool is not configured; set DATABASE_URL")
         conn = self.db_pool.getconn()
         try:
             yield conn
