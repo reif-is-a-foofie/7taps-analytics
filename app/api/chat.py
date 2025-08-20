@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import openai
 import os
@@ -13,12 +13,12 @@ import plotly.express as px
 router = APIRouter()
 
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    role: str = Field(..., description="Role of the message sender", example="user")
+    content: str = Field(..., description="Content of the message", example="How many users completed the course?")
 
 class ChatRequest(BaseModel):
-    message: str
-    history: List[ChatMessage]
+    message: str = Field(..., description="The user's message to the AI assistant", example="How many users completed the course?")
+    history: List[ChatMessage] = Field(default=[], description="Previous conversation history", example=[])
 
 class ChatResponse(BaseModel):
     response: str
@@ -494,7 +494,34 @@ def format_query_results(results: List[Dict], intent: str) -> str:
     else:
         return f"Found {len(cleaned_results)} results. Showing first 5:\n" + "\n".join([f"- {json.dumps(r)}" for r in cleaned_results[:5]])
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", 
+    response_model=ChatResponse,
+    summary="Chat with AI Assistant",
+    description="Send a message to the AI assistant and get a response with optional visualization",
+    responses={
+        200: {
+            "description": "Successfully processed chat request",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "response": "Based on the data, you have 150 total users with 85% completion rate across all lessons. The most engaging lesson is 'Core Concepts' with 92% completion.",
+                        "visualization": "<div id='chart'><script>Plotly.newPlot('chart', data, layout);</script></div>"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Invalid request format",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid request format"
+                    }
+                }
+            }
+        }
+    }
+)
 async def chat(request: ChatRequest):
     """Handle chat requests with LLM-driven intent detection and SQL generation"""
     

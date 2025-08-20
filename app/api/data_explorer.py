@@ -5,12 +5,34 @@ This module provides endpoints for the data explorer tab in the dashboard,
 allowing users to browse, filter, and export data from all tables.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Path
 from typing import Dict, List, Any, Optional
 import psycopg2
 import os
 import json
 from datetime import datetime
+from pydantic import BaseModel
+
+# Response models for better API documentation
+class LessonResponse(BaseModel):
+    id: int
+    name: str
+    lesson_number: Optional[int]
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    user_id: str
+
+class TableDataResponse(BaseModel):
+    success: bool
+    data: List[Dict[str, Any]]
+    columns: List[str]
+    total_rows: int
+
+class ErrorResponse(BaseModel):
+    success: bool
+    error: str
 
 router = APIRouter()
 
@@ -24,7 +46,28 @@ def get_db_connection():
     
     return psycopg2.connect(DATABASE_URL, sslmode=os.getenv('PGSSLMODE', 'require'))
 
-@router.get("/api/data-explorer/lessons")
+@router.get("/api/data-explorer/lessons", 
+    response_model=Dict[str, Any],
+    summary="Get all lessons",
+    description="Retrieve all lessons for the dropdown menu in the data explorer",
+    responses={
+        200: {
+            "description": "Successfully retrieved lessons",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "lessons": [
+                            {"id": 1, "name": "1. Introduction to Learning", "lesson_number": 1},
+                            {"id": 2, "name": "2. Core Concepts", "lesson_number": 2},
+                            {"id": 3, "name": "3. Advanced Techniques", "lesson_number": 3}
+                        ]
+                    }
+                }
+            }
+        }
+    }
+)
 async def get_lessons():
     """Get all lessons for the dropdown."""
     try:
@@ -59,7 +102,28 @@ async def get_lessons():
             "error": str(e)
         }
 
-@router.get("/api/data-explorer/users")
+@router.get("/api/data-explorer/users",
+    response_model=Dict[str, Any],
+    summary="Get all users",
+    description="Retrieve all users for the dropdown menu in the data explorer",
+    responses={
+        200: {
+            "description": "Successfully retrieved users",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "users": [
+                            {"id": 1, "email": "user1@example.com", "user_id": "user1@example.com"},
+                            {"id": 2, "email": "user2@example.com", "user_id": "user2@example.com"},
+                            {"id": 3, "email": "user3@example.com", "user_id": "user3@example.com"}
+                        ]
+                    }
+                }
+            }
+        }
+    }
+)
 async def get_users():
     """Get all users for the dropdown."""
     try:
@@ -94,8 +158,54 @@ async def get_users():
             "error": str(e)
         }
 
-@router.get("/api/data-explorer/table/{table_name}")
-async def get_table_data(table_name: str, limit: int = 1000):
+@router.get("/api/data-explorer/table/{table_name}",
+    response_model=Dict[str, Any],
+    summary="Get table data",
+    description="Retrieve data from a specific table with optional limit",
+    responses={
+        200: {
+            "description": "Successfully retrieved table data",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "data": [
+                            {
+                                "id": 1,
+                                "lesson_name": "Introduction to Learning",
+                                "lesson_number": 1,
+                                "created_at": "2024-01-15T10:30:00"
+                            },
+                            {
+                                "id": 2,
+                                "lesson_name": "Core Concepts",
+                                "lesson_number": 2,
+                                "created_at": "2024-01-15T11:00:00"
+                            }
+                        ],
+                        "columns": ["id", "lesson_name", "lesson_number", "created_at"],
+                        "total_rows": 2
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Invalid table name",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": False,
+                        "error": "Invalid table name. Must be one of: lessons, questions, users, user_activities, user_responses"
+                    }
+                }
+            }
+        }
+    }
+)
+async def get_table_data(
+    table_name: str = Path(..., description="Name of the table to query", example="lessons"),
+    limit: int = Query(1000, description="Maximum number of rows to return", ge=1, le=10000, example=50)
+):
     """Get data from a specific table."""
     try:
         # Validate table name to prevent SQL injection
@@ -149,12 +259,40 @@ async def get_table_data(table_name: str, limit: int = 1000):
             "error": str(e)
         }
 
-@router.get("/api/data-explorer/table/{table_name}/filtered")
+@router.get("/api/data-explorer/table/{table_name}/filtered",
+    response_model=Dict[str, Any],
+    summary="Get filtered table data",
+    description="Retrieve filtered data from a specific table with optional lesson and user filters",
+    responses={
+        200: {
+            "description": "Successfully retrieved filtered table data",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "data": [
+                            {
+                                "id": 1,
+                                "user_id": "user1@example.com",
+                                "lesson_id": 1,
+                                "activity_type": "quiz_completed",
+                                "score": 85,
+                                "created_at": "2024-01-15T10:30:00"
+                            }
+                        ],
+                        "columns": ["id", "user_id", "lesson_id", "activity_type", "score", "created_at"],
+                        "total_rows": 1
+                    }
+                }
+            }
+        }
+    }
+)
 async def get_filtered_table_data(
-    table_name: str, 
-    lesson_id: Optional[int] = None,
-    user_id: Optional[int] = None,
-    limit: int = 1000
+    table_name: str = Path(..., description="Name of the table to query", example="user_activities"),
+    lesson_id: Optional[int] = Query(None, description="Filter by lesson ID", example=1),
+    user_id: Optional[int] = Query(None, description="Filter by user ID", example=1),
+    limit: int = Query(1000, description="Maximum number of rows to return", ge=1, le=10000, example=50)
 ):
     """Get filtered data from a specific table."""
     try:
