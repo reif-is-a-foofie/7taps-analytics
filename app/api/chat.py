@@ -93,7 +93,7 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_engaged,
                     COUNT(*) as total_activities,
-                    ROUND(
+                    ((
                         (COUNT(DISTINCT ua.user_id)::float / 
                          (SELECT COUNT(*) FROM users)::float) * 100, 2
                     ) as engagement_rate
@@ -112,7 +112,7 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_engaged,
                     COUNT(*) as total_activities,
-                    ROUND(
+                    ((
                         (COUNT(DISTINCT ua.user_id)::float / 
                          (SELECT COUNT(*) FROM users)::float) * 100, 2
                     ) as engagement_rate
@@ -157,7 +157,7 @@ def get_preloaded_queries():
             "description": "Give me the average engagement rate across all lessons",
             "sql": """
                 SELECT 
-                    ROUND(AVG(engagement_rate), 2) as average_engagement_rate,
+                    (AVG(engagement_rate))::numeric(5,2) as average_engagement_rate,
                     COUNT(*) as total_lessons,
                     SUM(users_engaged) as total_engagements,
                     SUM(total_activities) as total_activities
@@ -166,7 +166,7 @@ def get_preloaded_queries():
                         l.lesson_number,
                         COUNT(DISTINCT ua.user_id) as users_engaged,
                         COUNT(*) as total_activities,
-                        ROUND(
+                        ((
                             (COUNT(DISTINCT ua.user_id)::float / 
                              (SELECT COUNT(*) FROM users)::float) * 100, 2
                         ) as engagement_rate
@@ -186,7 +186,7 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
                     COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
-                    ROUND(
+                    ((
                         (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
                          NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
                     ) as completion_rate
@@ -361,7 +361,7 @@ def get_preloaded_queries():
                     COUNT(DISTINCT ur.user_id) as students_engaged,
                     COUNT(ur.id) as total_responses,
                     COUNT(CASE WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 1 END) as positive_changes,
-                    ROUND(COUNT(CASE WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 1 END) * 100.0 / COUNT(ur.id), 1) as improvement_rate
+                    ((COUNT(CASE WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 1 END) * 100.0 / COUNT(ur.id), 1) as improvement_rate
                 FROM lessons l
                 LEFT JOIN user_responses ur ON l.id = ur.lesson_id
                 WHERE ur.response_text IS NOT NULL
