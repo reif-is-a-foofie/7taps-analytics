@@ -290,8 +290,8 @@ async def get_table_data(
 )
 async def get_filtered_table_data(
     table_name: str = Path(..., description="Name of the table to query", example="user_activities"),
-    lesson_id: Optional[int] = Query(None, description="Filter by lesson ID", example=1),
-    user_id: Optional[int] = Query(None, description="Filter by user ID", example=1),
+    lesson_ids: Optional[str] = Query(None, description="Comma-separated list of lesson IDs to filter by", example="1,2,3"),
+    user_ids: Optional[str] = Query(None, description="Comma-separated list of user IDs to filter by", example="1,2,3"),
     limit: int = Query(1000, description="Maximum number of rows to return", ge=1, le=10000, example=50)
 ):
     """Get filtered data from a specific table."""
@@ -312,13 +312,24 @@ async def get_filtered_table_data(
         params = []
         conditions = []
         
-        if lesson_id and table_name in ['questions', 'user_activities', 'user_responses']:
-            conditions.append("lesson_id = %s")
-            params.append(lesson_id)
+        # Parse lesson_ids and user_ids from comma-separated strings
+        lesson_id_list = []
+        if lesson_ids:
+            lesson_id_list = [int(x.strip()) for x in lesson_ids.split(',') if x.strip().isdigit()]
         
-        if user_id and table_name in ['user_activities', 'user_responses']:
-            conditions.append("user_id = %s")
-            params.append(user_id)
+        user_id_list = []
+        if user_ids:
+            user_id_list = [int(x.strip()) for x in user_ids.split(',') if x.strip().isdigit()]
+        
+        if lesson_id_list and table_name in ['questions', 'user_activities', 'user_responses']:
+            placeholders = ','.join(['%s'] * len(lesson_id_list))
+            conditions.append(f"lesson_id IN ({placeholders})")
+            params.extend(lesson_id_list)
+        
+        if user_id_list and table_name in ['user_activities', 'user_responses']:
+            placeholders = ','.join(['%s'] * len(user_id_list))
+            conditions.append(f"user_id IN ({placeholders})")
+            params.extend(user_id_list)
         
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
@@ -353,8 +364,8 @@ async def get_filtered_table_data(
             "columns": columns,
             "total_rows": len(data),
             "filters_applied": {
-                "lesson_id": lesson_id,
-                "user_id": user_id
+                "lesson_ids": lesson_id_list,
+                "user_ids": user_id_list
             }
         }
         
