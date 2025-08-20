@@ -759,7 +759,7 @@ EXAMPLE RESPONSES:
 - "Lesson 1 has the highest completion rate at 85%, while Lesson 5 is lowest at 45%."
 - "Average completion rate across all lessons is 67%."
 - "15 students have not finished the course yet, with 3-5 lessons remaining each."
-- "Peak engagement was 12 users on August 18th, with steady decline since then.""""
+- "Peak engagement was 12 users on August 18th, with steady decline since then."""
             }
         ]
         
