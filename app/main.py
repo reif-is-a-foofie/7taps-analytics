@@ -471,19 +471,22 @@ async def dashboard():
         """)
         metrics = cursor.fetchone()
         
-        # Get lesson engagement data from new normalized tables
-        # Removed unused import to fix dashboard error
-        
-        cursor.execute(f"""
-            SELECT 
-                l.lesson_name,
-                COUNT(DISTINCT ua.user_id) as response_count
-            FROM lessons l
-            LEFT JOIN user_activities ua ON l.lesson_number = ua.lesson_number
-            GROUP BY l.id, l.lesson_name, l.lesson_number
-            ORDER BY l.lesson_number
-        """)
-        lesson_data = cursor.fetchall()
+        # Get lesson engagement data from user_activities table
+        try:
+            cursor.execute(f"""
+                SELECT 
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as response_count
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.lesson_number = ua.lesson_number
+                GROUP BY l.id, l.lesson_name, l.lesson_number
+                ORDER BY l.lesson_number
+            """)
+            lesson_data = cursor.fetchall()
+            print(f"DEBUG: Found {len(lesson_data)} lessons with engagement data")
+        except Exception as e:
+            print(f"DEBUG: Error fetching lesson data: {e}")
+            lesson_data = []
         
         # Get behavior priorities
         cursor.execute("""
@@ -631,10 +634,33 @@ async def dashboard():
                     text-align: center;
                     transition: all 0.2s ease;
                     border: 1px solid var(--border-color);
+                    position: relative;
+                    cursor: help;
                 }}
                 .metric-card:hover {{
                     box-shadow: var(--card-shadow-hover);
                     transform: translateY(-2px);
+                }}
+                .metric-tooltip {{
+                    position: absolute;
+                    bottom: -40px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: var(--text-primary);
+                    color: var(--bg-color);
+                    padding: 0.5rem 0.75rem;
+                    border-radius: 6px;
+                    font-size: 0.8rem;
+                    white-space: nowrap;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: all 0.2s ease;
+                    z-index: 1000;
+                    box-shadow: var(--card-shadow-hover);
+                }}
+                .metric-card:hover .metric-tooltip {{
+                    opacity: 1;
+                    visibility: visible;
                 }}
                 .metric-value {{ 
                     font-size: 2.5rem; 
@@ -822,23 +848,27 @@ async def dashboard():
                             
                             <!-- Key Metrics Panel -->
                             <div class="metrics-grid" style="margin-bottom: 2rem;">
-                        <div class="metric-card">
+                                <div class="metric-card" title="Total unique users who have interacted with any lesson content">
                                     <div class="metric-value" id="total-participants">{metrics[0] if metrics else 0}</div>
-                            <div class="metric-label">Total Learners</div>
-                        </div>
-                                                        <div class="metric-card">
+                                    <div class="metric-label">Total Learners</div>
+                                    <div class="metric-tooltip">📊 Calculated from unique user IDs in user_activities table</div>
+                                </div>
+                                <div class="metric-card" title="Percentage of learners who completed the final question of at least one lesson">
                                     <div class="metric-value" id="completion-rate">{round((sum(lesson_counts) / (len(lesson_names) * metrics[0])) * 100, 1) if metrics and lesson_counts and lesson_names else 0}%</div>
                                     <div class="metric-label">Completion Rate</div>
+                                    <div class="metric-tooltip">✅ Based on completion of last question in each lesson</div>
                                 </div>
-                                <div class="metric-card">
+                                <div class="metric-card" title="Average number of unique users engaged per lesson">
                                     <div class="metric-value" id="avg-score">{round(sum(lesson_counts) / len(lesson_counts), 1) if lesson_counts else 0}</div>
                                     <div class="metric-label">Avg Engagement</div>
+                                    <div class="metric-tooltip">📈 Average unique users per lesson across all 10 lessons</div>
                                 </div>
-                                <div class="metric-card">
+                                <div class="metric-card" title="Total number of lessons available in the course">
                                     <div class="metric-value" id="nps-score">{len(lesson_names)}</div>
                                     <div class="metric-label">Total Lessons</div>
+                                    <div class="metric-tooltip">📚 Total lessons in the course curriculum</div>
                                 </div>
-                    </div>
+                            </div>
                     
                             <!-- Main Charts Section -->
                             <div class="charts-grid" style="margin-bottom: 2rem;">
