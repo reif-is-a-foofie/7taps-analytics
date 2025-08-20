@@ -85,6 +85,132 @@ def get_preloaded_queries():
                     (SELECT COUNT(*) FROM user_activities) as total_activities
             """
         },
+        "lesson_completion_rates": {
+            "description": "Show completion rates for each lesson in the course",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_started,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END) as users_completed,
+                    ROUND(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
+                    ) as completion_rate
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY l.lesson_number
+            """
+        },
+        "highest_lowest_completion": {
+            "description": "Which lessons have the highest and lowest completion rates",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_started,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END) as users_completed,
+                    ROUND(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
+                    ) as completion_rate
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                HAVING COUNT(DISTINCT ua.user_id) > 0
+                ORDER BY completion_rate DESC
+            """
+        },
+        "student_engagement_over_time": {
+            "description": "Show student engagement over time across the course",
+            "sql": """
+                SELECT 
+                    DATE(ua.timestamp) as activity_date,
+                    COUNT(DISTINCT ua.user_id) as active_users,
+                    COUNT(*) as total_activities
+                FROM user_activities ua
+                WHERE ua.timestamp >= CURRENT_DATE - INTERVAL '30 days'
+                GROUP BY DATE(ua.timestamp)
+                ORDER BY activity_date
+            """
+        },
+        "incomplete_students": {
+            "description": "Which students have not finished the course yet",
+            "sql": """
+                SELECT 
+                    u.user_id,
+                    u.email,
+                    COUNT(DISTINCT ua.lesson_id) as lessons_started,
+                    (SELECT COUNT(*) FROM lessons) as total_lessons,
+                    (SELECT COUNT(*) FROM lessons) - COUNT(DISTINCT ua.lesson_id) as lessons_remaining
+                FROM users u
+                LEFT JOIN user_activities ua ON u.id = ua.user_id
+                GROUP BY u.id, u.user_id, u.email
+                HAVING COUNT(DISTINCT ua.lesson_id) < (SELECT COUNT(*) FROM lessons)
+                ORDER BY lessons_remaining DESC
+            """
+        },
+        "average_completion_rate": {
+            "description": "Give me the average completion rate across all lessons",
+            "sql": """
+                SELECT 
+                    ROUND(AVG(completion_rate), 2) as average_completion_rate,
+                    COUNT(*) as total_lessons,
+                    SUM(users_completed) as total_completions,
+                    SUM(users_started) as total_starts
+                FROM (
+                    SELECT 
+                        l.lesson_number,
+                        COUNT(DISTINCT ua.user_id) as users_started,
+                        COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END) as users_completed,
+                        ROUND(
+                            (COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END)::float / 
+                             NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
+                        ) as completion_rate
+                    FROM lessons l
+                    LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                    GROUP BY l.id, l.lesson_number
+                    HAVING COUNT(DISTINCT ua.user_id) > 0
+                ) as lesson_stats
+            """
+        },
+        "lesson_comparison": {
+            "description": "Compare completion rates between specific lessons",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_started,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END) as users_completed,
+                    ROUND(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
+                    ) as completion_rate
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                WHERE l.lesson_number IN (1, 5)
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY l.lesson_number
+            """
+        },
+        "time_to_completion": {
+            "description": "Show how many students completed the course within 30 days of starting",
+            "sql": """
+                SELECT 
+                    u.user_id,
+                    u.email,
+                    MIN(ua.timestamp) as first_activity,
+                    MAX(ua.timestamp) as last_activity,
+                    EXTRACT(DAYS FROM MAX(ua.timestamp) - MIN(ua.timestamp)) as days_to_complete,
+                    COUNT(DISTINCT ua.lesson_id) as lessons_completed
+                FROM users u
+                JOIN user_activities ua ON u.id = ua.user_id
+                GROUP BY u.id, u.user_id, u.email
+                HAVING COUNT(DISTINCT ua.lesson_id) >= (SELECT COUNT(*) FROM lessons) * 0.8
+                ORDER BY days_to_complete
+            """
+        },
         "habit_changes": {
             "description": "Get evidence of habit changes across lessons",
             "sql": """
@@ -336,22 +462,29 @@ CRITICAL INSTRUCTIONS:
 
 Available Preloaded Queries:
 - stats: Get current database statistics (users, lessons, activities, responses)
+- lesson_completion_rates: Show completion rates for each lesson in the course
+- highest_lowest_completion: Which lessons have the highest and lowest completion rates
+- student_engagement_over_time: Show student engagement over time across the course
+- incomplete_students: Which students have not finished the course yet
+- average_completion_rate: Give me the average completion rate across all lessons
+- lesson_comparison: Compare completion rates between specific lessons
+- time_to_completion: Show how many students completed the course within 30 days of starting
 - habit_changes: Get evidence of habit changes across lessons
 - top_users: Get most engaged users
-- lesson_completion: Get lesson completion rates
 - recent_activity: Get recent user activity
 - screen_time_responses: Get responses about screen time habits
 
 EXAMPLE RESPONSES:
 - "how many users" → {{"intent": "user_count", "sql": "stats", "explanation": "Get total user count from database"}}
+- "show completion rates" → {{"intent": "completion_analysis", "sql": "lesson_completion_rates", "explanation": "Get completion rates for each lesson"}}
+- "highest and lowest completion" → {{"intent": "completion_ranking", "sql": "highest_lowest_completion", "explanation": "Get lessons ranked by completion rate"}}
+- "engagement over time" → {{"intent": "engagement_timeline", "sql": "student_engagement_over_time", "explanation": "Get engagement trends over time"}}
+- "students not finished" → {{"intent": "incomplete_analysis", "sql": "incomplete_students", "explanation": "Get students who haven't completed the course"}}
+- "average completion rate" → {{"intent": "completion_summary", "sql": "average_completion_rate", "explanation": "Get overall completion rate"}}
+- "compare lesson 1 and 5" → {{"intent": "lesson_comparison", "sql": "lesson_comparison", "explanation": "Compare completion between lessons"}}
+- "time to completion" → {{"intent": "completion_timing", "sql": "time_to_completion", "explanation": "Get completion timing analysis"}}
 - "show habit changes" → {{"intent": "habit_analysis", "sql": "habit_changes", "explanation": "Get evidence of habit changes"}}
 - "most engaged users" → {{"intent": "engagement_analysis", "sql": "top_users", "explanation": "Get most engaged users"}}
-- "first lesson details" → {{"intent": "lesson_analysis", "sql": "lesson_details", "explanation": "Get first lesson with questions and responses"}}
-- "engagement health" → {{"intent": "engagement_analysis", "sql": "engagement_health", "explanation": "Get completion rates and drop-off analysis"}}
-- "which lessons are most engaging" → {{"intent": "lesson_analysis", "sql": "lesson_engagement", "explanation": "Get lesson engagement rankings"}}
-- "what behaviors matter most" → {{"intent": "behavior_analysis", "sql": "behavior_priorities", "explanation": "Get behavior priority analysis"}}
-- "did students change behavior" → {{"intent": "impact_analysis", "sql": "student_impact", "explanation": "Get student behavior change evidence"}}
-- "unique student insights" → {{"intent": "insight_analysis", "sql": "unique_insights", "explanation": "Get vulnerable student reflections"}}
 """
     
     response = client.chat.completions.create(
@@ -371,7 +504,7 @@ EXAMPLE RESPONSES:
             raise ValueError("Invalid response format")
         
         # Ensure sql field is a valid preloaded query name
-        valid_queries = ['stats', 'habit_changes', 'top_users', 'lesson_completion', 'recent_activity', 'screen_time_responses', 'lesson_details', 'engagement_health', 'lesson_engagement', 'behavior_priorities', 'student_impact', 'unique_insights']
+        valid_queries = ['stats', 'lesson_completion_rates', 'highest_lowest_completion', 'student_engagement_over_time', 'incomplete_students', 'average_completion_rate', 'lesson_comparison', 'time_to_completion', 'habit_changes', 'top_users', 'recent_activity', 'screen_time_responses', 'lesson_details', 'engagement_health', 'lesson_engagement', 'behavior_priorities', 'student_impact', 'unique_insights']
         if result.get('sql') not in valid_queries:
             # Force use of stats query if invalid
             result['sql'] = 'stats'
@@ -405,7 +538,45 @@ def generate_visualization(results: List[Dict], intent: str) -> Optional[str]:
         cleaned_results = [clean_dict(result) for result in results]
         
         # Generate different visualizations based on intent and data structure
-        if 'engagement' in intent.lower() or 'lesson' in intent.lower():
+        if 'completion' in intent.lower():
+            if cleaned_results and 'completion_rate' in cleaned_results[0]:
+                # Completion rates bar chart
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=[f"Lesson {r.get('lesson_number', i+1)}" for i, r in enumerate(cleaned_results)],
+                        y=[r.get('completion_rate', 0) for r in cleaned_results],
+                        name='Completion Rate (%)',
+                        marker_color='#6366f1'
+                    )
+                ])
+                fig.update_layout(
+                    title='Lesson Completion Rates',
+                    xaxis_title='Lesson',
+                    yaxis_title='Completion Rate (%)',
+                    template='plotly_white',
+                    yaxis=dict(range=[0, 100])
+                )
+                return fig.to_json()
+            elif cleaned_results and 'average_completion_rate' in cleaned_results[0]:
+                # Single metric display
+                avg_rate = cleaned_results[0].get('average_completion_rate', 0)
+                fig = go.Figure(data=[
+                    go.Indicator(
+                        mode="gauge+number+delta",
+                        value=avg_rate,
+                        domain={'x': [0, 1], 'y': [0, 1]},
+                        title={'text': "Average Completion Rate (%)"},
+                        gauge={'axis': {'range': [None, 100]},
+                               'bar': {'color': "#6366f1"},
+                               'steps': [{'range': [0, 50], 'color': "lightgray"},
+                                        {'range': [50, 80], 'color': "yellow"},
+                                        {'range': [80, 100], 'color': "green"}]}
+                    )
+                ])
+                fig.update_layout(template='plotly_white')
+                return fig.to_json()
+        
+        elif 'engagement' in intent.lower() or 'lesson' in intent.lower():
             if cleaned_results and 'lesson_number' in cleaned_results[0]:
                 # Lesson engagement chart
                 fig = go.Figure(data=[
@@ -565,20 +736,30 @@ async def chat(request: ChatRequest):
         messages = [
             {
                 "role": "system",
-                "content": f"""You are Seven, an AI analytics assistant. Give concise, data-driven answers.
+                "content": f"""You are Seven, an AI analytics assistant for course completion data. Follow these DEMO-READY formatting rules:
 
 Database Schema:
 {json.dumps(schema_summary, indent=2)}
 
-Available Queries: stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses, lesson_details, engagement_health, lesson_engagement, behavior_priorities, student_impact, unique_insights
+Available Queries: lesson_completion_rates, highest_lowest_completion, student_engagement_over_time, incomplete_students, average_completion_rate, lesson_comparison, time_to_completion, stats, habit_changes, top_users, recent_activity, screen_time_responses, lesson_details, engagement_health, lesson_engagement, behavior_priorities, student_impact, unique_insights
 
-        Instructions:
-        - Keep responses under 100 words
-        - Be specific with numbers and examples
-        - Use the query results provided to answer questions
-        - Reference the schema above to understand available data
-        - Never use emojis in responses
-        - Keep responses professional and data-focused"""
+FORMATTING RULES:
+1. ALWAYS put text summary ABOVE any visualization
+2. Keep text concise but informative (2-4 sentences)
+3. Use specific numbers and percentages from the data
+4. For completion rates: "Lesson X has Y% completion rate"
+5. For comparisons: "Lesson A (X%) vs Lesson B (Y%)"
+6. For averages: "Average completion rate is X% across all lessons"
+7. For incomplete students: "X students have not finished the course"
+8. For engagement over time: "Peak engagement was X users on Y date"
+9. Never use emojis - keep professional tone
+10. If no data found, say "No completion data available for this query"
+
+EXAMPLE RESPONSES:
+- "Lesson 1 has the highest completion rate at 85%, while Lesson 5 is lowest at 45%."
+- "Average completion rate across all lessons is 67%."
+- "15 students have not finished the course yet, with 3-5 lessons remaining each."
+- "Peak engagement was 12 users on August 18th, with steady decline since then.""""
             }
         ]
         
