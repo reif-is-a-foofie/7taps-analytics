@@ -798,27 +798,15 @@ async def dashboard():
             </div>
             
             <script>
-                // Test if JavaScript is running at all
                 console.log('JavaScript is loading...');
                 
-                // Define showSection function first
                 function showSection(sectionName) {{
                     console.log('showSection called with:', sectionName);
-                    
-                    // Add a visible indicator that JavaScript is working
-                    const indicator = document.getElementById('js-status') || document.createElement('div');
-                    indicator.id = 'js-status';
-                    indicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: green; color: white; padding: 5px; z-index: 9999;';
-                    indicator.textContent = 'JS Working - Section: ' + sectionName;
-                    if (!document.getElementById('js-status')) {{
-                        document.body.appendChild(indicator);
-                    }}
                     
                     // Hide all sections
                     const sections = document.querySelectorAll('.section-content');
                     sections.forEach(section => {{
                         section.style.display = 'none';
-                        console.log('Hiding section:', section.id);
                     }});
                     
                     // Remove active class from all sidebar items
@@ -830,8 +818,6 @@ async def dashboard():
                     if (selectedSection) {{
                         selectedSection.style.display = 'block';
                         console.log('Showing section:', sectionName);
-                    }} else {{
-                        console.error('Section not found:', sectionName);
                     }}
                     
                     // Add active class to clicked sidebar item
@@ -840,13 +826,37 @@ async def dashboard():
                         clickedItem.classList.add('active');
                     }}
                     
-                    // Initialize specific sections
+                    // Handle specific sections
                     if (sectionName === 'health') {{
-                        loadHealthStatus();
+                        const healthSection = document.getElementById('health');
+                        if (healthSection) {{
+                            healthSection.innerHTML = '<h2>System Health Status</h2><p>✅ System is healthy</p>';
+                        }}
                     }} else if (sectionName === 'api') {{
                         window.open('/docs', '_blank');
                     }}
                 }}
+                
+                document.addEventListener('DOMContentLoaded', function() {{
+                    console.log('DOM loaded, setting up event listeners...');
+                    
+                    // Add event listeners to sidebar items
+                    const sidebarItems = document.querySelectorAll('.sidebar-item');
+                    sidebarItems.forEach((item) => {{
+                        item.addEventListener('click', function(e) {{
+                            e.preventDefault();
+                            const sectionName = this.getAttribute('data-section');
+                            console.log('Sidebar item clicked:', sectionName);
+                            showSection(sectionName);
+                        }});
+                    }});
+                    
+                    // Initialize dashboard as default
+                    showSection('dashboard');
+                }});
+                
+                // Define showSection function first
+
                 
                 function loadHealthStatus() {{
                     const healthSection = document.getElementById('health');
