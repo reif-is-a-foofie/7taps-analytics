@@ -92,9 +92,9 @@ def get_preloaded_queries():
                     l.lesson_number,
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
-                    COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END) as users_completed,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
                     ROUND(
-                        (COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END)::float / 
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
                          NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
                     ) as completion_rate
                 FROM lessons l
@@ -110,9 +110,9 @@ def get_preloaded_queries():
                     l.lesson_number,
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
-                    COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END) as users_completed,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
                     ROUND(
-                        (COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END)::float / 
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
                          NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
                     ) as completion_rate
                 FROM lessons l
@@ -163,9 +163,9 @@ def get_preloaded_queries():
                     SELECT 
                         l.lesson_number,
                         COUNT(DISTINCT ua.user_id) as users_started,
-                        COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END) as users_completed,
+                        COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
                         ROUND(
-                            (COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END)::float / 
+                            (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
                              NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
                         ) as completion_rate
                     FROM lessons l
@@ -182,9 +182,9 @@ def get_preloaded_queries():
                     l.lesson_number,
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
-                    COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END) as users_completed,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
                     ROUND(
-                        (COUNT(DISTINCT CASE WHEN ua.activity_type LIKE '%completed%' THEN ua.user_id END)::float / 
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
                          NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
                     ) as completion_rate
                 FROM lessons l
