@@ -687,17 +687,17 @@ async def dashboard():
         cursor.close()
         conn.close()
         
-        # Prepare data for charts
-        lesson_names = [row[0] for row in lesson_completion_data] if lesson_completion_data else ['No Data']
-        completion_rates = [float(row[3]) if row[3] is not None else 0 for row in lesson_completion_data] if lesson_completion_data else [0]
+        # Prepare data for charts - ensure all data is JSON serializable
+        lesson_names = [str(row[0]) for row in lesson_completion_data] if lesson_completion_data else ['No Data']
+        completion_rates = [float(row[3]) if row[3] is not None else 0.0 for row in lesson_completion_data] if lesson_completion_data else [0.0]
         users_started = [int(row[1]) if row[1] is not None else 0 for row in lesson_completion_data] if lesson_completion_data else [0]
         users_completed = [int(row[2]) if row[2] is not None else 0 for row in lesson_completion_data] if lesson_completion_data else [0]
         
-        activity_dates = [row[0].strftime('%Y-%m-%d') for row in activity_trends] if activity_trends else []
+        activity_dates = [str(row[0].strftime('%Y-%m-%d')) for row in activity_trends] if activity_trends else []
         activity_counts = [int(row[1]) if row[1] is not None else 0 for row in activity_trends] if activity_trends else []
         active_users = [int(row[2]) if row[2] is not None else 0 for row in activity_trends] if activity_trends else []
         
-        response_type_labels = [row[0] for row in response_types] if response_types else []
+        response_type_labels = [str(row[0]) for row in response_types] if response_types else []
         response_type_counts = [int(row[1]) if row[1] is not None else 0 for row in response_types] if response_types else []
         
         # Import json for proper JavaScript data encoding
