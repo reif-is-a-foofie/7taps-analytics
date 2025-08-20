@@ -28,6 +28,413 @@ async def chat_interface():
     with open("chat_interface.html", "r") as f:
         return HTMLResponse(content=f.read())
 
+@app.get("/explorer", response_class=HTMLResponse)
+async def data_explorer():
+    """Serve the data explorer interface"""
+    return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Data Explorer - 7taps Analytics</title>
+        <style>
+            :root {
+                --primary-color: #6366f1;
+                --bg-color: #ffffff;
+                --card-bg: #f8fafc;
+                --text-primary: #1e293b;
+                --text-secondary: #64748b;
+                --border-color: #e2e8f0;
+                --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+                --success-color: #10b981;
+                --danger-color: #ef4444;
+            }
+            
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                background: var(--bg-color);
+                color: var(--text-primary);
+                line-height: 1.6;
+            }
+            
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 2rem;
+            }
+            
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 2rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .header h1 {
+                color: var(--primary-color);
+                font-size: 2rem;
+                font-weight: 600;
+            }
+            
+            .back-link {
+                color: var(--primary-color);
+                text-decoration: none;
+                font-weight: 500;
+                padding: 0.5rem 1rem;
+                border: 1px solid var(--primary-color);
+                border-radius: 8px;
+                transition: all 0.2s;
+            }
+            
+            .back-link:hover {
+                background: var(--primary-color);
+                color: white;
+            }
+            
+            .controls {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+            
+            .control-group {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .control-group label {
+                font-weight: 500;
+                color: var(--text-primary);
+            }
+            
+            .control-group select,
+            .control-group input {
+                padding: 0.75rem;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                font-size: 0.9rem;
+                background: var(--bg-color);
+            }
+            
+            .btn {
+                padding: 0.75rem 1.5rem;
+                border: none;
+                border-radius: 8px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 0.9rem;
+            }
+            
+            .btn-primary {
+                background: var(--primary-color);
+                color: white;
+            }
+            
+            .btn-primary:hover {
+                background: #5855eb;
+            }
+            
+            .btn-secondary {
+                background: var(--card-bg);
+                color: var(--text-primary);
+                border: 1px solid var(--border-color);
+            }
+            
+            .btn-secondary:hover {
+                background: #e2e8f0;
+            }
+            
+            .data-table {
+                background: var(--bg-color);
+                border-radius: 12px;
+                box-shadow: var(--card-shadow);
+                overflow: hidden;
+                margin-bottom: 2rem;
+            }
+            
+            .table-header {
+                background: var(--card-bg);
+                padding: 1rem;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .table-header h3 {
+                color: var(--text-primary);
+                font-size: 1.1rem;
+                font-weight: 600;
+            }
+            
+            .table-container {
+                overflow-x: auto;
+            }
+            
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            
+            th, td {
+                padding: 0.75rem 1rem;
+                text-align: left;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            th {
+                background: var(--card-bg);
+                font-weight: 600;
+                color: var(--text-primary);
+                font-size: 0.9rem;
+            }
+            
+            td {
+                color: var(--text-secondary);
+                font-size: 0.9rem;
+            }
+            
+            tr:hover {
+                background: #f1f5f9;
+            }
+            
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+            
+            .stat-card {
+                background: var(--bg-color);
+                padding: 1.5rem;
+                border-radius: 12px;
+                box-shadow: var(--card-shadow);
+                text-align: center;
+            }
+            
+            .stat-number {
+                font-size: 2rem;
+                font-weight: 700;
+                color: var(--primary-color);
+                margin-bottom: 0.5rem;
+            }
+            
+            .stat-label {
+                color: var(--text-secondary);
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Data Explorer</h1>
+                <a href="/" class="back-link">← Back to Dashboard</a>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="table-select">Select Table</label>
+                    <select id="table-select">
+                        <option value="users">Users</option>
+                        <option value="lessons">Lessons</option>
+                        <option value="user_responses">User Responses</option>
+                        <option value="user_activities">User Activities</option>
+                        <option value="statements_new">xAPI Statements</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="lesson-filter">Filter by Lesson</label>
+                    <select id="lesson-filter">
+                        <option value="">All Lessons</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="user-filter">Filter by User</label>
+                    <select id="user-filter">
+                        <option value="">All Users</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="limit-input">Limit</label>
+                    <input type="number" id="limit-input" value="50" min="1" max="1000">
+                </div>
+                
+                <div class="control-group">
+                    <button class="btn btn-primary" onclick="loadData()">Load Data</button>
+                    <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+            
+            <div class="stats" id="stats">
+                <!-- Stats will be loaded here -->
+            </div>
+            
+            <div class="data-table">
+                <div class="table-header">
+                    <h3 id="table-title">Select a table to view data</h3>
+                </div>
+                <div class="table-container">
+                    <div id="data-table">
+                        <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                            Select a table and click "Load Data" to view records
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            async function loadData() {
+                const selectedTable = document.getElementById('table-select').value;
+                const lessonFilter = document.getElementById('lesson-filter').value;
+                const userFilter = document.getElementById('user-filter').value;
+                const limit = document.getElementById('limit-input').value;
+                
+                if (!selectedTable) {
+                    alert('Please select a table');
+                    return;
+                }
+                
+                try {
+                    let url = `/api/data-explorer/table/${selectedTable}?limit=${limit}`;
+                    if (lessonFilter) url += `&lesson_number=${lessonFilter}`;
+                    if (userFilter) url += `&user_id=${userFilter}`;
+                    
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        renderDataTable(data.data, data.columns);
+                        updateTableStats(data.data);
+                        document.getElementById('table-title').textContent = `${selectedTable.replace('_', ' ').toUpperCase()} (${data.data.length} records)`;
+                    } else {
+                        document.getElementById('data-table').innerHTML = `<p style="text-align: center; color: var(--danger-color); padding: 2rem;">Error loading data: ${data.error}</p>`;
+                    }
+                } catch (error) {
+                    document.getElementById('data-table').innerHTML = `<p style="text-align: center; color: var(--danger-color); padding: 2rem;">Error loading data: ${error.message}</p>`;
+                }
+            }
+            
+            async function loadLessonOptions() {
+                try {
+                    const response = await fetch('/api/data-explorer/lessons');
+                    const data = await response.json();
+                    
+                    const lessonFilter = document.getElementById('lesson-filter');
+                    lessonFilter.innerHTML = '<option value="">All Lessons</option>';
+                    
+                    if (data.success && data.lessons) {
+                        data.lessons.forEach(lesson => {
+                            const option = document.createElement('option');
+                            option.value = lesson.lesson_number || lesson.id;
+                            option.textContent = lesson.name;
+                            lessonFilter.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading lesson options:', error);
+                }
+            }
+            
+            async function loadUserOptions() {
+                try {
+                    const response = await fetch('/api/data-explorer/users');
+                    const data = await response.json();
+                    
+                    const userFilter = document.getElementById('user-filter');
+                    userFilter.innerHTML = '<option value="">All Users</option>';
+                    
+                    if (data.success && data.users) {
+                        data.users.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.id;
+                            option.textContent = user.email || user.id;
+                            userFilter.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading user options:', error);
+                }
+            }
+            
+            function renderDataTable(data, columns) {
+                if (!data || data.length === 0) {
+                    document.getElementById('data-table').innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">No data available</p>';
+                    return;
+                }
+                
+                let tableHTML = '<table><thead><tr>';
+                columns.forEach(column => {
+                    tableHTML += `<th>${column}</th>`;
+                });
+                tableHTML += '</tr></thead><tbody>';
+                
+                data.forEach(row => {
+                    tableHTML += '<tr>';
+                    columns.forEach(column => {
+                        const value = row[column] !== null ? row[column] : '';
+                        tableHTML += `<td>${value}</td>`;
+                    });
+                    tableHTML += '</tr>';
+                });
+                
+                tableHTML += '</tbody></table>';
+                document.getElementById('data-table').innerHTML = tableHTML;
+            }
+            
+            function updateTableStats(data) {
+                const statsContainer = document.getElementById('stats');
+                if (!data || data.length === 0) {
+                    statsContainer.innerHTML = '';
+                    return;
+                }
+                
+                const columns = Object.keys(data[0]);
+                const statsHTML = columns.map(column => {
+                    const values = data.map(row => row[column]).filter(val => val !== null && val !== '');
+                    const uniqueCount = new Set(values).size;
+                    return `
+                        <div class="stat-card">
+                            <div class="stat-number">${uniqueCount}</div>
+                            <div class="stat-label">Unique ${column}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                statsContainer.innerHTML = statsHTML;
+            }
+            
+            function clearFilters() {
+                document.getElementById('lesson-filter').value = '';
+                document.getElementById('user-filter').value = '';
+                document.getElementById('limit-input').value = '50';
+            }
+            
+            // Load options on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                loadLessonOptions();
+                loadUserOptions();
+            });
+        </script>
+    </body>
+    </html>
+    """)
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard():
     """Serve the analytics dashboard with dynamic data"""
@@ -386,19 +793,19 @@ async def dashboard():
                 <div class="sidebar">
                     <div class="sidebar-section">
                         <h3>Analytics</h3>
-                        <a href="#" class="sidebar-item active" data-section="dashboard">Dashboard</a>
-                        <a href="#" class="sidebar-item" data-section="explorer">Data Explorer</a>
-            </div>
-            
+                        <a href="/" class="sidebar-item active">Dashboard</a>
+                        <a href="/explorer" class="sidebar-item">Data Explorer</a>
+                    </div>
+                    
                     <div class="sidebar-section">
                         <h3>Communication</h3>
-                        <a href="#" class="sidebar-item" data-section="chat">AI Chat</a>
+                        <a href="/chat" class="sidebar-item">AI Chat</a>
                     </div>
                     
                     <div class="sidebar-section">
                         <h3>System</h3>
                         <a href="#" class="sidebar-item" data-section="health">Health Check</a>
-                        <a href="#" class="sidebar-item" data-section="api">API Docs</a>
+                        <a href="/docs" class="sidebar-item" target="_blank">API Docs</a>
                     </div>
                 </div>
                 
@@ -803,46 +1210,21 @@ async def dashboard():
                 function showSection(sectionName) {{
                     console.log('showSection called with:', sectionName);
                     
-                    // Hide all sections
-                    const sections = document.querySelectorAll('.section-content');
-                    sections.forEach(section => {{
-                        section.style.display = 'none';
-                    }});
-                    
-                    // Remove active class from all sidebar items
-                    const sidebarItems = document.querySelectorAll('.sidebar-item');
-                    sidebarItems.forEach(item => item.classList.remove('active'));
-                    
-                    // Show selected section
-                    const selectedSection = document.getElementById(sectionName);
-                    if (selectedSection) {{
-                        selectedSection.style.display = 'block';
-                        console.log('Showing section:', sectionName);
-                    }}
-                    
-                    // Add active class to clicked sidebar item
-                    const clickedItem = document.querySelector(`[data-section="${{sectionName}}"]`);
-                    if (clickedItem) {{
-                        clickedItem.classList.add('active');
-                    }}
-                    
                     // Handle specific sections
                     if (sectionName === 'health') {{
                         const healthSection = document.getElementById('health');
                         if (healthSection) {{
                             healthSection.innerHTML = '<h2>System Health Status</h2><p>✅ System is healthy</p>';
                         }}
-                    }} else if (sectionName === 'api') {{
-                        window.open('/docs', '_blank');
                     }}
                 }}
                 
                 document.addEventListener('DOMContentLoaded', function() {{
                     console.log('DOM loaded, setting up event listeners...');
                     
-                    // Add event listeners to sidebar items
-                    const sidebarItems = document.querySelectorAll('.sidebar-item');
-                    sidebarItems.forEach((item) => {{
+                    // Add event listeners only to items with data-section (like health check)
+                    const sectionItems = document.querySelectorAll('.sidebar-item[data-section]');
+                    sectionItems.forEach((item) => {{
                         item.addEventListener('click', function(e) {{
                             e.preventDefault();
                             const sectionName = this.getAttribute('data-section');
@@ -850,9 +1232,6 @@ async def dashboard():
                             showSection(sectionName);
                         }});
                     }});
-                    
-                    // Initialize dashboard as default
-                    showSection('dashboard');
                 }});
             </script>
                     Plotly.newPlot('knowledge-lift-chart', [{{
@@ -1630,29 +2009,31 @@ from app.ui.data_import import router as data_import_ui_router
 # from app.api.monitoring import router as monitoring_router
 # from app.ui.production_dashboard import router as production_dashboard_router
 
-if etl_router:
-    app.include_router(etl_router, prefix="/ui", tags=["ETL"])
-app.include_router(orchestrator_router, prefix="/api", tags=["Orchestrator"])
+# Internal/Admin routers - hidden from public API
+# app.include_router(etl_router, prefix="/ui", tags=["ETL"])
+# app.include_router(orchestrator_router, prefix="/api", tags=["Orchestrator"])
 # app.include_router(nlp_router, prefix="/api", tags=["NLP"])
-app.include_router(xapi_router, tags=["xAPI"])
-app.include_router(seventaps_router, tags=["7taps"])
-app.include_router(xapi_lrs_router, tags=["xAPI LRS"])
-app.include_router(learninglocker_sync_router, prefix="/api", tags=["Learning Locker"])
-app.include_router(data_normalization_router, prefix="/api", tags=["Data Normalization"])
-app.include_router(data_import_router, prefix="/api", tags=["Data Import"])
-app.include_router(migration_router, prefix="/api", tags=["Migration"])
-app.include_router(focus_group_import_router, prefix="/api", tags=["Focus Group Import"])
-app.include_router(csv_to_xapi_router, prefix="/api", tags=["CSV to xAPI"])
-app.include_router(data_access_router, prefix="/api", tags=["Data Access"])
-app.include_router(chat_router, prefix="/api", tags=["Chat"])
-app.include_router(public_router, tags=["Public"])
-app.include_router(data_explorer_router, tags=["Data Explorer"])
-app.include_router(health_router, tags=["Health"])
-app.include_router(admin_router, tags=["Admin"])
+# app.include_router(xapi_router, tags=["xAPI"])
+# app.include_router(seventaps_router, tags=["7taps"])
+# app.include_router(xapi_lrs_router, tags=["xAPI LRS"])
+# app.include_router(learninglocker_sync_router, prefix="/api", tags=["Learning Locker"])
+# app.include_router(data_normalization_router, prefix="/api", tags=["Data Normalization"])
+# app.include_router(data_import_router, prefix="/api", tags=["Data Import"])
+# app.include_router(migration_router, prefix="/api", tags=["Migration"])
+# app.include_router(focus_group_import_router, prefix="/api", tags=["Focus Group Import"])
+# app.include_router(csv_to_xapi_router, prefix="/api", tags=["CSV to xAPI"])
+# app.include_router(data_access_router, prefix="/api", tags=["Data Access"])
+# app.include_router(chat_router, prefix="/api", tags=["Chat"])
+# app.include_router(public_router, tags=["Public"])
+# app.include_router(data_import_ui_router, tags=["Data Import UI"])
+# app.include_router(admin_router, tags=["Admin"])
 # app.include_router(dashboard_router, tags=["Dashboard"])
-app.include_router(data_import_ui_router, tags=["Data Import UI"])
 # app.include_router(monitoring_router, prefix="/api", tags=["Monitoring"])
 # app.include_router(production_dashboard_router, tags=["Production Dashboard"])
+
+# Public API - only essential data extraction endpoints
+app.include_router(data_explorer_router, tags=["Data Explorer"])
+app.include_router(health_router, tags=["Health"])
 
 if __name__ == "__main__":
     import uvicorn
