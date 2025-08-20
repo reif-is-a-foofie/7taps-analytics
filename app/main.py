@@ -689,16 +689,19 @@ async def dashboard():
         
         # Prepare data for charts
         lesson_names = [row[0] for row in lesson_completion_data] if lesson_completion_data else ['No Data']
-        completion_rates = [row[3] for row in lesson_completion_data] if lesson_completion_data else [0]
-        users_started = [row[1] for row in lesson_completion_data] if lesson_completion_data else [0]
-        users_completed = [row[2] for row in lesson_completion_data] if lesson_completion_data else [0]
+        completion_rates = [float(row[3]) if row[3] is not None else 0 for row in lesson_completion_data] if lesson_completion_data else [0]
+        users_started = [int(row[1]) if row[1] is not None else 0 for row in lesson_completion_data] if lesson_completion_data else [0]
+        users_completed = [int(row[2]) if row[2] is not None else 0 for row in lesson_completion_data] if lesson_completion_data else [0]
         
         activity_dates = [row[0].strftime('%Y-%m-%d') for row in activity_trends] if activity_trends else []
-        activity_counts = [row[1] for row in activity_trends] if activity_trends else []
-        active_users = [row[2] for row in activity_trends] if activity_trends else []
+        activity_counts = [int(row[1]) if row[1] is not None else 0 for row in activity_trends] if activity_trends else []
+        active_users = [int(row[2]) if row[2] is not None else 0 for row in activity_trends] if activity_trends else []
         
         response_type_labels = [row[0] for row in response_types] if response_types else []
-        response_type_counts = [row[1] for row in response_types] if response_types else []
+        response_type_counts = [int(row[1]) if row[1] is not None else 0 for row in response_types] if response_types else []
+        
+        # Import json for proper JavaScript data encoding
+        import json
         
         html_content = f"""
         <!DOCTYPE html>
@@ -932,21 +935,35 @@ async def dashboard():
             </div>
             
             <script>
+                // Chart data from server
+                const chartData = {{
+                    lessonNames: {json.dumps(lesson_names)},
+                    completionRates: {json.dumps(completion_rates)},
+                    usersStarted: {json.dumps(users_started)},
+                    usersCompleted: {json.dumps(users_completed)},
+                    activityDates: {json.dumps(activity_dates)},
+                    activityCounts: {json.dumps(activity_counts)},
+                    activeUsers: {json.dumps(active_users)},
+                    responseTypeLabels: {json.dumps(response_type_labels)},
+                    responseTypeCounts: {json.dumps(response_type_counts)}
+                }};
+                
                 // Completion Rates Chart
                 Plotly.newPlot('completion-chart', [
                     {{
                         type: 'bar',
-                        x: {lesson_names},
-                        y: {completion_rates},
+                        x: chartData.lessonNames,
+                        y: chartData.completionRates,
                         marker: {{
-                            color: {completion_rates},
+                            color: chartData.completionRates,
                             colorscale: 'Viridis',
                             showscale: true,
                             colorbar: {{title: 'Completion %'}}
                         }},
-                        text: {completion_rates}.map(val => val + '%'),
+                        text: chartData.completionRates.map(val => val + '%'),
                         textposition: 'auto',
-                        hovertemplate: '<b>%{{x}}</b><br>Completion Rate: %{{y:.1f}}%<br>Users Started: {users_started}<br>Users Completed: {users_completed}<extra></extra>'
+                        hovertemplate: '<b>%{{x}}</b><br>Completion Rate: %{{y:.1f}}%<br>Users Started: %{{customdata[0]}}<br>Users Completed: %{{customdata[1]}}<extra></extra>',
+                        customdata: chartData.lessonNames.map((name, i) => [chartData.usersStarted[i], chartData.usersCompleted[i]])
                     }}
                 ], {{
                     title: 'Lesson Completion Rates',
@@ -960,8 +977,8 @@ async def dashboard():
                 Plotly.newPlot('trends-chart', [
                     {{
                         type: 'scatter',
-                        x: {activity_dates},
-                        y: {activity_counts},
+                        x: chartData.activityDates,
+                        y: chartData.activityCounts,
                         mode: 'lines+markers',
                         name: 'Activities',
                         line: {{color: '#6366f1', width: 3}},
@@ -969,8 +986,8 @@ async def dashboard():
                     }},
                     {{
                         type: 'scatter',
-                        x: {activity_dates},
-                        y: {active_users},
+                        x: chartData.activityDates,
+                        y: chartData.activeUsers,
                         mode: 'lines+markers',
                         name: 'Active Users',
                         line: {{color: '#8b5cf6', width: 3}},
@@ -995,8 +1012,8 @@ async def dashboard():
                 Plotly.newPlot('response-types-chart', [
                     {{
                         type: 'pie',
-                        labels: {response_type_labels},
-                        values: {response_type_counts},
+                        labels: chartData.responseTypeLabels,
+                        values: chartData.responseTypeCounts,
                         hole: 0.4,
                         marker: {{
                             colors: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']
@@ -1012,8 +1029,8 @@ async def dashboard():
                 Plotly.newPlot('engagement-chart', [
                     {{
                         type: 'funnel',
-                        y: {lesson_names},
-                        x: {users_started},
+                        y: chartData.lessonNames,
+                        x: chartData.usersStarted,
                         textinfo: 'value+percent initial',
                         marker: {{
                             color: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#84cc16', '#f97316', '#a855f7']
