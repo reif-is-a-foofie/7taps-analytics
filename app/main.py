@@ -234,6 +234,75 @@ async def data_explorer():
                 font-size: 0.9rem;
                 font-weight: 500;
             }
+            
+            /* Multiselect Styles */
+            .multiselect-container {
+                position: relative;
+                width: 100%;
+            }
+            
+            .multiselect-header {
+                padding: 0.75rem;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                background: var(--bg-color);
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 0.9rem;
+                transition: all 0.2s;
+            }
+            
+            .multiselect-header:hover {
+                border-color: var(--primary-color);
+            }
+            
+            .multiselect-arrow {
+                font-size: 0.8rem;
+                transition: transform 0.2s;
+            }
+            
+            .multiselect-container.open .multiselect-arrow {
+                transform: rotate(180deg);
+            }
+            
+            .multiselect-options {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--bg-color);
+                border: 1px solid var(--border-color);
+                border-top: none;
+                border-radius: 0 0 8px 8px;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            
+            .multiselect-option {
+                padding: 0.5rem 0.75rem;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                transition: background-color 0.2s;
+            }
+            
+            .multiselect-option:hover {
+                background: var(--card-bg);
+            }
+            
+            .multiselect-option input[type="checkbox"] {
+                margin: 0;
+            }
+            
+            .multiselect-option.selected {
+                background: var(--primary-color);
+                color: white;
+            }
         </style>
     </head>
     <body>
@@ -256,17 +325,29 @@ async def data_explorer():
                 </div>
                 
                 <div class="control-group">
-                    <label for="lesson-filter">Filter by Lesson</label>
-                    <select id="lesson-filter">
-                        <option value="">All Lessons</option>
-                    </select>
+                    <label for="lesson-filter">Filter by Lessons</label>
+                    <div id="lesson-filter" class="multiselect-container">
+                        <div class="multiselect-header" onclick="toggleMultiselect('lesson-filter')">
+                            <span id="lesson-filter-text">All Lessons</span>
+                            <span class="multiselect-arrow">▼</span>
+                        </div>
+                        <div id="lesson-filter-options" class="multiselect-options" style="display: none;">
+                            <!-- Options will be loaded here -->
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="control-group">
-                    <label for="user-filter">Filter by User</label>
-                    <select id="user-filter">
-                        <option value="">All Users</option>
-                    </select>
+                    <label for="user-filter">Filter by Users</label>
+                    <div id="user-filter" class="multiselect-container">
+                        <div class="multiselect-header" onclick="toggleMultiselect('user-filter')">
+                            <span id="user-filter-text">All Users</span>
+                            <span class="multiselect-arrow">▼</span>
+                        </div>
+                        <div id="user-filter-options" class="multiselect-options" style="display: none;">
+                            <!-- Options will be loaded here -->
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="control-group">
@@ -299,10 +380,12 @@ async def data_explorer():
         </div>
         
         <script>
+            // Global variables to store selected values
+            let selectedLessonIds = [];
+            let selectedUserIds = [];
+            
             async function loadData() {
                 const selectedTable = document.getElementById('table-select').value;
-                const lessonFilter = document.getElementById('lesson-filter').value;
-                const userFilter = document.getElementById('user-filter').value;
                 const limit = document.getElementById('limit-input').value;
                 
                 if (!selectedTable) {
@@ -311,9 +394,13 @@ async def data_explorer():
                 }
                 
                 try {
-                    let url = `/api/data-explorer/table/${selectedTable}?limit=${limit}`;
-                    if (lessonFilter) url += `&lesson_number=${lessonFilter}`;
-                    if (userFilter) url += `&user_id=${userFilter}`;
+                    let url = `/api/data-explorer/table/${selectedTable}/filtered?limit=${limit}`;
+                    if (selectedLessonIds.length > 0) {
+                        url += `&lesson_ids=${selectedLessonIds.join(',')}`;
+                    }
+                    if (selectedUserIds.length > 0) {
+                        url += `&user_ids=${selectedUserIds.join(',')}`;
+                    }
                     
                     const response = await fetch(url);
                     const data = await response.json();
@@ -335,15 +422,18 @@ async def data_explorer():
                     const response = await fetch('/api/data-explorer/lessons');
                     const data = await response.json();
                     
-                    const lessonFilter = document.getElementById('lesson-filter');
-                    lessonFilter.innerHTML = '<option value="">All Lessons</option>';
+                    const lessonOptions = document.getElementById('lesson-filter-options');
+                    lessonOptions.innerHTML = '';
                     
                     if (data.success && data.lessons) {
                         data.lessons.forEach(lesson => {
-                            const option = document.createElement('option');
-                            option.value = lesson.lesson_number || lesson.id;
-                            option.textContent = lesson.name;
-                            lessonFilter.appendChild(option);
+                            const option = document.createElement('div');
+                            option.className = 'multiselect-option';
+                            option.innerHTML = `
+                                <input type="checkbox" id="lesson-${lesson.id}" value="${lesson.id}" onchange="toggleLessonSelection(${lesson.id}, '${lesson.name}')">
+                                <label for="lesson-${lesson.id}">${lesson.name}</label>
+                            `;
+                            lessonOptions.appendChild(option);
                         });
                     }
                 } catch (error) {
@@ -356,15 +446,18 @@ async def data_explorer():
                     const response = await fetch('/api/data-explorer/users');
                     const data = await response.json();
                     
-                    const userFilter = document.getElementById('user-filter');
-                    userFilter.innerHTML = '<option value="">All Users</option>';
+                    const userOptions = document.getElementById('user-filter-options');
+                    userOptions.innerHTML = '';
                     
                     if (data.success && data.users) {
                         data.users.forEach(user => {
-                            const option = document.createElement('option');
-                            option.value = user.id;
-                            option.textContent = user.email || user.id;
-                            userFilter.appendChild(option);
+                            const option = document.createElement('div');
+                            option.className = 'multiselect-option';
+                            option.innerHTML = `
+                                <input type="checkbox" id="user-${user.id}" value="${user.id}" onchange="toggleUserSelection(${user.id}, '${user.email || user.user_id}')">
+                                <label for="user-${user.id}">${user.email || user.user_id}</label>
+                            `;
+                            userOptions.appendChild(option);
                         });
                     }
                 } catch (error) {
@@ -420,10 +513,93 @@ async def data_explorer():
             }
             
             function clearFilters() {
-                document.getElementById('lesson-filter').value = '';
-                document.getElementById('user-filter').value = '';
+                selectedLessonIds = [];
+                selectedUserIds = [];
+                document.getElementById('lesson-filter-text').textContent = 'All Lessons';
+                document.getElementById('user-filter-text').textContent = 'All Users';
                 document.getElementById('limit-input').value = '50';
+                
+                // Uncheck all checkboxes
+                document.querySelectorAll('#lesson-filter-options input[type="checkbox"]').forEach(cb => cb.checked = false);
+                document.querySelectorAll('#user-filter-options input[type="checkbox"]').forEach(cb => cb.checked = false);
             }
+            
+            function toggleMultiselect(containerId) {
+                const container = document.getElementById(containerId);
+                const options = document.getElementById(containerId + '-options');
+                const isOpen = options.style.display !== 'none';
+                
+                // Close all other multiselects
+                document.querySelectorAll('.multiselect-options').forEach(opt => opt.style.display = 'none');
+                document.querySelectorAll('.multiselect-container').forEach(cont => cont.classList.remove('open'));
+                
+                if (!isOpen) {
+                    options.style.display = 'block';
+                    container.classList.add('open');
+                }
+            }
+            
+            function toggleLessonSelection(lessonId, lessonName) {
+                const checkbox = document.getElementById(`lesson-${lessonId}`);
+                const textElement = document.getElementById('lesson-filter-text');
+                
+                if (checkbox.checked) {
+                    if (!selectedLessonIds.includes(lessonId)) {
+                        selectedLessonIds.push(lessonId);
+                    }
+                } else {
+                    selectedLessonIds = selectedLessonIds.filter(id => id !== lessonId);
+                }
+                
+                updateLessonFilterText();
+            }
+            
+            function toggleUserSelection(userId, userName) {
+                const checkbox = document.getElementById(`user-${userId}`);
+                const textElement = document.getElementById('user-filter-text');
+                
+                if (checkbox.checked) {
+                    if (!selectedUserIds.includes(userId)) {
+                        selectedUserIds.push(userId);
+                    }
+                } else {
+                    selectedUserIds = selectedUserIds.filter(id => id !== userId);
+                }
+                
+                updateUserFilterText();
+            }
+            
+            function updateLessonFilterText() {
+                const textElement = document.getElementById('lesson-filter-text');
+                if (selectedLessonIds.length === 0) {
+                    textElement.textContent = 'All Lessons';
+                } else if (selectedLessonIds.length === 1) {
+                    const lessonName = document.querySelector(`#lesson-${selectedLessonIds[0]} + label`).textContent;
+                    textElement.textContent = lessonName;
+                } else {
+                    textElement.textContent = `${selectedLessonIds.length} Lessons Selected`;
+                }
+            }
+            
+            function updateUserFilterText() {
+                const textElement = document.getElementById('user-filter-text');
+                if (selectedUserIds.length === 0) {
+                    textElement.textContent = 'All Users';
+                } else if (selectedUserIds.length === 1) {
+                    const userName = document.querySelector(`#user-${selectedUserIds[0]} + label`).textContent;
+                    textElement.textContent = userName;
+                } else {
+                    textElement.textContent = `${selectedUserIds.length} Users Selected`;
+                }
+            }
+            
+            // Close multiselect when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.multiselect-container')) {
+                    document.querySelectorAll('.multiselect-options').forEach(opt => opt.style.display = 'none');
+                    document.querySelectorAll('.multiselect-container').forEach(cont => cont.classList.remove('open'));
+                }
+            });
             
             // Load options on page load
             document.addEventListener('DOMContentLoaded', function() {
