@@ -801,6 +801,15 @@ async def dashboard():
                 function showSection(sectionName) {{
                     console.log('showSection called with:', sectionName);
                     
+                    // Add a visible indicator that JavaScript is working
+                    const indicator = document.getElementById('js-status') || document.createElement('div');
+                    indicator.id = 'js-status';
+                    indicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: green; color: white; padding: 5px; z-index: 9999;';
+                    indicator.textContent = 'JS Working - Section: ' + sectionName;
+                    if (!document.getElementById('js-status')) {{
+                        document.body.appendChild(indicator);
+                    }}
+                    
                     // Hide all sections
                     const sections = document.querySelectorAll('.section-content');
                     sections.forEach(section => {{
@@ -870,9 +879,15 @@ async def dashboard():
                     const behaviorValues = {behavior_values};
                     
                     // Add event listeners to sidebar items
-                    document.querySelectorAll('.sidebar-item').forEach(item => {{
+                    console.log('Setting up sidebar event listeners...');
+                    const sidebarItems = document.querySelectorAll('.sidebar-item');
+                    console.log('Found sidebar items:', sidebarItems.length);
+                    
+                    sidebarItems.forEach((item, index) => {{
+                        console.log('Adding listener to item', index, ':', item.textContent);
                         item.addEventListener('click', function(e) {{
                             e.preventDefault();
+                            e.stopPropagation();
                             const sectionName = this.getAttribute('data-section');
                             console.log('Sidebar item clicked:', sectionName);
                             showSection(sectionName);
@@ -880,6 +895,7 @@ async def dashboard():
                     }});
                     
                     // Initialize dashboard as default
+                    console.log('Initializing dashboard as default...');
                     showSection('dashboard');
                     
                     // Wait a moment for DOM to be fully ready
