@@ -616,19 +616,7 @@ async def dashboard():
                 </div>
                 
                         <!-- Engagement Section -->
-                        <div id="engagement" class="section-content" style="display: none;">
-                            <h2>Engagement & Behaviors</h2>
-                    <div class="charts-grid">
-                        </div>
-                            <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
-                                <div style="font-size: 2rem; font-weight: bold;" id="completion-rate">-</div>
-                                <div style="font-size: 0.9rem;">Completion Rate</div>
-                        </div>
-                            <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
-                                <div style="font-size: 2rem; font-weight: bold;" id="top-lesson">-</div>
-                                <div style="font-size: 0.9rem;">Top Lesson</div>
-                        </div>
-                        </div>
+                        
                         </div>
                     
                     <!-- Interactive Charts Section -->
@@ -811,9 +799,14 @@ async def dashboard():
             
             <script>
                 function showSection(sectionName) {{
+                    console.log('showSection called with:', sectionName);
+                    
                     // Hide all sections
                     const sections = document.querySelectorAll('.section-content');
-                    sections.forEach(section => section.style.display = 'none');
+                    sections.forEach(section => {{
+                        section.style.display = 'none';
+                        console.log('Hiding section:', section.id);
+                    }});
                     
                     // Remove active class from all sidebar items
                     const sidebarItems = document.querySelectorAll('.sidebar-item');
@@ -823,10 +816,16 @@ async def dashboard():
                     const selectedSection = document.getElementById(sectionName);
                     if (selectedSection) {{
                         selectedSection.style.display = 'block';
+                        console.log('Showing section:', sectionName);
+                    }} else {{
+                        console.error('Section not found:', sectionName);
                     }}
                     
                     // Add active class to clicked sidebar item
-                    event.target.classList.add('active');
+                    const clickedItem = document.querySelector(`[data-section="${{sectionName}}"]`);
+                    if (clickedItem) {{
+                        clickedItem.classList.add('active');
+                    }}
                     
                     // Initialize specific sections
                     if (sectionName === 'health') {{
@@ -875,9 +874,13 @@ async def dashboard():
                         item.addEventListener('click', function(e) {{
                             e.preventDefault();
                             const sectionName = this.getAttribute('data-section');
+                            console.log('Sidebar item clicked:', sectionName);
                             showSection(sectionName);
                         }});
                     }});
+                    
+                    // Initialize dashboard as default
+                    showSection('dashboard');
                     
                     // Wait a moment for DOM to be fully ready
                     setTimeout(() => {{
