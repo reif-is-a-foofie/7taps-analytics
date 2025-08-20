@@ -935,7 +935,7 @@ async def dashboard():
             </div>
             
             <script>
-                // Chart data from server
+                // Chart data from server - Updated for proper JSON encoding
                 const chartData = {{
                     lessonNames: {json.dumps(lesson_names)},
                     completionRates: {json.dumps(completion_rates)},
