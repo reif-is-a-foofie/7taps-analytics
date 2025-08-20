@@ -274,37 +274,17 @@
     <!-- Sidebar always visible -->
     
     <div class="sidebar" id="sidebar">
-        <h3>Seven Analytics</h3>
-        
-        <div class="sidebar-section">
-            <h4>Quick Insights</h4>
-            <button class="insight-btn" onclick="askQuestion('how many users do we have')">📊 User Count</button>
-            <button class="insight-btn" onclick="askQuestion('what behaviors matter most to this cohort')">🎯 Behavior Priorities</button>
-            <button class="insight-btn" onclick="askQuestion('which lessons are most engaging')">📈 Lesson Engagement</button>
-            <button class="insight-btn" onclick="askQuestion('show me engagement health')">❤️ Engagement Health</button>
-            <button class="insight-btn" onclick="askQuestion('did students change behavior')">🔄 Student Impact</button>
-            <button class="insight-btn" onclick="askQuestion('show me unique student insights')">💡 Unique Insights</button>
-            <button class="insight-btn" onclick="askQuestion('show me habit changes')">🌱 Habit Changes</button>
-        </div>
+        <h3>Chat with 7</h3>
         
         <div class="sidebar-section">
             <h4>Dashboard</h4>
-            <a href="/dashboard" class="sidebar-link" target="_blank">📊 Full Analytics Dashboard</a>
+            <a href="/" class="sidebar-link">📊 Analytics Dashboard</a>
         </div>
         
         <div class="sidebar-section">
             <h4>Quick Links</h4>
-            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/docs" target="_blank" class="sidebar-link">API Documentation</a>
-            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/data/schema" target="_blank" class="sidebar-link">Database Schema</a>
-            <a href="https://seventaps-analytics-5135b3a0701a.herokuapp.com/ui/admin" target="_blank" class="sidebar-link">Admin Dashboard</a>
-        </div>
-        
-        <div class="sidebar-section">
-            <h4>Suggested Queries</h4>
-            <div class="suggested-query" onclick="sendMessage('Show me engagement trends')">Show me engagement trends</div>
-            <div class="suggested-query" onclick="sendMessage('Which lessons are most popular?')">Which lessons are most popular?</div>
-            <div class="suggested-query" onclick="sendMessage('How many users completed the course?')">How many users completed the course?</div>
-            <div class="suggested-query" onclick="sendMessage('Create a visualization of user progress')">Create a visualization of user progress</div>
+            <a href="/docs" target="_blank" class="sidebar-link">API Documentation</a>
+            <a href="/explorer" class="sidebar-link">Data Explorer</a>
         </div>
         
         <div class="sidebar-section">
@@ -315,14 +295,14 @@
 
     <div class="chat-container">
         <div class="header">
-            <h1>Seven Analytics AI Assistant</h1>
+            <h1>Chat with 7</h1>
         </div>
         
         <div class="messages" id="messages">
             <div class="message assistant">
                 <div class="avatar assistant">7</div>
                 <div class="message-content">
-                    Hi, I'm Seven, your AI analytics assistant! I can help you explore your learning data, create visualizations, and answer questions about engagement patterns. What would you like to know about your learning analytics?
+                    Hi! I'm 7, your AI analytics assistant. Ask me anything about your learning data, engagement patterns, or create visualizations. What would you like to explore?
                 </div>
             </div>
         </div>
