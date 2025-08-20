@@ -86,40 +86,42 @@ def get_preloaded_queries():
             """
         },
         "lesson_completion_rates": {
-            "description": "Show completion rates for each lesson in the course",
+            "description": "Show engagement rates for each lesson in the course",
             "sql": """
                 SELECT 
                     l.lesson_number,
                     l.lesson_name,
-                    COUNT(DISTINCT ua.user_id) as users_started,
-                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                    COUNT(DISTINCT ua.user_id) as users_engaged,
+                    COUNT(*) as total_activities,
                     ROUND(
-                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
-                    ) as completion_rate
+                        (COUNT(DISTINCT ua.user_id)::float / 
+                         (SELECT COUNT(*) FROM users)::float) * 100, 2
+                    ) as engagement_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                WHERE ua.activity_type = 'http://adlnet.gov/expapi/verbs/answered'
                 GROUP BY l.id, l.lesson_number, l.lesson_name
                 ORDER BY l.lesson_number
             """
         },
         "highest_lowest_completion": {
-            "description": "Which lessons have the highest and lowest completion rates",
+            "description": "Which lessons have the highest and lowest engagement rates",
             "sql": """
                 SELECT 
                     l.lesson_number,
                     l.lesson_name,
-                    COUNT(DISTINCT ua.user_id) as users_started,
-                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                    COUNT(DISTINCT ua.user_id) as users_engaged,
+                    COUNT(*) as total_activities,
                     ROUND(
-                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
-                    ) as completion_rate
+                        (COUNT(DISTINCT ua.user_id)::float / 
+                         (SELECT COUNT(*) FROM users)::float) * 100, 2
+                    ) as engagement_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                WHERE ua.activity_type = 'http://adlnet.gov/expapi/verbs/answered'
                 GROUP BY l.id, l.lesson_number, l.lesson_name
                 HAVING COUNT(DISTINCT ua.user_id) > 0
-                ORDER BY completion_rate DESC
+                ORDER BY engagement_rate DESC
             """
         },
         "student_engagement_over_time": {
@@ -152,24 +154,25 @@ def get_preloaded_queries():
             """
         },
         "average_completion_rate": {
-            "description": "Give me the average completion rate across all lessons",
+            "description": "Give me the average engagement rate across all lessons",
             "sql": """
                 SELECT 
-                    ROUND(AVG(completion_rate), 2) as average_completion_rate,
+                    ROUND(AVG(engagement_rate), 2) as average_engagement_rate,
                     COUNT(*) as total_lessons,
-                    SUM(users_completed) as total_completions,
-                    SUM(users_started) as total_starts
+                    SUM(users_engaged) as total_engagements,
+                    SUM(total_activities) as total_activities
                 FROM (
                     SELECT 
                         l.lesson_number,
-                        COUNT(DISTINCT ua.user_id) as users_started,
-                        COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                        COUNT(DISTINCT ua.user_id) as users_engaged,
+                        COUNT(*) as total_activities,
                         ROUND(
-                            (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                             NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
-                        ) as completion_rate
+                            (COUNT(DISTINCT ua.user_id)::float / 
+                             (SELECT COUNT(*) FROM users)::float) * 100, 2
+                        ) as engagement_rate
                     FROM lessons l
                     LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                    WHERE ua.activity_type = 'http://adlnet.gov/expapi/verbs/answered'
                     GROUP BY l.id, l.lesson_number
                     HAVING COUNT(DISTINCT ua.user_id) > 0
                 ) as lesson_stats
