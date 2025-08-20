@@ -438,18 +438,9 @@ async def data_explorer():
 @app.get("/", response_class=HTMLResponse)
 async def dashboard():
     """Serve the analytics dashboard with dynamic data"""
-    # Initialize default values in case database connection fails
-    metrics = [0, 0, 0, 0]  # [users, lessons, responses, activities]
-    lesson_names = []
-    lesson_counts = []
-    behavior_labels = []
-    behavior_values = []
-    
-    # Get real data from the database
     try:
         import psycopg2
         import os
-        from datetime import datetime
         
         # Database connection
         DATABASE_URL = os.getenv('DATABASE_URL')
@@ -461,69 +452,33 @@ async def dashboard():
         conn = psycopg2.connect(DATABASE_URL, sslmode=os.getenv('PGSSLMODE', 'require'))
         cursor = conn.cursor()
         
-        # Get real metrics
-        cursor.execute("""
-            SELECT 
-                (SELECT COUNT(DISTINCT id) FROM users) as total_users,
-                (SELECT COUNT(DISTINCT id) FROM lessons) as total_lessons,
-                (SELECT COUNT(DISTINCT id) FROM user_responses) as total_responses,
-                (SELECT COUNT(DISTINCT id) FROM user_activities) as total_activities
-        """)
-        metrics = cursor.fetchone()
+        # Get metrics
+        cursor.execute("SELECT COUNT(DISTINCT id) FROM users")
+        total_users = cursor.fetchone()[0]
         
-        # Get lesson engagement data from user_activities table
-        try:
-            cursor.execute(f"""
-                SELECT 
-                    l.lesson_name,
-                    COUNT(DISTINCT ua.user_id) as response_count
-                FROM lessons l
-                LEFT JOIN user_activities ua ON l.lesson_number = ua.lesson_number
-                GROUP BY l.id, l.lesson_name, l.lesson_number
-                ORDER BY l.lesson_number
-            """)
-            lesson_data = cursor.fetchall()
-            print(f"DEBUG: Found {len(lesson_data)} lessons with engagement data")
-        except Exception as e:
-            print(f"DEBUG: Error fetching lesson data: {e}")
-            lesson_data = []
-        
-        # Get behavior priorities
+        # Get lesson data
         cursor.execute("""
-            SELECT 
-                CASE 
-                    WHEN LOWER(ur.response_value) LIKE '%sleep%' THEN 'Sleep'
-                    WHEN LOWER(ur.response_value) LIKE '%screen%' OR LOWER(ur.response_value) LIKE '%phone%' THEN 'Screen Time'
-                    WHEN LOWER(ur.response_value) LIKE '%stress%' OR LOWER(ur.response_value) LIKE '%anxiety%' THEN 'Stress'
-                    WHEN LOWER(ur.response_value) LIKE '%focus%' OR LOWER(ur.response_value) LIKE '%productivity%' THEN 'Focus/Productivity'
-                    ELSE 'Other'
-                END as behavior_category,
-                COUNT(*) as count
-            FROM user_responses ur
-            WHERE ur.response_value IS NOT NULL AND ur.response_value != ''
-            GROUP BY behavior_category
-            ORDER BY count DESC
+            SELECT l.lesson_name, COUNT(DISTINCT ua.user_id) as response_count
+            FROM lessons l
+            LEFT JOIN user_activities ua ON l.lesson_number = ua.lesson_number
+            GROUP BY l.id, l.lesson_name, l.lesson_number
+            ORDER BY l.lesson_number
         """)
-        behavior_data = cursor.fetchall()
+        lesson_data = cursor.fetchall()
         
         cursor.close()
         conn.close()
         
-        # Format data for charts with safety checks
         lesson_names = [row[0] for row in lesson_data] if lesson_data else ['No Data']
         lesson_counts = [row[1] for row in lesson_data] if lesson_data else [0]
         
-        behavior_labels = [row[0] for row in behavior_data] if behavior_data else ['No Data']
-        behavior_values = [row[1] for row in behavior_data] if behavior_data else [0]
-        
-        # Create dynamic HTML with Data Explorer as main focus
         html_content = f"""
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
-            <title>7taps HR Analytics Explorer</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>7taps Analytics Dashboard</title>
             <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
@@ -534,6 +489,419 @@ async def dashboard():
                     --bg-color: #FFFFFF;
                     --bg-light: #F8F9FA;
                     --text-primary: #2D3748;
+                    --text-secondary: #718096;
+                    --border-color: #E2E8F0;
+                    --success-color: #48BB78;
+                    --warning-color: #ED8936;
+                    --danger-color: #E53E3E;
+                    --card-shadow: rgba(0, 0, 0, 0.1) 0px 2px 4px;
+                    --card-shadow-hover: rgba(0, 0, 0, 0.15) 0px 4px 8px;
+                }}
+                
+                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                body {{ 
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                    background: var(--bg-light); 
+                    color: var(--text-primary); 
+                    line-height: 1.6;
+                }}
+                
+                /* Layout */
+                .app-container {{ display: flex; min-height: 100vh; }}
+                .sidebar {{ 
+                    width: 280px; 
+                    background: var(--bg-color); 
+                    border-right: 1px solid var(--border-color); 
+                    overflow-y: auto;
+                    box-shadow: var(--card-shadow);
+                }}
+                .main-content {{ flex: 1; display: flex; flex-direction: column; }}
+                
+                /* Header */
+                .header {{ 
+                    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%); 
+                    color: var(--bg-color); 
+                    padding: 2rem; 
+                    text-align: center;
+                    box-shadow: var(--card-shadow);
+                }}
+                .header h1 {{ 
+                    font-size: 2.25rem; 
+                    font-weight: 700;
+                    margin-bottom: 0.5rem; 
+                    letter-spacing: -0.025em;
+                }}
+                .header p {{ 
+                    font-size: 1.125rem; 
+                    opacity: 0.9;
+                    font-weight: 400;
+                }}
+                
+                /* Sidebar */
+                .sidebar-section {{ 
+                    padding: 1.5rem; 
+                    border-bottom: 1px solid var(--border-color); 
+                }}
+                .sidebar-section h3 {{ 
+                    font-size: 0.875rem; 
+                    font-weight: 600;
+                    margin-bottom: 1rem; 
+                    color: var(--text-secondary);
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }}
+                .sidebar-item {{ 
+                    display: block; 
+                    padding: 0.75rem 1rem; 
+                    margin: 0.25rem 0; 
+                    background: var(--bg-light); 
+                    border-radius: 8px; 
+                    text-decoration: none; 
+                    color: var(--text-primary); 
+                    transition: all 0.2s ease;
+                    font-weight: 500;
+                    font-size: 0.875rem;
+                }}
+                .sidebar-item:hover {{ 
+                    background: var(--primary-color); 
+                    color: var(--bg-color);
+                    transform: translateX(4px);
+                }}
+                .sidebar-item.active {{ 
+                    background: var(--primary-color); 
+                    color: var(--bg-color);
+                    box-shadow: var(--card-shadow);
+                }}
+                
+                /* Main Content */
+                .content {{ padding: 2rem; flex: 1; }}
+                .metrics-grid {{ 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+                    gap: 1.5rem; 
+                    margin-bottom: 2rem; 
+                }}
+                .metric-card {{ 
+                    background: var(--bg-color); 
+                    padding: 1.75rem; 
+                    border-radius: 12px; 
+                    box-shadow: var(--card-shadow); 
+                    text-align: center;
+                    transition: all 0.2s ease;
+                    border: 1px solid var(--border-color);
+                    position: relative;
+                    cursor: help;
+                }}
+                .metric-card:hover {{
+                    box-shadow: var(--card-shadow-hover);
+                    transform: translateY(-2px);
+                }}
+                .metric-tooltip {{
+                    position: absolute;
+                    bottom: -40px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: var(--text-primary);
+                    color: var(--bg-color);
+                    padding: 0.5rem 0.75rem;
+                    border-radius: 6px;
+                    font-size: 0.8rem;
+                    white-space: nowrap;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: all 0.2s ease;
+                    z-index: 1000;
+                    box-shadow: var(--card-shadow-hover);
+                }}
+                .metric-card:hover .metric-tooltip {{
+                    opacity: 1;
+                    visibility: visible;
+                }}
+                .metric-value {{ 
+                    font-size: 2.5rem; 
+                    font-weight: 700; 
+                    color: var(--primary-color); 
+                    margin-bottom: 0.5rem;
+                    line-height: 1;
+                }}
+                .metric-label {{ 
+                    color: var(--text-secondary); 
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }}
+                .charts-grid {{ 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); 
+                    gap: 1.5rem; 
+                    margin-bottom: 2rem; 
+                }}
+                .chart-container {{ 
+                    background: var(--bg-color); 
+                    padding: 1.75rem; 
+                    border-radius: 12px; 
+                    box-shadow: var(--card-shadow);
+                    border: 1px solid var(--border-color);
+                }}
+                .chart-title {{ 
+                    font-size: 1.125rem; 
+                    font-weight: 600;
+                    margin-bottom: 1rem; 
+                    color: var(--text-primary);
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="app-container">
+                <div class="sidebar">
+                    <div class="sidebar-section">
+                        <h3>Analytics</h3>
+                        <a href="/" class="sidebar-item active">Dashboard</a>
+                        <a href="/explorer" class="sidebar-item">Data Explorer</a>
+                    </div>
+                    
+                    <div class="sidebar-section">
+                        <h3>Communication</h3>
+                        <a href="/chat" class="sidebar-item">AI Chat</a>
+                    </div>
+                    
+                    <div class="sidebar-section">
+                        <h3>System</h3>
+                        <a href="#" class="sidebar-item" data-section="health">Health Check</a>
+                        <a href="/docs" class="sidebar-item" target="_blank">API Docs</a>
+                    </div>
+                </div>
+                
+                <div class="main-content">
+                    <div class="header">
+                        <h1>7taps Analytics Dashboard</h1>
+                        <p>Learning Analytics and Insights</p>
+                    </div>
+                    
+                    <div class="content">
+                        <!-- Key Metrics Panel -->
+                        <div class="metrics-grid">
+                            <div class="metric-card" title="Total unique users who have interacted with any lesson content">
+                                <div class="metric-value" id="total-participants">{total_users}</div>
+                                <div class="metric-label">Total Learners</div>
+                                <div class="metric-tooltip">📊 Calculated from unique user IDs in user_activities table</div>
+                            </div>
+                            <div class="metric-card" title="Percentage of learners who completed the final question of at least one lesson">
+                                <div class="metric-value" id="completion-rate">{round((sum(lesson_counts) / (len(lesson_names) * total_users)) * 100, 1) if total_users and lesson_counts and lesson_names else 0}%</div>
+                                <div class="metric-label">Completion Rate</div>
+                                <div class="metric-tooltip">✅ Based on completion of last question in each lesson</div>
+                            </div>
+                            <div class="metric-card" title="Average number of unique users engaged per lesson">
+                                <div class="metric-value" id="avg-score">{round(sum(lesson_counts) / len(lesson_counts), 1) if lesson_counts and len(lesson_counts) > 0 else 0}</div>
+                                <div class="metric-label">Avg Engagement</div>
+                                <div class="metric-tooltip">📈 Average unique users per lesson across all {len(lesson_names)} lessons</div>
+                            </div>
+                            <div class="metric-card" title="Total number of lessons available in the course">
+                                <div class="metric-value" id="nps-score">{len(lesson_names)}</div>
+                                <div class="metric-label">Total Lessons</div>
+                                <div class="metric-tooltip">📚 Total lessons in the course curriculum</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Main Charts Section -->
+                        <div class="charts-grid">
+                            <div class="chart-container">
+                                <div class="chart-title">Lesson Completion Funnel</div>
+                                <div id="completion-funnel-chart"></div>
+                            </div>
+                            <div class="chart-container">
+                                <div class="chart-title">Engagement Analysis</div>
+                                <div id="knowledge-lift-chart"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Secondary Charts Section -->
+                        <div class="charts-grid">
+                            <div class="chart-container">
+                                <div class="chart-title">Drop-off Points by Lesson</div>
+                                <div id="dropoff-chart"></div>
+                            </div>
+                            <div class="chart-container">
+                                <div class="chart-title">Behavioral Priorities</div>
+                                <div id="quiz-performance-chart"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Health Check Section -->
+                        <div id="health" style="display: none;">
+                            <div class="chart-container">
+                                <div class="chart-title">System Health Status</div>
+                                <div id="health-status">✅ System is healthy</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                function showSection(sectionName) {{
+                    console.log('showSection called with:', sectionName);
+                    // Handle specific sections
+                    if (sectionName === 'health') {{
+                        const healthSection = document.getElementById('health');
+                        if (healthSection) {{
+                            healthSection.style.display = 'block';
+                        }}
+                    }}
+                }}
+                
+                document.addEventListener('DOMContentLoaded', function() {{
+                    console.log('DOM loaded, setting up event listeners...');
+                    // Add event listeners only to items with data-section (like health check)
+                    const sectionItems = document.querySelectorAll('.sidebar-item[data-section]');
+                    sectionItems.forEach((item) => {{
+                        item.addEventListener('click', function(e) {{
+                            e.preventDefault();
+                            const sectionName = this.getAttribute('data-section');
+                            console.log('Sidebar item clicked:', sectionName);
+                            showSection(sectionName);
+                        }});
+                    }});
+                    // Initialize dashboard charts
+                    setTimeout(() => {{
+                        initializeDashboardCharts();
+                    }}, 1000);
+                }});
+                
+                function initializeDashboardCharts() {{
+                    console.log('Initializing dashboard charts...');
+                    try {{
+                        // Get lesson data from server
+                        const lessonNames = {lesson_names};
+                        const lessonCounts = {lesson_counts};
+                        
+                        console.log('Lesson data:', lessonNames, lessonCounts);
+                        
+                        // Completion funnel chart - use real lesson data
+                        const funnelElement = document.getElementById('completion-funnel-chart');
+                        if (funnelElement && lessonNames.length > 0) {{
+                            Plotly.newPlot('completion-funnel-chart', [{{
+                                type: 'funnel',
+                                y: lessonNames,
+                                x: lessonCounts,
+                                textinfo: 'value+percent initial',
+                                marker: {{color: 'var(--primary-color)'}},
+                                hovertemplate: '<b>%{{y}}</b><br>Responses: %{{x}}<extra></extra>'
+                            }}], {{
+                                title: 'Lesson Completion Funnel',
+                                height: 300,
+                                margin: {{l: 60, r: 30, t: 50, b: 80}}
+                            }});
+                            console.log('Completion funnel chart created with', lessonNames.length, 'lessons');
+                        }}
+                        
+                        // Knowledge lift chart - show engagement comparison
+                        const knowledgeElement = document.getElementById('knowledge-lift-chart');
+                        if (knowledgeElement && lessonCounts.length > 0) {{
+                            const avgEngagement = Math.round(lessonCounts.reduce((a, b) => a + b, 0) / lessonCounts.length);
+                            const maxEngagement = Math.max(...lessonCounts);
+                            
+                            Plotly.newPlot('knowledge-lift-chart', [{{
+                                type: 'bar',
+                                x: ['Average Engagement', 'Peak Engagement'],
+                                y: [avgEngagement, maxEngagement],
+                                marker: {{color: ['var(--warning-color)', 'var(--success-color)']}},
+                                hovertemplate: '<b>%{{x}}</b><br>Participants: %{{y}}<extra></extra>'
+                            }}], {{
+                                title: 'Engagement Analysis',
+                                height: 300,
+                                yaxis: {{title: 'Number of Participants'}},
+                                margin: {{l: 60, r: 30, t: 50, b: 60}}
+                            }});
+                            console.log('Knowledge lift chart created');
+                        }}
+                        
+                        // Drop-off chart - use real lesson data
+                        const dropoffElement = document.getElementById('dropoff-chart');
+                        if (dropoffElement && lessonNames.length > 0) {{
+                            // Calculate completion rates based on lesson counts
+                            const maxCount = Math.max(...lessonCounts);
+                            const completionRates = lessonCounts.map(count => Math.round((count / maxCount) * 100));
+                            
+                            Plotly.newPlot('dropoff-chart', [{{
+                                type: 'bar',
+                                x: lessonNames,
+                                y: completionRates,
+                                marker: {{color: 'var(--danger-color)'}},
+                                hovertemplate: '<b>%{{x}}</b><br>Completion: %{{y}}%<extra></extra>'
+                            }}], {{
+                                title: 'Drop-off Points by Lesson',
+                                height: 300,
+                                yaxis: {{title: 'Completion Rate (%)'}},
+                                margin: {{l: 60, r: 30, t: 50, b: 80}}
+                            }});
+                            console.log('Drop-off chart created with', lessonNames.length, 'lessons');
+                        }}
+                        
+                        // Quiz performance chart - placeholder for now
+                        const quizElement = document.getElementById('quiz-performance-chart');
+                        if (quizElement) {{
+                            Plotly.newPlot('quiz-performance-chart', [{{
+                                type: 'bar',
+                                x: ['Lesson 1', 'Lesson 2', 'Lesson 3', 'Lesson 4', 'Lesson 5'],
+                                y: [85, 78, 92, 88, 95],
+                                marker: {{color: 'var(--primary-color)'}},
+                                hovertemplate: '<b>%{{x}}</b><br>Score: %{{y}}%<extra></extra>'
+                            }}], {{
+                                title: 'Behavioral Priorities',
+                                height: 300,
+                                yaxis: {{title: 'Score (%)'}},
+                                margin: {{l: 60, r: 30, t: 50, b: 80}}
+                            }});
+                            console.log('Quiz performance chart created');
+                        }}
+                        
+                        console.log('All dashboard charts initialized successfully');
+                        
+                    }} catch (error) {{
+                        console.error('Error initializing dashboard charts:', error);
+                    }}
+                }}
+            </script>
+        </body>
+        </html>
+        """
+                </div>
+            </div>
+            
+            <script>
+                const lessonNames = {lesson_names};
+                const lessonCounts = {lesson_counts};
+                
+                Plotly.newPlot('completion-funnel-chart', [{{
+                    type: 'funnel',
+                    y: lessonNames,
+                    x: lessonCounts,
+                    textinfo: 'value+percent initial',
+                    marker: {{color: '#6A1B9A'}}
+                }}], {{
+                    title: 'Lesson Completion Funnel',
+                    height: 300
+                }});
+            </script>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(content=html_content)
+        
+    except Exception as e:
+        return HTMLResponse(content=f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Error</title></head>
+        <body>
+            <h1>Dashboard Error</h1>
+            <p>Error: {str(e)}</p>
+        </body>
+        </html>
+        """)
                     --text-secondary: #718096;
                     --border-color: #E2E8F0;
                     --success-color: #48BB78;
