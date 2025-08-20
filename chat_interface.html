@@ -259,6 +259,71 @@
             background: #e2e8f0;
         }
 
+        /* Suggested Questions Styles */
+        .suggested-questions-container {
+            margin: 1rem 0;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .suggested-questions-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .suggested-questions-header h3 {
+            color: #2d3748;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .suggested-questions-header p {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .suggested-questions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .suggested-question {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #2d3748;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .suggested-question:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+        }
+
+        .question-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .question-text {
+            flex: 1;
+            line-height: 1.4;
+        }
+
         @media (max-width: 768px) {
             .chat-container {
                 margin: 0;
@@ -266,6 +331,20 @@
             
             .message-content {
                 max-width: 85%;
+            }
+            
+            .suggested-questions-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .suggested-question {
+                padding: 0.75rem;
+                font-size: 0.85rem;
+            }
+            
+            .question-icon {
+                font-size: 1.25rem;
             }
         }
     </style>
@@ -303,6 +382,50 @@
                 <div class="avatar assistant">7</div>
                 <div class="message-content">
                     Hi! I'm 7, your AI analytics assistant. Ask me anything about your learning data, engagement patterns, or create visualizations. What would you like to explore?
+                </div>
+            </div>
+            
+            <!-- Pre-populated Questions Section -->
+            <div class="suggested-questions-container">
+                <div class="suggested-questions-header">
+                    <h3>💡 Try these questions:</h3>
+                    <p>Click any question to get started</p>
+                </div>
+                <div class="suggested-questions-grid">
+                    <button class="suggested-question" onclick="sendMessage('Show me completion rates for each lesson in this course.')">
+                        <div class="question-icon">📊</div>
+                        <div class="question-text">Show me completion rates for each lesson in this course.</div>
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Which lessons have the highest and lowest completion rates?')">
+                        <div class="question-icon">🏆</div>
+                        <div class="question-text">Which lessons have the highest and lowest completion rates?</div>
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Show me student engagement over time across the course.')">
+                        <div class="question-icon">📈</div>
+                        <div class="question-text">Show me student engagement over time across the course.</div>
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Which students have not finished the course yet?')">
+                        <div class="question-icon">👥</div>
+                        <div class="question-text">Which students have not finished the course yet?</div>
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Give me the average completion rate across all lessons.')">
+                        <div class="question-icon">📊</div>
+                        <div class="question-text">Give me the average completion rate across all lessons.</div>
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Compare completion rates between Lesson 1 and Lesson 5.')">
+                        <div class="question-icon">⚖️</div>
+                        <div class="question-text">Compare completion rates between Lesson 1 and Lesson 5.</div>
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Show me how many students completed the course within 30 days of starting.')">
+                        <div class="question-icon">⏱️</div>
+                        <div class="question-text">Show me how many students completed the course within 30 days of starting.</div>
+                    </button>
                 </div>
             </div>
         </div>
