@@ -1223,13 +1223,21 @@ async def dashboard():
                     console.log('Initializing dashboard charts...');
                     
                     try {{
-                        // Completion funnel chart
+                        // Get lesson data from server
+                        const lessonNames = {lesson_names};
+                        const lessonCounts = {lesson_counts};
+                        const behaviorLabels = {behavior_labels};
+                        const behaviorValues = {behavior_values};
+                        
+                        console.log('Lesson data:', lessonNames, lessonCounts);
+                        
+                        // Completion funnel chart - use real lesson data
                         const funnelElement = document.getElementById('completion-funnel-chart');
-                        if (funnelElement) {{
+                        if (funnelElement && lessonNames.length > 0) {{
                             Plotly.newPlot('completion-funnel-chart', [{{
                                 type: 'funnel',
-                                y: ['Lesson 1', 'Lesson 2', 'Lesson 3', 'Lesson 4', 'Lesson 5'],
-                                x: [10, 8, 7, 5, 6],
+                                y: lessonNames,
+                                x: lessonCounts,
                                 textinfo: 'value+percent initial',
                                 marker: {{color: 'var(--primary-color)'}},
                                 hovertemplate: '<b>%{{y}}</b><br>Responses: %{{x}}<extra></extra>'
@@ -1238,34 +1246,41 @@ async def dashboard():
                                 height: 300,
                                 margin: {{l: 60, r: 30, t: 50, b: 80}}
                             }});
-                            console.log('Completion funnel chart created');
+                            console.log('Completion funnel chart created with', lessonNames.length, 'lessons');
                         }}
                         
-                        // Knowledge lift chart
+                        // Knowledge lift chart - show engagement comparison
                         const knowledgeElement = document.getElementById('knowledge-lift-chart');
-                        if (knowledgeElement) {{
+                        if (knowledgeElement && lessonCounts.length > 0) {{
+                            const avgEngagement = Math.round(lessonCounts.reduce((a, b) => a + b, 0) / lessonCounts.length);
+                            const maxEngagement = Math.max(...lessonCounts);
+                            
                             Plotly.newPlot('knowledge-lift-chart', [{{
                                 type: 'bar',
-                                x: ['Before', 'After'],
-                                y: [65, 85],
+                                x: ['Average Engagement', 'Peak Engagement'],
+                                y: [avgEngagement, maxEngagement],
                                 marker: {{color: ['var(--warning-color)', 'var(--success-color)']}},
-                                hovertemplate: '<b>%{{x}}</b><br>Score: %{{y}}%<extra></extra>'
+                                hovertemplate: '<b>%{{x}}</b><br>Participants: %{{y}}<extra></extra>'
                             }}], {{
-                                title: 'Knowledge Assessment',
+                                title: 'Engagement Analysis',
                                 height: 300,
-                                yaxis: {{title: 'Score (%)'}},
+                                yaxis: {{title: 'Number of Participants'}},
                                 margin: {{l: 60, r: 30, t: 50, b: 60}}
                             }});
                             console.log('Knowledge lift chart created');
                         }}
                         
-                        // Drop-off chart
+                        // Drop-off chart - use real lesson data
                         const dropoffElement = document.getElementById('dropoff-chart');
-                        if (dropoffElement) {{
+                        if (dropoffElement && lessonNames.length > 0) {{
+                            // Calculate completion rates based on lesson counts
+                            const maxCount = Math.max(...lessonCounts);
+                            const completionRates = lessonCounts.map(count => Math.round((count / maxCount) * 100));
+                            
                             Plotly.newPlot('dropoff-chart', [{{
                                 type: 'bar',
-                                x: ['Lesson 1', 'Lesson 2', 'Lesson 3', 'Lesson 4', 'Lesson 5'],
-                                y: [100, 85, 72, 58, 45],
+                                x: lessonNames,
+                                y: completionRates,
                                 marker: {{color: 'var(--danger-color)'}},
                                 hovertemplate: '<b>%{{x}}</b><br>Completion: %{{y}}%<extra></extra>'
                             }}], {{
@@ -1274,26 +1289,26 @@ async def dashboard():
                                 yaxis: {{title: 'Completion Rate (%)'}},
                                 margin: {{l: 60, r: 30, t: 50, b: 80}}
                             }});
-                            console.log('Drop-off chart created');
+                            console.log('Drop-off chart created with', lessonNames.length, 'lessons');
                         }}
                         
-                        // Quiz performance chart
+                        // Quiz performance chart - use real behavior data
                         const quizElement = document.getElementById('quiz-performance-chart');
-                        if (quizElement) {{
+                        if (quizElement && behaviorLabels.length > 0) {{
                             Plotly.newPlot('quiz-performance-chart', [{{
                                 type: 'bar',
-                                x: ['Sleep', 'Screen Time', 'Stress', 'Focus', 'Connection'],
-                                y: [85, 72, 68, 91, 78],
+                                x: behaviorLabels,
+                                y: behaviorValues,
                                 marker: {{color: 'var(--primary-color)'}},
-                                hovertemplate: '<b>%{{x}}</b><br>Success Rate: %{{y}}%<extra></extra>'
+                                hovertemplate: '<b>%{{x}}</b><br>Responses: %{{y}}<extra></extra>'
                             }}], {{
-                                title: 'Quiz Performance by Topic',
+                                title: 'Behavioral Priorities',
                                 height: 300,
                                 xaxis: {{tickangle: -45}},
-                                yaxis: {{title: 'Success Rate (%)'}},
+                                yaxis: {{title: 'Number of Responses'}},
                                 margin: {{l: 60, r: 30, t: 50, b: 80}}
                             }});
-                            console.log('Quiz performance chart created');
+                            console.log('Quiz performance chart created with', behaviorLabels.length, 'behaviors');
                         }}
                         
                         console.log('All dashboard charts initialized successfully');
