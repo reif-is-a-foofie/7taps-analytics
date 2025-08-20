@@ -653,7 +653,7 @@ async def dashboard():
                 ) as completion_rate
             FROM lessons l
             LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-            LEFT JOIN user_responses ur ON l.id = ur.lesson_id
+            LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
             GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
         """)
