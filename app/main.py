@@ -579,16 +579,106 @@ async def dashboard():
                 .sidebar a:hover {{ 
                     background: #f0f0f0; 
                 }}
+                
+                /* Data Explorer Styles */
+                .explorer-controls {{
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 1rem;
+                    margin-bottom: 1rem;
+                }}
+                .control-group {{
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                }}
+                .control-group label {{
+                    font-weight: 500;
+                    color: #333;
+                    font-size: 0.9rem;
+                }}
+                .control-group select,
+                .control-group input {{
+                    padding: 0.75rem;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    font-size: 0.9rem;
+                }}
+                
+                /* Multi-select styles */
+                .multiselect-container {{
+                    position: relative;
+                    display: inline-block;
+                    width: 100%;
+                }}
+                .multiselect-dropdown {{
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    z-index: 1000;
+                    display: none;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                }}
+                .multiselect-dropdown.show {{
+                    display: block;
+                }}
+                .multiselect-option {{
+                    padding: 0.5rem 0.75rem;
+                    cursor: pointer;
+                    border-bottom: 1px solid #f0f0f0;
+                }}
+                .multiselect-option:hover {{
+                    background: #f8f9fa;
+                }}
+                .multiselect-option.selected {{
+                    background: #6A1B9A;
+                    color: white;
+                }}
+                .multiselect-display {{
+                    padding: 0.75rem;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    background: white;
+                    cursor: pointer;
+                    min-height: 42px;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.25rem;
+                    align-items: center;
+                }}
+                .multiselect-tag {{
+                    background: #6A1B9A;
+                    color: white;
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 4px;
+                    font-size: 0.8rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.25rem;
+                }}
+                .multiselect-tag .remove {{
+                    cursor: pointer;
+                    font-weight: bold;
+                }}
+                .multiselect-placeholder {{
+                    color: #999;
+                }}
             </style>
         </head>
         <body>
-            <div class="sidebar">
-                <h3>Navigation</h3>
-                <a href="/">Dashboard</a>
-                <a href="/explorer">Data Explorer</a>
-                <a href="/chat">AI Chat</a>
-                <a href="/docs" target="_blank">API Docs</a>
-            </div>
+                            <div class="sidebar">
+                    <h3>Navigation</h3>
+                    <a href="/">Dashboard</a>
+                    <a href="/explorer">Data Explorer</a>
+                    <a href="/chat">Chat with 7</a>
+                    <a href="/docs" target="_blank">API Docs</a>
+                </div>
             
             <div class="main-content">
                 <div class="header">
@@ -629,11 +719,72 @@ async def dashboard():
                         <div id="knowledge-lift-chart"></div>
                     </div>
                 </div>
+                
+                <!-- Data Explorer Section -->
+                <div class="chart-container" style="margin-top: 2rem;">
+                    <h3>Data Explorer</h3>
+                    <div class="explorer-controls">
+                        <div class="control-group">
+                            <label for="table-select">Select Table:</label>
+                            <select id="table-select">
+                                <option value="users">Users</option>
+                                <option value="lessons">Lessons</option>
+                                <option value="user_responses">User Responses</option>
+                                <option value="user_activities">User Activities</option>
+                                <option value="statements_new">xAPI Statements</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Filter by Lesson:</label>
+                            <div class="multiselect-container">
+                                <div class="multiselect-display" onclick="toggleDropdown('lesson')" id="lesson-display">
+                                    <span class="multiselect-placeholder">Select lessons...</span>
+                                </div>
+                                <div class="multiselect-dropdown" id="lesson-dropdown">
+                                    <!-- Options will be loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Filter by User:</label>
+                            <div class="multiselect-container">
+                                <div class="multiselect-display" onclick="toggleDropdown('user')" id="user-display">
+                                    <span class="multiselect-placeholder">Select users...</span>
+                                </div>
+                                <div class="multiselect-dropdown" id="user-dropdown">
+                                    <!-- Options will be loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="limit-input">Limit:</label>
+                            <input type="number" id="limit-input" value="50" min="1" max="1000">
+                        </div>
+                        
+                        <div class="control-group">
+                            <button onclick="loadData()" style="margin-top: 1.5rem; padding: 0.75rem 1.5rem; background: #6A1B9A; color: white; border: none; border-radius: 8px; cursor: pointer;">Load Data</button>
+                            <button onclick="clearFilters()" style="margin-top: 0.5rem; padding: 0.75rem 1.5rem; background: #666; color: white; border: none; border-radius: 8px; cursor: pointer;">Clear Filters</button>
+                        </div>
+                    </div>
+                    
+                    <div class="stats" id="stats" style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 6px; display: none;">
+                        <!-- Stats will be loaded here -->
+                    </div>
+                    
+                    <div id="data-table" style="margin-top: 1rem; overflow-x: auto;"></div>
+                </div>
             </div>
             
             <script>
                 const lessonNames = {lesson_names};
                 const lessonCounts = {lesson_counts};
+                
+                // Multi-select state
+                let selectedLessons = [];
+                let selectedUsers = [];
                 
                 // Completion funnel chart
                 Plotly.newPlot('completion-funnel-chart', [{{
@@ -661,6 +812,211 @@ async def dashboard():
                     height: 300,
                     yaxis: {{title: 'Number of Participants'}}
                 }});
+                
+                // Initialize Data Explorer
+                document.addEventListener('DOMContentLoaded', function() {{
+                    loadLessonOptions();
+                    loadUserOptions();
+                }});
+                
+                // Multi-select functions
+                function toggleDropdown(type) {{
+                    const dropdown = document.getElementById(type + '-dropdown');
+                    const isVisible = dropdown.classList.contains('show');
+                    
+                    // Close all dropdowns
+                    document.querySelectorAll('.multiselect-dropdown').forEach(d => d.classList.remove('show'));
+                    
+                    // Toggle current dropdown
+                    if (!isVisible) {{
+                        dropdown.classList.add('show');
+                    }}
+                }}
+                
+                function selectOption(type, value, label) {{
+                    const selected = type === 'lesson' ? selectedLessons : selectedUsers;
+                    const display = document.getElementById(type + '-display');
+                    
+                    if (!selected.find(item => item.value === value)) {{
+                        selected.push({{value, label}});
+                        updateDisplay(type);
+                    }}
+                    
+                    // Don't close dropdown for multi-select
+                }}
+                
+                function removeSelection(type, value) {{
+                    const selected = type === 'lesson' ? selectedLessons : selectedUsers;
+                    const index = selected.findIndex(item => item.value === value);
+                    
+                    if (index > -1) {{
+                        selected.splice(index, 1);
+                        updateDisplay(type);
+                    }}
+                }}
+                
+                function updateDisplay(type) {{
+                    const selected = type === 'lesson' ? selectedLessons : selectedUsers;
+                    const display = document.getElementById(type + '-display');
+                    
+                    if (selected.length === 0) {{
+                        display.innerHTML = '<span class="multiselect-placeholder">Select ' + type + 's...</span>';
+                    }} else {{
+                        display.innerHTML = selected.map(item => 
+                            '<span class="multiselect-tag">' + item.label + 
+                            '<span class="remove" onclick="removeSelection(\'' + type + '\', \'' + item.value + '\')">&times;</span></span>'
+                        ).join('');
+                    }}
+                }}
+                
+                // Close dropdowns when clicking outside
+                document.addEventListener('click', function(e) {{
+                    if (!e.target.closest('.multiselect-container')) {{
+                        document.querySelectorAll('.multiselect-dropdown').forEach(d => d.classList.remove('show'));
+                    }}
+                }});
+                
+                // Data loading functions
+                async function loadData() {{
+                    const selectedTable = document.getElementById('table-select').value;
+                    const limit = document.getElementById('limit-input').value;
+                    
+                    if (!selectedTable) {{
+                        alert('Please select a table');
+                        return;
+                    }}
+                    
+                    try {{
+                        let url = `/api/data-explorer/table/${{selectedTable}}?limit=${{limit}}`;
+                        
+                        // Add filters
+                        if (selectedLessons.length > 0) {{
+                            const lessonIds = selectedLessons.map(l => l.value).join(',');
+                            url += `&lesson_id=${{lessonIds}}`;
+                        }}
+                        
+                        if (selectedUsers.length > 0) {{
+                            const userIds = selectedUsers.map(u => u.value).join(',');
+                            url += `&user_id=${{userIds}}`;
+                        }}
+                        
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        
+                        if (data.success) {{
+                            renderDataTable(data.data, data.columns);
+                            updateTableStats(data.data);
+                            document.getElementById('stats').style.display = 'block';
+                        }} else {{
+                            alert('Error loading data: ' + (data.error || 'Unknown error'));
+                        }}
+                    }} catch (error) {{
+                        console.error('Error:', error);
+                        alert('Error loading data');
+                    }}
+                }}
+                
+                async function loadLessonOptions() {{
+                    try {{
+                        const response = await fetch('/api/data-explorer/lessons');
+                        const data = await response.json();
+                        
+                        const dropdown = document.getElementById('lesson-dropdown');
+                        dropdown.innerHTML = '';
+                        
+                        if (data.success && data.lessons) {{
+                            data.lessons.forEach(lesson => {{
+                                const option = document.createElement('div');
+                                option.className = 'multiselect-option';
+                                option.textContent = lesson.name;
+                                option.onclick = () => selectOption('lesson', lesson.lesson_number || lesson.id, lesson.name);
+                                dropdown.appendChild(option);
+                            }});
+                        }}
+                    }} catch (error) {{
+                        console.error('Error loading lesson options:', error);
+                    }}
+                }}
+                
+                async function loadUserOptions() {{
+                    try {{
+                        const response = await fetch('/api/data-explorer/users');
+                        const data = await response.json();
+                        
+                        const dropdown = document.getElementById('user-dropdown');
+                        dropdown.innerHTML = '';
+                        
+                        if (data.success && data.users) {{
+                            data.users.forEach(user => {{
+                                const option = document.createElement('div');
+                                option.className = 'multiselect-option';
+                                option.textContent = user.email || user.id;
+                                option.onclick = () => selectOption('user', user.id, user.email || user.id);
+                                dropdown.appendChild(option);
+                            }});
+                        }}
+                    }} catch (error) {{
+                        console.error('Error loading user options:', error);
+                    }}
+                }}
+                
+                function renderDataTable(data, columns) {{
+                    const container = document.getElementById('data-table');
+                    
+                    if (!data || data.length === 0) {{
+                        container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No data available</p>';
+                        return;
+                    }}
+                    
+                    let tableHTML = '<table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">';
+                    tableHTML += '<thead><tr>';
+                    
+                    columns.forEach(column => {{
+                        tableHTML += `<th style="border: 1px solid #ddd; padding: 0.75rem; background: #f8f9fa; text-align: left;">${{column}}</th>`;
+                    }});
+                    tableHTML += '</tr></thead><tbody>';
+                    
+                    data.forEach(row => {{
+                        tableHTML += '<tr>';
+                        columns.forEach(column => {{
+                            const value = row[column];
+                            const displayValue = typeof value === 'object' ? JSON.stringify(value) : (value || '');
+                            tableHTML += `<td style="border: 1px solid #ddd; padding: 0.5rem; font-size: 0.9rem;">${{displayValue}}</td>`;
+                        }});
+                        tableHTML += '</tr>';
+                    }});
+                    
+                    tableHTML += '</tbody></table>';
+                    container.innerHTML = tableHTML;
+                }}
+                
+                function updateTableStats(data) {{
+                    const statsContainer = document.getElementById('stats');
+                    
+                    if (!data || data.length === 0) {{
+                        statsContainer.innerHTML = '';
+                        return;
+                    }}
+                    
+                    const stats = {{
+                        totalRecords: data.length,
+                        columns: Object.keys(data[0] || {{}}).length
+                    }};
+                    
+                    statsContainer.innerHTML = `
+                        <strong>Stats:</strong> ${{stats.totalRecords}} records, ${{stats.columns}} columns
+                    `;
+                }}
+                
+                function clearFilters() {{
+                    selectedLessons = [];
+                    selectedUsers = [];
+                    updateDisplay('lesson');
+                    updateDisplay('user');
+                    document.getElementById('limit-input').value = '50';
+                    document.getElementById('stats').style.display = 'none';
+                    document.getElementById('data-table').innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Select a table and click "Load Data" to view records</p>';
+                }}
             </script>
         </body>
         </html>
