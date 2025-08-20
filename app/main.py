@@ -1219,6 +1219,90 @@ async def dashboard():
                     }}
                 }}
                 
+                function initializeDashboardCharts() {{
+                    console.log('Initializing dashboard charts...');
+                    
+                    try {{
+                        // Completion funnel chart
+                        const funnelElement = document.getElementById('completion-funnel-chart');
+                        if (funnelElement) {{
+                            Plotly.newPlot('completion-funnel-chart', [{{
+                                type: 'funnel',
+                                y: ['Lesson 1', 'Lesson 2', 'Lesson 3', 'Lesson 4', 'Lesson 5'],
+                                x: [10, 8, 7, 5, 6],
+                                textinfo: 'value+percent initial',
+                                marker: {{color: 'var(--primary-color)'}},
+                                hovertemplate: '<b>%{{y}}</b><br>Responses: %{{x}}<extra></extra>'
+                            }}], {{
+                                title: 'Lesson Completion Funnel',
+                                height: 300,
+                                margin: {{l: 60, r: 30, t: 50, b: 80}}
+                            }});
+                            console.log('Completion funnel chart created');
+                        }}
+                        
+                        // Knowledge lift chart
+                        const knowledgeElement = document.getElementById('knowledge-lift-chart');
+                        if (knowledgeElement) {{
+                            Plotly.newPlot('knowledge-lift-chart', [{{
+                                type: 'bar',
+                                x: ['Before', 'After'],
+                                y: [65, 85],
+                                marker: {{color: ['var(--warning-color)', 'var(--success-color)']}},
+                                hovertemplate: '<b>%{{x}}</b><br>Score: %{{y}}%<extra></extra>'
+                            }}], {{
+                                title: 'Knowledge Assessment',
+                                height: 300,
+                                yaxis: {{title: 'Score (%)'}},
+                                margin: {{l: 60, r: 30, t: 50, b: 60}}
+                            }});
+                            console.log('Knowledge lift chart created');
+                        }}
+                        
+                        // Drop-off chart
+                        const dropoffElement = document.getElementById('dropoff-chart');
+                        if (dropoffElement) {{
+                            Plotly.newPlot('dropoff-chart', [{{
+                                type: 'bar',
+                                x: ['Lesson 1', 'Lesson 2', 'Lesson 3', 'Lesson 4', 'Lesson 5'],
+                                y: [100, 85, 72, 58, 45],
+                                marker: {{color: 'var(--danger-color)'}},
+                                hovertemplate: '<b>%{{x}}</b><br>Completion: %{{y}}%<extra></extra>'
+                            }}], {{
+                                title: 'Drop-off Points by Lesson',
+                                height: 300,
+                                yaxis: {{title: 'Completion Rate (%)'}},
+                                margin: {{l: 60, r: 30, t: 50, b: 80}}
+                            }});
+                            console.log('Drop-off chart created');
+                        }}
+                        
+                        // Quiz performance chart
+                        const quizElement = document.getElementById('quiz-performance-chart');
+                        if (quizElement) {{
+                            Plotly.newPlot('quiz-performance-chart', [{{
+                                type: 'bar',
+                                x: ['Sleep', 'Screen Time', 'Stress', 'Focus', 'Connection'],
+                                y: [85, 72, 68, 91, 78],
+                                marker: {{color: 'var(--primary-color)'}},
+                                hovertemplate: '<b>%{{x}}</b><br>Success Rate: %{{y}}%<extra></extra>'
+                            }}], {{
+                                title: 'Quiz Performance by Topic',
+                                height: 300,
+                                xaxis: {{tickangle: -45}},
+                                yaxis: {{title: 'Success Rate (%)'}},
+                                margin: {{l: 60, r: 30, t: 50, b: 80}}
+                            }});
+                            console.log('Quiz performance chart created');
+                        }}
+                        
+                        console.log('All dashboard charts initialized successfully');
+                        
+                    }} catch (error) {{
+                        console.error('Error initializing dashboard charts:', error);
+                    }}
+                }}
+                
                 document.addEventListener('DOMContentLoaded', function() {{
                     console.log('DOM loaded, setting up event listeners...');
                     
@@ -1232,6 +1316,11 @@ async def dashboard():
                             showSection(sectionName);
                         }});
                     }});
+                    
+                    // Initialize dashboard charts
+                    setTimeout(() => {{
+                        initializeDashboardCharts();
+                    }}, 1000);
                 }});
             </script>
                     Plotly.newPlot('knowledge-lift-chart', [{{
