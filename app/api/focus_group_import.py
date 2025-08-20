@@ -51,14 +51,8 @@ class CohortAnalytics(BaseModel):
     lesson_distribution: Dict[str, int]
     response_patterns: Dict[str, Any]
 
-# Lesson URL mapping for focus group data
-LESSON_URL_MAPPING = {
-    "1": "https://7taps.com/lessons/digital-wellness-foundations",
-    "2": "https://7taps.com/lessons/screen-habits-awareness", 
-    "3": "https://7taps.com/lessons/device-relationship",
-    "4": "https://7taps.com/lessons/productivity-focus",
-    "5": "https://7taps.com/lessons/connection-balance"
-}
+# Import dynamic configuration
+from app.config import get_lesson_url, get_lesson_name, get_extension_key, settings
 
 def parse_focus_group_csv(csv_data: str) -> List[Dict[str, Any]]:
     """Parse focus group CSV data into structured format."""
@@ -197,16 +191,16 @@ def import_focus_group_to_normalized_schema(records: List[Dict[str, Any]], cohor
                     record['response']
                 ))
                 
-                # Insert context extensions
+                # Insert context extensions using dynamic extension keys
                 extensions = [
-                    ('https://7taps.com/card-type', record['card_type']),
-                    ('https://7taps.com/card-number', card_info.get('card_number')),
-                    ('https://7taps.com/lesson-number', str(record['lesson_number'])),
-                    ('https://7taps.com/global-q', str(record['global_q'])),
-                    ('https://7taps.com/pdf-page', str(record['pdf_page'])),
-                    ('https://7taps.com/cohort', cohort_id),
-                    ('https://7taps.com/lesson-url', LESSON_URL_MAPPING.get(str(record['lesson_number']), '')),
-                    ('https://7taps.com/source', 'focus_group_import')
+                    (get_extension_key("card_type"), record['card_type']),
+                    (get_extension_key("card_number"), card_info.get('card_number')),
+                    (get_extension_key("lesson_number"), str(record['lesson_number'])),
+                    (get_extension_key("global_q"), str(record['global_q'])),
+                    (get_extension_key("pdf_page"), str(record['pdf_page'])),
+                    (get_extension_key("cohort"), cohort_id),
+                    (get_extension_key("lesson_url"), get_lesson_url(str(record['lesson_number']))),
+                    (get_extension_key("source"), 'focus_group_import')
                 ]
                 
                 for ext_key, ext_value in extensions:
