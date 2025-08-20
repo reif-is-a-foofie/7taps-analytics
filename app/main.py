@@ -460,7 +460,7 @@ async def dashboard():
         cursor.execute("""
             SELECT l.lesson_name, COUNT(DISTINCT ua.user_id) as response_count
             FROM lessons l
-            LEFT JOIN user_activities ua ON l.lesson_number = ua.lesson_number
+            LEFT JOIN user_activities ua ON l.id = ua.lesson_id
             GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
         """)
