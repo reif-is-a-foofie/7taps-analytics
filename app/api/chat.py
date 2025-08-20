@@ -465,12 +465,12 @@ CRITICAL INSTRUCTIONS:
 
 Available Preloaded Queries:
 - stats: Get current database statistics (users, lessons, activities, responses)
-- lesson_completion_rates: Show completion rates for each lesson in the course
-- highest_lowest_completion: Which lessons have the highest and lowest completion rates
+- lesson_completion_rates: Show engagement rates for each lesson in the course
+- highest_lowest_completion: Which lessons have the highest and lowest engagement rates
 - student_engagement_over_time: Show student engagement over time across the course
 - incomplete_students: Which students have not finished the course yet
-- average_completion_rate: Give me the average completion rate across all lessons
-- lesson_comparison: Compare completion rates between specific lessons
+- average_completion_rate: Give me the average engagement rate across all lessons
+- lesson_comparison: Compare engagement rates between specific lessons
 - time_to_completion: Show how many students completed the course within 30 days of starting
 - habit_changes: Get evidence of habit changes across lessons
 - top_users: Get most engaged users
@@ -712,17 +712,25 @@ async def chat(request: ChatRequest):
         
         # Execute the generated SQL or use preloaded queries
         try:
+            print(f"DEBUG: LLM returned query name: {llm_result['sql']}")
+            print(f"DEBUG: Available queries: {list(preloaded_queries.keys())}")
+            
             if llm_result['sql'] in preloaded_queries:
                 # Use preloaded query
                 query_sql = preloaded_queries[llm_result['sql']]['sql']
+                print(f"DEBUG: Executing preloaded query: {llm_result['sql']}")
                 query_results = execute_query(query_sql)
+                print(f"DEBUG: Query returned {len(query_results)} results")
                 data_summary = format_query_results(query_results, llm_result['intent'])
             else:
-                # Execute custom SQL
-                query_results = execute_query(llm_result['sql'])
-                data_summary = format_query_results(query_results, llm_result['intent'])
+                print(f"DEBUG: Query name '{llm_result['sql']}' not found in preloaded queries")
+                # Fallback to stats query
+                query_sql = preloaded_queries['stats']['sql']
+                query_results = execute_query(query_sql)
+                data_summary = format_query_results(query_results, 'fallback')
         except Exception as e:
-            data_summary = f"Query failed: {str(e)}"
+            print(f"DEBUG: Query execution failed: {str(e)}")
+            data_summary = f"Query execution failed: {str(e)}"
             query_results = []
         
         # Generate visualization if we have results
