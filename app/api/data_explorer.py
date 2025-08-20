@@ -321,9 +321,12 @@ async def get_filtered_table_data(
         if user_ids:
             user_id_list = [int(x.strip()) for x in user_ids.split(',') if x.strip().isdigit()]
         
-        if lesson_id_list and table_name in ['questions', 'user_activities', 'user_responses']:
+        if lesson_id_list:
             placeholders = ','.join(['%s'] * len(lesson_id_list))
-            conditions.append(f"lesson_id IN ({placeholders})")
+            if table_name == 'user_responses':
+                conditions.append(f"lesson_number IN ({placeholders})")
+            elif table_name in ['questions', 'user_activities']:
+                conditions.append(f"lesson_id IN ({placeholders})")
             params.extend(lesson_id_list)
         
         if user_id_list and table_name in ['user_activities', 'user_responses']:
