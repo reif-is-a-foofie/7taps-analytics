@@ -798,6 +798,11 @@ async def dashboard():
             </div>
             
             <script>
+                // Test if JavaScript is running at all
+                console.log('JavaScript is loading...');
+                alert('JavaScript is working!');
+                
+                // Define showSection function first
                 function showSection(sectionName) {{
                     console.log('showSection called with:', sectionName);
                     
