@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'file:///Users/reif/Documents/POL/7taps-analytics',
+    baseURL: 'https://seventaps-analytics-5135b3a0701a.herokuapp.com',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

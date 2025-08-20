@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('debug JavaScript execution', async ({ page }) => {
-  await page.goto('file:///Users/reif/Documents/POL/7taps-analytics/test_dashboard.html');
+  await page.goto('/');
   
   // Wait for page to load
   await page.waitForLoadState('networkidle');
