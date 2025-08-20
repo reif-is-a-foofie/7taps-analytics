@@ -1,0 +1,32 @@
+{
+  "name": "7taps-analytics",
+  "version": "1.0.0",
+  "description": "Importing xAPI data from 7taps and doing magical stuff with it",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reif-is-a-foofie/7taps-analytics.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/reif-is-a-foofie/7taps-analytics/issues"
+  },
+  "homepage": "https://github.com/reif-is-a-foofie/7taps-analytics#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}

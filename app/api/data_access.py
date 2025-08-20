@@ -209,45 +209,50 @@ async def execute_query(query_request: DatabaseQuery):
 @router.get("/data/sample-queries")
 async def get_sample_queries():
     """Get sample queries for common analytics."""
+    from app.config import get_extension_key
+    
+    lesson_number_key = get_extension_key("lesson_number")
+    card_type_key = get_extension_key("card_type")
+    
     return {
         "sample_queries": {
             "learner_engagement": {
                 "description": "Get learner engagement by lesson",
-                "query": """
+                "query": f"""
                     SELECT 
                         ce.extension_value as lesson_number,
                         COUNT(*) as total_activities,
                         COUNT(DISTINCT s.actor_id) as unique_learners
                     FROM statements_new s
                     JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
-                    WHERE ce.extension_key = 'https://7taps.com/lesson-number'
+                    WHERE ce.extension_key = '{lesson_number_key}'
                     GROUP BY ce.extension_value
                     ORDER BY lesson_number
                 """
             },
             "card_type_engagement": {
                 "description": "Get engagement by card type",
-                "query": """
+                "query": f"""
                     SELECT 
                         ce.extension_value as card_type,
                         COUNT(*) as engagement_count
                     FROM statements_new s
                     JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
-                    WHERE ce.extension_key = 'https://7taps.com/card-type'
+                    WHERE ce.extension_key = '{card_type_key}'
                     GROUP BY ce.extension_value
                     ORDER BY engagement_count DESC
                 """
             },
             "learner_progression": {
                 "description": "Get learner progression through course",
-                "query": """
+                "query": f"""
                     SELECT 
                         actor_id,
                         COUNT(DISTINCT ce.extension_value) as lessons_completed,
                         MAX(ce.extension_value::int) as furthest_lesson
                     FROM statements_new s
                     JOIN context_extensions_new ce ON s.statement_id = ce.statement_id
-                    WHERE ce.extension_key = 'https://7taps.com/lesson-number'
+                    WHERE ce.extension_key = '{lesson_number_key}'
                     GROUP BY actor_id
                     ORDER BY lessons_completed DESC
                 """
