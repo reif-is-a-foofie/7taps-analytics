@@ -1,0 +1,65 @@
+{
+  "module": "data_explorer_enhancement",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "app/api/data_explorer.py",
+    "templates/explorer.html"
+  ],
+  "required_endpoints": ["GET /explorer", "POST /api/data-explorer/query"],
+  "status": "draft",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T21:35:00Z",
+    "estimated_duration": "1.5h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "explorer.1",
+        "description": "Ensure data explorer template loads properly",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/explorer.html"]
+      },
+      {
+        "id": "explorer.2",
+        "description": "Implement data explorer API endpoints",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/api/data_explorer.py"]
+      },
+      {
+        "id": "explorer.3",
+        "description": "Add interactive data visualization features",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/explorer.html", "app/api/data_explorer.py"]
+      },
+      {
+        "id": "explorer.4",
+        "description": "Test data explorer functionality",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Data explorer loads at /explorer without errors",
+      "API endpoint /api/data-explorer/query is functional",
+      "Interactive data visualization works",
+      "Query interface is user-friendly"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test data explorer at http://localhost:8000/explorer",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "ui_agent",
+    "handoff_notes": "Enhance data explorer with interactive features and API endpoints",
+    "required_approval": false
+  }
+}

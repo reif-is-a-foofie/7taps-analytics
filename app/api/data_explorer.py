@@ -1,50 +1,241 @@
 """
-Data Explorer API for interactive data exploration.
+Data Explorer API for 7taps Analytics.
 
-This module provides endpoints for the data explorer tab in the dashboard,
-allowing users to browse, filter, and export data from all tables.
+This module provides API endpoints for the Data Explorer sub-app
+with standard contract actions: load_table, apply_filter, list_tables.
 """
 
-from fastapi import APIRouter, HTTPException, Query, Path
-from typing import Dict, List, Any, Optional
-import psycopg2
 import os
 import json
+import logging
+from typing import Dict, Any, List, Optional
 from datetime import datetime
+from fastapi import APIRouter, HTTPException, Path, Query
 from pydantic import BaseModel
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Response models for better API documentation
-class LessonResponse(BaseModel):
-    id: int
-    name: str
-    lesson_number: Optional[int]
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-class UserResponse(BaseModel):
-    id: int
-    email: str
-    user_id: str
+router = APIRouter()
 
-class TableDataResponse(BaseModel):
+class DataExplorerResponse(BaseModel):
+    """Standard response model for data explorer actions."""
     success: bool
-    data: List[Dict[str, Any]]
-    columns: List[str]
-    total_rows: int
+    data: Dict[str, Any]
+    message: str
+    timestamp: datetime
 
-class ErrorResponse(BaseModel):
-    success: bool
-    error: str
+class LoadTableRequest(BaseModel):
+    """Request model for load_table action."""
+    table: str
+    limit: Optional[int] = 100
+
+class ApplyFilterRequest(BaseModel):
+    """Request model for apply_filter action."""
+    filter_type: str
+    value: str
+    table: str
+
+class ListTablesRequest(BaseModel):
+    """Request model for list_tables action."""
+    pass
 
 router = APIRouter()
 
 def get_db_connection():
-    """Get database connection."""
-    DATABASE_URL = os.getenv('DATABASE_URL')
-    if not DATABASE_URL:
-        raise ValueError("DATABASE_URL environment variable is not set")
-    if DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    """Get database connection with proper error handling."""
+    try:
+        DATABASE_URL = os.getenv('DATABASE_URL')
+        if not DATABASE_URL:
+            raise ValueError("DATABASE_URL environment variable is not set")
+        if DATABASE_URL.startswith('postgres://'):
+            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        
+        return psycopg2.connect(DATABASE_URL, sslmode=os.getenv('PGSSLMODE', 'require'))
+    except Exception as e:
+        logger.error(f"Database connection error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
+
+@router.post("/data-explorer/load-table", response_model=DataExplorerResponse)
+async def load_table(request: LoadTableRequest):
+    """
+    DataExplorer.load_table action
     
-    return psycopg2.connect(DATABASE_URL, sslmode=os.getenv('PGSSLMODE', 'require'))
+    Loads data from a specified table with optional limit.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Validate table name to prevent SQL injection
+        valid_tables = [
+            'users', 'user_activities', 'user_responses', 'questions', 
+            'lessons', 'statements_flat', 'statements_normalized', 
+            'actors', 'activities', 'verbs'
+        ]
+        
+        if request.table not in valid_tables:
+            raise HTTPException(status_code=400, detail=f"Invalid table: {request.table}")
+        
+        # Get total count
+        cursor.execute(f"SELECT COUNT(*) as total FROM {request.table}")
+        total_count = cursor.fetchone()['total']
+        
+        # Get data with limit
+        limit = min(request.limit or 100, 1000)  # Cap at 1000 rows
+        cursor.execute(f"SELECT * FROM {request.table} LIMIT {limit}")
+        rows = cursor.fetchall()
+        
+        # Convert rows to dictionaries
+        data_rows = []
+        columns = []
+        
+        if rows:
+            columns = list(rows[0].keys())
+            data_rows = [dict(row) for row in rows]
+        
+        cursor.close()
+        conn.close()
+        
+        return DataExplorerResponse(
+            success=True,
+            data={
+                "rows": data_rows,
+                "columns": columns,
+                "total_count": total_count
+            },
+            message=f"Successfully loaded {len(data_rows)} rows from {request.table}",
+            timestamp=datetime.utcnow()
+        )
+        
+    except Exception as e:
+        logger.error(f"Error loading table {request.table}: {e}")
+        return DataExplorerResponse(
+            success=False,
+            data={},
+            message=f"Failed to load table {request.table}: {str(e)}",
+            timestamp=datetime.utcnow()
+        )
+
+@router.post("/data-explorer/apply-filter", response_model=DataExplorerResponse)
+async def apply_filter(request: ApplyFilterRequest):
+    """
+    DataExplorer.apply_filter action
+    
+    Applies filters to table data based on filter_type and value.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Validate table name
+        valid_tables = [
+            'users', 'user_activities', 'user_responses', 'questions', 
+            'lessons', 'statements_flat', 'statements_normalized', 
+            'actors', 'activities', 'verbs'
+        ]
+        
+        if request.table not in valid_tables:
+            raise HTTPException(status_code=400, detail=f"Invalid table: {request.table}")
+        
+        # Build filter query based on filter_type
+        if request.filter_type == "email":
+            query = f"SELECT * FROM {request.table} WHERE email ILIKE %s LIMIT 100"
+            params = [f"%{request.value}%"]
+        elif request.filter_type == "lesson":
+            query = f"SELECT * FROM {request.table} WHERE lesson_number = %s OR lesson_name ILIKE %s LIMIT 100"
+            params = [request.value, f"%{request.value}%"]
+        elif request.filter_type == "user_id":
+            query = f"SELECT * FROM {request.table} WHERE user_id ILIKE %s LIMIT 100"
+            params = [f"%{request.value}%"]
+        elif request.filter_type == "date":
+            query = f"SELECT * FROM {request.table} WHERE created_at::date = %s LIMIT 100"
+            params = [request.value]
+        else:
+            # Generic text search
+            query = f"SELECT * FROM {request.table} WHERE CAST(ALL_COLUMNS AS TEXT) ILIKE %s LIMIT 100"
+            params = [f"%{request.value}%"]
+        
+        cursor.execute(query, params)
+        filtered_rows = cursor.fetchall()
+        
+        # Convert to dictionaries
+        data_rows = [dict(row) for row in filtered_rows]
+        
+        cursor.close()
+        conn.close()
+        
+        return DataExplorerResponse(
+            success=True,
+            data={
+                "filtered_rows": data_rows,
+                "applied_filters": [{"type": request.filter_type, "value": request.value}]
+            },
+            message=f"Applied filter '{request.filter_type}: {request.value}' to {request.table}",
+            timestamp=datetime.utcnow()
+        )
+        
+    except Exception as e:
+        logger.error(f"Error applying filter: {e}")
+        return DataExplorerResponse(
+            success=False,
+            data={},
+            message=f"Failed to apply filter: {str(e)}",
+            timestamp=datetime.utcnow()
+        )
+
+@router.post("/data-explorer/list-tables", response_model=DataExplorerResponse)
+async def list_tables(request: ListTablesRequest):
+    """
+    DataExplorer.list_tables action
+    
+    Returns list of available tables for exploration.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Get list of tables
+        cursor.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+        """)
+        
+        tables = [row['table_name'] for row in cursor.fetchall()]
+        
+        # Filter to only include relevant tables
+        relevant_tables = [
+            'users', 'user_activities', 'user_responses', 'questions', 
+            'lessons', 'statements_flat', 'statements_normalized', 
+            'actors', 'activities', 'verbs'
+        ]
+        
+        available_tables = [table for table in tables if table in relevant_tables]
+        
+        cursor.close()
+        conn.close()
+        
+        return DataExplorerResponse(
+            success=True,
+            data={"tables": available_tables},
+            message=f"Found {len(available_tables)} available tables",
+            timestamp=datetime.utcnow()
+        )
+        
+    except Exception as e:
+        logger.error(f"Error listing tables: {e}")
+        return DataExplorerResponse(
+            success=False,
+            data={},
+            message=f"Failed to list tables: {str(e)}",
+            timestamp=datetime.utcnow()
+        )
 
 @router.get("/api/data-explorer/lessons", 
     response_model=Dict[str, Any],

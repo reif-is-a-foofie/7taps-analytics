@@ -1,0 +1,876 @@
+{% extends "base.html" %}
+
+{% block title %}AI Chat - 7taps Analytics{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+        .chat-container {
+            height: calc(100vh - 80px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            display: flex;
+            gap: 0.75rem;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .avatar.user {
+            background: #667eea;
+            color: white;
+        }
+
+        .avatar.assistant {
+            background: #48bb78;
+            color: white;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .message.assistant .message-content {
+            background: #f7fafc;
+            color: #2d3748;
+            border: 1px solid #e2e8f0;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .input-container {
+            padding: 1rem;
+            border-top: 1px solid #e2e8f0;
+            background: white;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+
+        .input-field {
+            flex: 1;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.5rem;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            border-color: #667eea;
+        }
+
+        .send-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-button:hover {
+            background: #5a67d8;
+        }
+
+        .send-button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0.5rem;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e0;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: #f7fafc;
+            border-right: 1px solid #e2e8f0;
+            padding: 1.5rem;
+            overflow-y: auto;
+            z-index: 999;
+        }
+
+        .sidebar h3 {
+            margin-bottom: 1rem;
+            color: #2d3748;
+            font-size: 1.1rem;
+        }
+
+        .sidebar-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-section h4 {
+            margin-bottom: 0.5rem;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+
+        .sidebar-link {
+            display: block;
+            padding: 0.5rem;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 0.25rem;
+            margin-bottom: 0.25rem;
+            transition: background-color 0.2s;
+        }
+
+        .sidebar-link:hover {
+            background: #edf2f7;
+        }
+        
+        .insight-btn {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        
+        .insight-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .suggested-query {
+            display: block;
+            padding: 0.5rem;
+            background: #edf2f7;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .suggested-query:hover {
+            background: #e2e8f0;
+        }
+
+        /* Suggested Questions Styles */
+        .suggested-questions-container {
+            margin: 1rem 0;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .suggested-questions-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .suggested-questions-header h3 {
+            color: #2d3748;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .suggested-questions-header p {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .suggested-questions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .suggested-question {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #2d3748;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .suggested-question:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+        }
+
+        .question-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .question-text {
+            flex: 1;
+            line-height: 1.4;
+        }
+        
+        /* Query Category Styles */
+        .query-category {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .query-category h4 {
+            color: #2d3748;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-align: center;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        /* Analytics Result Styles */
+        .analytics-result {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .analytics-result h3 {
+            color: #2d3748;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .metric-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border-radius: 12px;
+            margin: 1rem 0;
+        }
+        
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .metric-label {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-left: 1rem;
+        }
+        
+        .analytics-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 1rem 0;
+        }
+        
+        .analytics-table th,
+        .analytics-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .analytics-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .analytics-table tr:hover {
+            background: #f7fafc;
+        }
+        
+        .analytics-chart {
+            width: 100%;
+            height: 400px;
+            margin: 1rem 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                margin: 0;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+            
+            .suggested-questions-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .suggested-question {
+                padding: 0.75rem;
+                font-size: 0.85rem;
+            }
+            
+            .question-icon {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="chat-container">
+        <div class="header">
+            <h1>Chat with 7</h1>
+        </div>
+        
+        <div class="messages" id="messages">
+            <div class="message assistant">
+                <div class="avatar assistant">7</div>
+                <div class="message-content">
+                    Hi! I'm 7, your AI analytics assistant. Ask me anything about your learning data, engagement patterns, or create visualizations. What would you like to explore?
+                </div>
+            </div>
+            
+            <!-- Analytics Query Suggestions Section -->
+            <div class="suggested-questions-container">
+                <div class="suggested-questions-header">
+                    <h3>📊 Quick Analytics Queries</h3>
+                    <p>Click any query to get instant analytics results</p>
+                </div>
+                
+                <!-- Completion Analysis -->
+                <div class="query-category">
+                    <h4>Completion Analysis</h4>
+                    <div class="suggested-questions-grid">
+                        <button class="suggested-question" onclick="executeAnalyticsQuery('completion_rates')">
+                            <div class="question-icon">📊</div>
+                            <div class="question-text">Show completion rates for each lesson</div>
+                        </button>
+                        
+                        <button class="suggested-question" onclick="executeAnalyticsQuery('highest_lowest')">
+                            <div class="question-icon">🏆</div>
+                            <div class="question-text">Which lessons have highest/lowest completion?</div>
+                        </button>
+                        
+                        <button class="suggested-question" onclick="executeAnalyticsQuery('average_completion')">
+                            <div class="question-icon">📈</div>
+                            <div class="question-text">What's the average completion rate?</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Student Progress -->
+                <div class="query-category">
+                    <h4>Student Progress</h4>
+                    <div class="suggested-questions-grid">
+                        <button class="suggested-question" onclick="executeAnalyticsQuery('incomplete_students')">
+                            <div class="question-icon">👥</div>
+                            <div class="question-text">Who hasn't finished the course yet?</div>
+                        </button>
+                        
+                        <button class="suggested-question" onclick="executeAnalyticsQuery('completion_speed')">
+                            <div class="question-icon">⏱️</div>
+                            <div class="question-text">How many completed within 30 days?</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Engagement & Trends -->
+                <div class="query-category">
+                    <h4>Engagement & Trends</h4>
+                    <div class="suggested-questions-grid">
+                        <button class="suggested-question" onclick="executeAnalyticsQuery('engagement_time')">
+                            <div class="question-icon">📅</div>
+                            <div class="question-text">Show student engagement over time</div>
+                        </button>
+                        
+                        <button class="suggested-question" onclick="executeAnalyticsQuery('lesson_comparison')">
+                            <div class="question-icon">⚖️</div>
+                            <div class="question-text">Compare Lesson 1 vs Lesson 5</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <div class="input-wrapper">
+                <textarea 
+                    id="messageInput" 
+                    class="input-field" 
+                    placeholder="Ask me about your learning analytics..."
+                    rows="1"
+                    onkeydown="handleKeyDown(event)"
+                ></textarea>
+                <button id="sendButton" class="send-button" onclick="sendMessage()">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const dataStatus = document.getElementById('data-status');
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function askQuestion(question) {
+            document.getElementById('messageInput').value = question;
+            sendMessage();
+        }
+
+        function addMessage(content, isUser = false, visualization = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `avatar ${isUser ? 'user' : 'assistant'}`;
+            avatar.textContent = isUser ? 'U' : '7';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.innerHTML = content;
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+            
+            // Add visualization if provided
+            if (visualization && !isUser) {
+                try {
+                    const vizDiv = document.createElement('div');
+                    vizDiv.className = 'visualization';
+                    vizDiv.style.marginTop = '15px';
+                    vizDiv.style.width = '100%';
+                    vizDiv.style.height = '400px';
+                    vizDiv.style.border = '1px solid #e2e8f0';
+                    vizDiv.style.borderRadius = '8px';
+                    vizDiv.style.overflow = 'hidden';
+                    
+                    const plotData = JSON.parse(visualization);
+                    Plotly.newPlot(vizDiv, plotData.data, plotData.layout, {
+                        responsive: true,
+                        displayModeBar: false
+                    });
+                    
+                    messageDiv.appendChild(vizDiv);
+                } catch (error) {
+                    console.error('Visualization error:', error);
+                }
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message assistant';
+            typingDiv.id = 'typing-indicator';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar assistant';
+            avatar.textContent = 'S';
+            
+            const typingContent = document.createElement('div');
+            typingContent.className = 'message-content';
+            typingContent.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+            
+            typingDiv.appendChild(avatar);
+            typingDiv.appendChild(typingContent);
+            messagesContainer.appendChild(typingDiv);
+            
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+
+        async function sendMessage(customMessage = null) {
+            const message = customMessage || messageInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage(message, true);
+            
+            // Clear input
+            if (!customMessage) {
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+            }
+
+            // Disable input and button
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: getMessageHistory()
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                hideTypingIndicator();
+                addMessage(data.response, false, data.visualization);
+
+            } catch (error) {
+                console.error('Error:', error);
+                hideTypingIndicator();
+                addMessage('Sorry, I encountered an error. Please try again.');
+            } finally {
+                // Re-enable input and button
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        function getMessageHistory() {
+            const messages = [];
+            const messageElements = document.querySelectorAll('.message');
+            
+            messageElements.forEach(element => {
+                if (element.id !== 'typing-indicator') {
+                    const isUser = element.classList.contains('user');
+                    const content = element.querySelector('.message-content').textContent;
+                    messages.push({
+                        role: isUser ? 'user' : 'assistant',
+                        content: content
+                    });
+                }
+            });
+            
+            return messages;
+        }
+
+        // Load data status
+        async function loadDataStatus() {
+            try {
+                const response = await fetch('https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/data/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    dataStatus.innerHTML = `
+                        <div style="color: #48bb78;">✓ Connected</div>
+                        <div style="font-size: 0.8rem; color: #718096;">
+                            ${data.total_statements} statements<br>
+                            ${data.unique_users} users<br>
+                            ${data.total_lessons} lessons
+                        </div>
+                    `;
+                } else {
+                    dataStatus.innerHTML = '<div style="color: #e53e3e;">✗ Connection failed</div>';
+                }
+            } catch (error) {
+                dataStatus.innerHTML = '<div style="color: #e53e3e;">✗ Connection failed</div>';
+            }
+        }
+
+        // Analytics Query Functions
+        async function executeAnalyticsQuery(queryType) {
+            // Add user message showing the query being executed
+            const queryMessages = {
+                'completion_rates': 'Show completion rates for each lesson',
+                'highest_lowest': 'Which lessons have highest/lowest completion?',
+                'engagement_time': 'Show student engagement over time',
+                'incomplete_students': 'Who hasn\'t finished the course yet?',
+                'average_completion': 'What\'s the average completion rate?',
+                'lesson_comparison': 'Compare Lesson 1 vs Lesson 5',
+                'completion_speed': 'How many completed within 30 days?'
+            };
+            
+            addMessage(queryMessages[queryType] || 'Executing analytics query...', true);
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            try {
+                let endpoint = '';
+                
+                // Map query types to endpoints
+                switch(queryType) {
+                    case 'completion_rates':
+                        endpoint = '/api/analytics/completion-rates';
+                        break;
+                    case 'highest_lowest':
+                        endpoint = '/api/analytics/completion-rates?ranked=true';
+                        break;
+                    case 'engagement_time':
+                        endpoint = '/api/analytics/engagement-over-time';
+                        break;
+                    case 'incomplete_students':
+                        endpoint = '/api/analytics/incomplete-students';
+                        break;
+                    case 'average_completion':
+                        endpoint = '/api/analytics/average-completion';
+                        break;
+                    case 'lesson_comparison':
+                        endpoint = '/api/analytics/lesson-comparison?lesson1=1&lesson2=5';
+                        break;
+                    case 'completion_speed':
+                        endpoint = '/api/analytics/completion-speed?days=30';
+                        break;
+                    default:
+                        throw new Error('Unknown query type');
+                }
+                
+                const response = await fetch(endpoint);
+                const data = await response.json();
+                
+                hideTypingIndicator();
+                
+                if (data.success) {
+                    displayAnalyticsResult(data, queryType);
+                } else {
+                    addMessage(`Error: ${data.error || 'Query failed'}`, false);
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage(`Error executing query: ${error.message}`, false);
+            }
+        }
+        
+        function displayAnalyticsResult(data, queryType) {
+            let resultHtml = `
+                <div class="analytics-result">
+                    <h3>${data.title}</h3>
+            `;
+            
+            // Handle different chart types
+            switch(data.chart_type) {
+                case 'metric':
+                    resultHtml += `
+                        <div class="metric-display">
+                            <div class="metric-value">${data.data.value}%</div>
+                            <div class="metric-label">${data.data.label}</div>
+                        </div>
+                    `;
+                    if (data.data.details) {
+                        resultHtml += '<div style="margin-top: 1rem;">';
+                        for (const [key, value] of Object.entries(data.data.details)) {
+                            resultHtml += `<p><strong>${key.replace(/_/g, ' ').toUpperCase()}:</strong> ${value}</p>`;
+                        }
+                        resultHtml += '</div>';
+                    }
+                    break;
+                    
+                case 'table':
+                    if (data.data.rows && data.data.rows.length > 0) {
+                        resultHtml += `
+                            <table class="analytics-table">
+                                <thead>
+                                    <tr>
+                                        ${Object.keys(data.data.rows[0]).map(key => 
+                                            `<th>${key.replace(/_/g, ' ').toUpperCase()}</th>`
+                                        ).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.data.rows.map(row => 
+                                        `<tr>${Object.values(row).map(value => `<td>${value}</td>`).join('')}</tr>`
+                                    ).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    }
+                    break;
+                    
+                case 'bar':
+                case 'line':
+                case 'comparison':
+                case 'histogram':
+                    resultHtml += `<div id="analytics-chart-${Date.now()}" class="analytics-chart"></div>`;
+                    break;
+            }
+            
+            resultHtml += '</div>';
+            
+            addMessage(resultHtml, false);
+            
+            // Render chart if needed
+            if (['bar', 'line', 'comparison', 'histogram'].includes(data.chart_type)) {
+                setTimeout(() => {
+                    renderAnalyticsChart(data, `analytics-chart-${Date.now()}`);
+                }, 100);
+            }
+        }
+        
+        function renderAnalyticsChart(data, chartId) {
+            const chartDiv = document.getElementById(chartId);
+            if (!chartDiv) return;
+            
+            const chartConfig = {
+                data: data.data.datasets.map(dataset => ({
+                    x: data.data.labels,
+                    y: dataset.data,
+                    type: data.chart_type === 'comparison' ? 'bar' : data.chart_type,
+                    name: dataset.label,
+                    marker: {
+                        color: dataset.backgroundColor || '#667eea'
+                    }
+                })),
+                layout: {
+                    title: data.title,
+                    xaxis: { title: 'Categories' },
+                    yaxis: { title: 'Values' },
+                    margin: { l: 50, r: 50, t: 50, b: 50 },
+                    showlegend: true,
+                    height: 400
+                },
+                config: {
+                    responsive: true,
+                    displayModeBar: false
+                }
+            };
+            
+            Plotly.newPlot(chartId, chartConfig.data, chartConfig.layout, chartConfig.config);
+        }
+        
+        // Initialize
+        loadDataStatus();
+    </script>
+{% endblock %}

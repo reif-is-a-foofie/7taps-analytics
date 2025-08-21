@@ -1,0 +1,204 @@
+{
+  "module": "analytics_queries",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/api/analytics.py",
+    "app/api/dashboard.py",
+    "app/api/chat.py"
+  ],
+  "required_endpoints": [
+    "GET /api/analytics/completion-rates",
+    "GET /api/analytics/engagement-over-time", 
+    "GET /api/analytics/incomplete-students",
+    "GET /api/analytics/average-completion",
+    "GET /api/analytics/lesson-comparison",
+    "GET /api/analytics/completion-speed"
+  ],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T22:20:00Z",
+    "estimated_duration": "3h",
+    "dependencies": ["chat_api_fix"],
+    "subtasks": [
+      {
+        "id": "queries.1",
+        "description": "Create analytics API endpoints for all 7 queries",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/analytics.py"]
+      },
+      {
+        "id": "queries.2",
+        "description": "Implement completion rates by lesson query",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/analytics.py"]
+      },
+      {
+        "id": "queries.3",
+        "description": "Implement engagement over time query",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/analytics.py"]
+      },
+      {
+        "id": "queries.4",
+        "description": "Implement incomplete students query",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/analytics.py"]
+      },
+      {
+        "id": "queries.5",
+        "description": "Add pre-loaded queries to chat interface",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/chat.py"]
+      },
+      {
+        "id": "queries.6",
+        "description": "Test all analytics queries",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "All 7 analytics queries implemented and working",
+      "Queries return proper chart data for visualization",
+      "Pre-loaded queries available in chat interface",
+      "Dashboard can display all query results",
+      "All endpoints return consistent JSON format"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test all analytics queries at http://localhost:8000/api/analytics/",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 95
+  },
+  "app_contract": {
+    "name": "AnalyticsQueries",
+    "description": "Pre-defined analytics queries for common questions",
+    "actions": [
+      {
+        "name": "completion_rates",
+        "input": {},
+        "output": {
+          "chart_type": "bar",
+          "data": "object",
+          "title": "string"
+        }
+      },
+      {
+        "name": "engagement_over_time",
+        "input": {},
+        "output": {
+          "chart_type": "line",
+          "data": "object",
+          "title": "string"
+        }
+      },
+      {
+        "name": "incomplete_students",
+        "input": {},
+        "output": {
+          "chart_type": "table",
+          "data": "object",
+          "title": "string"
+        }
+      },
+      {
+        "name": "average_completion",
+        "input": {},
+        "output": {
+          "chart_type": "metric",
+          "data": "object",
+          "title": "string"
+        }
+      },
+      {
+        "name": "lesson_comparison",
+        "input": {
+          "lesson1": "int",
+          "lesson2": "int"
+        },
+        "output": {
+          "chart_type": "comparison",
+          "data": "object",
+          "title": "string"
+        }
+      },
+      {
+        "name": "completion_speed",
+        "input": {
+          "days": "int"
+        },
+        "output": {
+          "chart_type": "histogram",
+          "data": "object",
+          "title": "string"
+        }
+      }
+    ]
+  },
+  "predefined_queries": [
+    {
+      "id": "completion_rates",
+      "question": "Show me completion rates for each lesson in this course.",
+      "description": "Bar chart with lesson titles on x-axis, % or count on y-axis",
+      "endpoint": "/api/analytics/completion-rates",
+      "chart_type": "bar"
+    },
+    {
+      "id": "highest_lowest",
+      "question": "Which lessons have the highest and lowest completion rates?",
+      "description": "Ranked list or highlighted bar chart",
+      "endpoint": "/api/analytics/completion-rates?ranked=true",
+      "chart_type": "bar"
+    },
+    {
+      "id": "engagement_time",
+      "question": "Show me student engagement over time across the course.",
+      "description": "Time series line chart (dates vs number of completions/activities)",
+      "endpoint": "/api/analytics/engagement-over-time",
+      "chart_type": "line"
+    },
+    {
+      "id": "incomplete_students",
+      "question": "Which students have not finished the course yet?",
+      "description": "Table with student names and their progress %",
+      "endpoint": "/api/analytics/incomplete-students",
+      "chart_type": "table"
+    },
+    {
+      "id": "average_completion",
+      "question": "Give me the average completion rate across all lessons.",
+      "description": "Single metric (e.g., \"73% average\")",
+      "endpoint": "/api/analytics/average-completion",
+      "chart_type": "metric"
+    },
+    {
+      "id": "lesson_comparison",
+      "question": "Compare completion rates between Lesson 1 and Lesson 5.",
+      "description": "Side-by-side bar chart or simple numeric comparison",
+      "endpoint": "/api/analytics/lesson-comparison?lesson1=1&lesson2=5",
+      "chart_type": "comparison"
+    },
+    {
+      "id": "completion_speed",
+      "question": "Show me how many students completed the course within 30 days of starting.",
+      "description": "Metric or histogram of completion speed",
+      "endpoint": "/api/analytics/completion-speed?days=30",
+      "chart_type": "histogram"
+    }
+  ],
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "backend_agent",
+    "handoff_notes": "Implement 7 pre-defined analytics queries for dashboard and chat",
+    "required_approval": false
+  }
+}

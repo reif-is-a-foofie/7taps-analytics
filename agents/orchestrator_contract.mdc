@@ -8,7 +8,7 @@ Your job is to assign tasks to other agents, track progress, and verify results 
 1. Load current module list from `plan.md` and `orchestrator_contracts/*.json`.
 2. Assign each module (a.01, a.02, …) to the appropriate agent.
 3. Require all agents to:
-   - Use MCP servers first (DB, Python, Superset)
+   - Check for existing code or frameworks before generating new files.
    - Produce JSON test outputs for `/api/debug/test-report`
    - Follow `.cursorrules` and module boundaries in `plan.md`
 
@@ -33,7 +33,6 @@ Your job is to assign tasks to other agents, track progress, and verify results 
 ## Safety Rules
 - **MUST** follow `.cursorrules` for all file boundaries and module sequencing
 - Never create files outside allowed_files.
-- Never bypass MCP servers for DB, ETL, or Python execution.
 - Confirm each module passes tests before progressing.
 - **ENFORCE** anti-spec-gaming policy - only mark modules completed after independent validation
 

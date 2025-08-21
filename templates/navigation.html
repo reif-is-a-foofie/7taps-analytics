@@ -1,0 +1,135 @@
+<!-- Navigation Sidebar Component -->
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-title">7taps Analytics</div>
+        <div class="sidebar-subtitle">Learning Analytics Platform</div>
+    </div>
+    
+    <div class="nav-section">
+        <div class="nav-section-title">Main Apps</div>
+        <a href="/" class="nav-item {{ 'active' if active_page == 'dashboard' else '' }}" data-app="dashboard">
+            <span class="nav-item-icon">📊</span>
+            Analytics Dashboard
+        </a>
+        <a href="/explorer" class="nav-item {{ 'active' if active_page == 'explorer' else '' }}" data-app="explorer">
+            <span class="nav-item-icon">🔍</span>
+            Data Explorer
+        </a>
+        <a href="/chat" class="nav-item {{ 'active' if active_page == 'chat' else '' }}" data-app="chat">
+            <span class="nav-item-icon">💬</span>
+            AI Chat
+        </a>
+        <a href="/docs" class="nav-item {{ 'active' if active_page == 'docs' else '' }}" data-app="docs">
+            <span class="nav-item-icon">📚</span>
+            API Documentation
+        </a>
+    </div>
+    
+    <div class="nav-section">
+        <div class="nav-section-title">System</div>
+        <a href="/health" class="nav-item">
+            <span class="nav-item-icon">💚</span>
+            Health Check
+        </a>
+    </div>
+</nav>
+
+<script>
+// Navigation System JavaScript
+class NavigationSystem {
+    constructor() {
+        this.currentApp = this.getCurrentApp();
+        this.navItems = document.querySelectorAll('.nav-item[data-app]');
+        this.init();
+    }
+    
+    getCurrentApp() {
+        const path = window.location.pathname;
+        if (path === '/') return 'dashboard';
+        if (path === '/explorer') return 'explorer';
+        if (path === '/chat') return 'chat';
+        if (path === '/docs') return 'docs';
+        return 'dashboard';
+    }
+    
+    init() {
+        this.updateActiveState();
+        this.addEventListeners();
+    }
+    
+    updateActiveState() {
+        this.navItems.forEach(item => {
+            const app = item.getAttribute('data-app');
+            if (app === this.currentApp) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+    
+    addEventListeners() {
+        this.navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                const app = item.getAttribute('data-app');
+                this.navigate(app);
+            });
+        });
+    }
+    
+    navigate(app) {
+        const urls = {
+            'dashboard': '/',
+            'explorer': '/explorer',
+            'chat': '/chat',
+            'docs': '/docs'
+        };
+        
+        const url = urls[app];
+        if (url) {
+            window.location.href = url;
+        }
+    }
+    
+    getNavigation() {
+        return {
+            items: [
+                {
+                    label: 'Analytics Dashboard',
+                    url: '/',
+                    icon: 'dashboard',
+                    app: 'dashboard',
+                    active: this.currentApp === 'dashboard'
+                },
+                {
+                    label: 'Data Explorer',
+                    url: '/explorer',
+                    icon: 'explore',
+                    app: 'explorer',
+                    active: this.currentApp === 'explorer'
+                },
+                {
+                    label: 'AI Chat',
+                    url: '/chat',
+                    icon: 'chat',
+                    app: 'chat',
+                    active: this.currentApp === 'chat'
+                },
+                {
+                    label: 'API Documentation',
+                    url: '/docs',
+                    icon: 'docs',
+                    app: 'docs',
+                    active: this.currentApp === 'docs'
+                }
+            ],
+            current_app: this.currentApp
+        };
+    }
+}
+
+// Initialize navigation system when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.navigationSystem = new NavigationSystem();
+});
+</script>

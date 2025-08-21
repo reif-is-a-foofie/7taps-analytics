@@ -1,0 +1,118 @@
+{
+  "module": "dashboard_analytics_integration",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "templates/dashboard.html",
+    "app/dashboard_template.html",
+    "app/main.py"
+  ],
+  "required_endpoints": ["GET /", "GET /api/dashboard/analytics"],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T22:20:00Z",
+    "estimated_duration": "2h",
+    "dependencies": ["analytics_queries"],
+    "subtasks": [
+      {
+        "id": "dashboard_analytics.1",
+        "description": "Add analytics queries section to dashboard",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["templates/dashboard.html"]
+      },
+      {
+        "id": "dashboard_analytics.2",
+        "description": "Create quick query buttons for all 7 questions",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["templates/dashboard.html"]
+      },
+      {
+        "id": "dashboard_analytics.3",
+        "description": "Implement chart rendering for query results",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["templates/dashboard.html"]
+      },
+      {
+        "id": "dashboard_analytics.4",
+        "description": "Test dashboard analytics integration",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Dashboard displays all 7 analytics queries as quick buttons",
+      "Clicking query buttons loads and displays results",
+      "Charts render properly for each query type",
+      "Dashboard integrates with analytics API endpoints",
+      "Responsive design works on all devices"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test dashboard analytics at http://localhost:8000/",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "app_contract": {
+    "name": "DashboardAnalyticsIntegration",
+    "description": "Integrate analytics queries into dashboard interface",
+    "actions": [
+      {
+        "name": "load_analytics_section",
+        "input": {},
+        "output": {
+          "queries": "list",
+          "quick_buttons": "list"
+        }
+      },
+      {
+        "name": "execute_query",
+        "input": {
+          "query_id": "string"
+        },
+        "output": {
+          "result": "object",
+          "chart_data": "object"
+        }
+      }
+    ]
+  },
+  "dashboard_sections": [
+    {
+      "name": "Quick Analytics",
+      "type": "query_buttons",
+      "description": "Common analytics questions with one-click answers"
+    },
+    {
+      "name": "Completion Rates",
+      "type": "chart_section",
+      "query": "completion_rates"
+    },
+    {
+      "name": "Engagement Over Time",
+      "type": "chart_section", 
+      "query": "engagement_time"
+    },
+    {
+      "name": "Student Progress",
+      "type": "table_section",
+      "query": "incomplete_students"
+    },
+    {
+      "name": "Course Overview",
+      "type": "metrics_section",
+      "query": "average_completion"
+    }
+  ],
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "ui_agent",
+    "handoff_notes": "Integrate analytics queries into dashboard with quick access buttons",
+    "required_approval": false
+  }
+}

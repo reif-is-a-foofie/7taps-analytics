@@ -1,0 +1,117 @@
+{
+  "module": "navigation_system",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "templates/base.html",
+    "templates/navigation.html",
+    "app/main.py"
+  ],
+  "required_endpoints": ["GET /", "GET /explorer", "GET /chat", "GET /docs"],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T22:10:00Z",
+    "estimated_duration": "2h",
+    "dependencies": ["chat_api_fix"],
+    "subtasks": [
+      {
+        "id": "nav.1",
+        "description": "Create base navigation template",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["templates/base.html"]
+      },
+      {
+        "id": "nav.2",
+        "description": "Implement left navigation sidebar",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["templates/navigation.html"]
+      },
+      {
+        "id": "nav.3",
+        "description": "Update main.py to use navigation template",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["app/main.py"]
+      },
+      {
+        "id": "nav.4",
+        "description": "Test navigation functionality",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Left navigation sidebar works on all pages",
+      "Navigation between sub-apps is seamless",
+      "Active page is highlighted in navigation",
+      "Navigation is responsive and mobile-friendly"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test navigation at http://localhost:8000/",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "app_contract": {
+    "name": "NavigationSystem",
+    "description": "Navigation system for switching between sub-apps",
+    "actions": [
+      {
+        "name": "navigate",
+        "input": {
+          "app": "string"
+        },
+        "output": {
+          "url": "string",
+          "title": "string",
+          "active": "boolean"
+        }
+      },
+      {
+        "name": "get_navigation",
+        "input": {},
+        "output": {
+          "items": "list",
+          "current_app": "string"
+        }
+      }
+    ]
+  },
+  "navigation_items": [
+    {
+      "label": "Analytics Dashboard",
+      "url": "/",
+      "icon": "dashboard",
+      "app": "dashboard"
+    },
+    {
+      "label": "Data Explorer",
+      "url": "/explorer", 
+      "icon": "explore",
+      "app": "explorer"
+    },
+    {
+      "label": "AI Chat",
+      "url": "/chat",
+      "icon": "chat",
+      "app": "chat"
+    },
+    {
+      "label": "API Documentation",
+      "url": "/docs",
+      "icon": "docs",
+      "app": "docs"
+    }
+  ],
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "ui_agent",
+    "handoff_notes": "Create navigation system to coordinate between sub-apps",
+    "required_approval": false
+  }
+}

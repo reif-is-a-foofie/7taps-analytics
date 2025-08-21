@@ -9,8 +9,26 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 from datetime import datetime
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api", tags=["Public Data API"])
+
+# Composable Sub-App Contract Models
+class APIDocsActionRequest(BaseModel):
+    action: str = Field(..., description="Action to perform: list_endpoints, get_schema, get_examples")
+    endpoint: Optional[str] = Field(None, description="Endpoint name for get_schema and get_examples actions")
+
+class APIDocsActionResponse(BaseModel):
+    success: bool = Field(..., description="Whether the action was successful")
+    action: str = Field(..., description="The action that was performed")
+    endpoints: Optional[List[Dict[str, Any]]] = Field(None, description="List of endpoints for list_endpoints action")
+    categories: Optional[List[str]] = Field(None, description="Endpoint categories for list_endpoints action")
+    schema_data: Optional[Dict[str, Any]] = Field(None, description="Schema for get_schema action")
+    parameters: Optional[List[Dict[str, Any]]] = Field(None, description="Parameters for get_schema action")
+    responses: Optional[Dict[str, Any]] = Field(None, description="Responses for get_schema action")
+    examples: Optional[List[Dict[str, Any]]] = Field(None, description="Examples for get_examples action")
+    curl_commands: Optional[List[str]] = Field(None, description="cURL commands for get_examples action")
+    error: Optional[str] = Field(None, description="Error message if action failed")
 
 def get_db_connection():
     """Get database connection"""
@@ -294,6 +312,390 @@ async def health_check():
         "service": "7taps-analytics-public-api",
         "version": "1.0.0",
         "timestamp": datetime.utcnow().isoformat()
+    }
+
+# Composable Sub-App Contract Endpoints for APIDocs
+@router.post("/docs/list-endpoints",
+    response_model=APIDocsActionResponse,
+    summary="APIDocs.list_endpoints action",
+    description="List all available API endpoints organized by category"
+)
+async def api_docs_list_endpoints(request: APIDocsActionRequest):
+    """APIDocs.list_endpoints action - Standard contract endpoint for orchestrator calls"""
+    try:
+        if request.action != "list_endpoints":
+            return APIDocsActionResponse(
+                success=False,
+                action=request.action,
+                error="Invalid action. Expected 'list_endpoints'"
+            )
+        
+        # Define available endpoints organized by category
+        endpoints = [
+            {
+                "path": "/api/data/schema",
+                "method": "GET",
+                "category": "Data Access",
+                "description": "Get database schema information",
+                "tags": ["schema", "metadata"]
+            },
+            {
+                "path": "/api/data/query",
+                "method": "POST", 
+                "category": "Data Access",
+                "description": "Execute SQL queries against analytics data",
+                "tags": ["query", "sql"]
+            },
+            {
+                "path": "/api/data/sample-queries",
+                "method": "GET",
+                "category": "Data Access", 
+                "description": "Get sample queries for common patterns",
+                "tags": ["examples", "templates"]
+            },
+            {
+                "path": "/api/data/status",
+                "method": "GET",
+                "category": "Monitoring",
+                "description": "Get current data status and statistics",
+                "tags": ["status", "health"]
+            },
+            {
+                "path": "/api/analytics/cohorts",
+                "method": "GET",
+                "category": "Analytics",
+                "description": "Get cohort analytics data",
+                "tags": ["cohorts", "analytics"]
+            },
+            {
+                "path": "/api/analytics/cohorts/{cohort_id}",
+                "method": "GET",
+                "category": "Analytics",
+                "description": "Get detailed analytics for specific cohort",
+                "tags": ["cohorts", "details"]
+            },
+            {
+                "path": "/api/health",
+                "method": "GET",
+                "category": "Monitoring",
+                "description": "Health check endpoint",
+                "tags": ["health", "status"]
+            }
+        ]
+        
+        categories = list(set([ep["category"] for ep in endpoints]))
+        
+        return APIDocsActionResponse(
+            success=True,
+            action=request.action,
+            endpoints=endpoints,
+            categories=categories
+        )
+        
+    except Exception as e:
+        return APIDocsActionResponse(
+            success=False,
+            action=request.action,
+            error=f"Action failed: {str(e)}"
+        )
+
+@router.post("/docs/get-schema",
+    response_model=APIDocsActionResponse,
+    summary="APIDocs.get_schema action", 
+    description="Get detailed schema information for a specific endpoint"
+)
+async def api_docs_get_schema(request: APIDocsActionRequest):
+    """APIDocs.get_schema action - Standard contract endpoint for orchestrator calls"""
+    try:
+        if request.action != "get_schema":
+            return APIDocsActionResponse(
+                success=False,
+                action=request.action,
+                error="Invalid action. Expected 'get_schema'"
+            )
+        
+        if not request.endpoint:
+            return APIDocsActionResponse(
+                success=False,
+                action=request.action,
+                error="Endpoint parameter is required for get_schema action"
+            )
+        
+        # Define schemas for different endpoints
+        schemas = {
+            "/api/data/schema": {
+                "description": "Get database schema information",
+                "method": "GET",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved schema",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "schema": {"type": "object"},
+                                        "description": {"type": "string"},
+                                        "tables": {"type": "object"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/api/data/query": {
+                "description": "Execute SQL query",
+                "method": "POST",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "type": "object",
+                        "required": True,
+                        "description": "Query object containing SQL string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Query executed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "query": {"type": "string"},
+                                        "results": {"type": "array"},
+                                        "count": {"type": "integer"},
+                                        "executed_at": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query or execution error"
+                    }
+                }
+            },
+            "/api/analytics/cohorts": {
+                "description": "Get cohort analytics",
+                "method": "GET", 
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Cohort data retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cohorts": {"type": "array"},
+                                        "total_cohorts": {"type": "integer"},
+                                        "generated_at": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if request.endpoint not in schemas:
+            return APIDocsActionResponse(
+                success=False,
+                action=request.action,
+                error=f"Schema not found for endpoint: {request.endpoint}"
+            )
+        
+        schema_info = schemas[request.endpoint]
+        
+        return APIDocsActionResponse(
+            success=True,
+            action=request.action,
+            schema_data=schema_info,
+            parameters=schema_info.get("parameters", []),
+            responses=schema_info.get("responses", {})
+        )
+        
+    except Exception as e:
+        return APIDocsActionResponse(
+            success=False,
+            action=request.action,
+            error=f"Action failed: {str(e)}"
+        )
+
+@router.post("/docs/get-examples",
+    response_model=APIDocsActionResponse,
+    summary="APIDocs.get_examples action",
+    description="Get usage examples and cURL commands for a specific endpoint"
+)
+async def api_docs_get_examples(request: APIDocsActionRequest):
+    """APIDocs.get_examples action - Standard contract endpoint for orchestrator calls"""
+    try:
+        if request.action != "get_examples":
+            return APIDocsActionResponse(
+                success=False,
+                action=request.action,
+                error="Invalid action. Expected 'get_examples'"
+            )
+        
+        if not request.endpoint:
+            return APIDocsActionResponse(
+                success=False,
+                action=request.action,
+                error="Endpoint parameter is required for get_examples action"
+            )
+        
+        # Define examples for different endpoints
+        examples = {
+            "/api/data/schema": {
+                "examples": [
+                    {
+                        "name": "Get Database Schema",
+                        "description": "Retrieve the complete database schema",
+                        "response": {
+                            "schema": {
+                                "statements_new": [
+                                    {"column": "id", "type": "integer"},
+                                    {"column": "actor_id", "type": "text"}
+                                ]
+                            },
+                            "description": "Normalized analytics data schema"
+                        }
+                    }
+                ],
+                "curl_commands": [
+                    "curl -X GET 'http://localhost:8000/api/data/schema'"
+                ]
+            },
+            "/api/data/query": {
+                "examples": [
+                    {
+                        "name": "Get User Count",
+                        "description": "Count total unique users",
+                        "request": {
+                            "query": "SELECT COUNT(DISTINCT actor_id) as user_count FROM statements_new"
+                        },
+                        "response": {
+                            "query": "SELECT COUNT(DISTINCT actor_id) as user_count FROM statements_new",
+                            "results": [{"user_count": 150}],
+                            "count": 1,
+                            "executed_at": "2024-01-20T21:45:00Z"
+                        }
+                    },
+                    {
+                        "name": "Get Recent Activity",
+                        "description": "Get recent learning statements",
+                        "request": {
+                            "query": "SELECT actor_id, timestamp, verb FROM statements_new ORDER BY timestamp DESC LIMIT 10"
+                        },
+                        "response": {
+                            "query": "SELECT actor_id, timestamp, verb FROM statements_new ORDER BY timestamp DESC LIMIT 10",
+                            "results": [
+                                {"actor_id": "user123", "timestamp": "2024-01-20T21:45:00Z", "verb": "completed"}
+                            ],
+                            "count": 10,
+                            "executed_at": "2024-01-20T21:45:00Z"
+                        }
+                    }
+                ],
+                "curl_commands": [
+                    "curl -X POST 'http://localhost:8000/api/data/query' -H 'Content-Type: application/json' -d '{\"query\": \"SELECT COUNT(DISTINCT actor_id) as user_count FROM statements_new\"}'",
+                    "curl -X POST 'http://localhost:8000/api/data/query' -H 'Content-Type: application/json' -d '{\"query\": \"SELECT actor_id, timestamp, verb FROM statements_new ORDER BY timestamp DESC LIMIT 10\"}'"
+                ]
+            },
+            "/api/analytics/cohorts": {
+                "examples": [
+                    {
+                        "name": "Get All Cohorts",
+                        "description": "Retrieve analytics for all user cohorts",
+                        "response": {
+                            "cohorts": [
+                                {
+                                    "cohort": "High Activity",
+                                    "user_count": 25,
+                                    "avg_interactions": 75.5
+                                },
+                                {
+                                    "cohort": "Medium Activity", 
+                                    "user_count": 45,
+                                    "avg_interactions": 35.2
+                                }
+                            ],
+                            "total_cohorts": 3,
+                            "generated_at": "2024-01-20T21:45:00Z"
+                        }
+                    }
+                ],
+                "curl_commands": [
+                    "curl -X GET 'http://localhost:8000/api/analytics/cohorts'"
+                ]
+            }
+        }
+        
+        if request.endpoint not in examples:
+            return APIDocsActionResponse(
+                success=False,
+                action=request.action,
+                error=f"Examples not found for endpoint: {request.endpoint}"
+            )
+        
+        example_info = examples[request.endpoint]
+        
+        return APIDocsActionResponse(
+            success=True,
+            action=request.action,
+            examples=example_info.get("examples", []),
+            curl_commands=example_info.get("curl_commands", [])
+        )
+        
+    except Exception as e:
+        return APIDocsActionResponse(
+            success=False,
+            action=request.action,
+            error=f"Action failed: {str(e)}"
+        )
+
+@router.get("/docs/contract", summary="Get APIDocs app contract")
+async def get_api_docs_contract():
+    """Get the APIDocs app contract for orchestrator integration"""
+    return {
+        "name": "APIDocs",
+        "description": "Browse API schema and endpoints",
+        "actions": [
+            {
+                "name": "list_endpoints",
+                "input": {},
+                "output": {
+                    "endpoints": "list",
+                    "categories": "list"
+                }
+            },
+            {
+                "name": "get_schema",
+                "input": {"endpoint": "string"},
+                "output": {
+                    "schema": "object",
+                    "parameters": "list",
+                    "responses": "object"
+                }
+            },
+            {
+                "name": "get_examples",
+                "input": {"endpoint": "string"},
+                "output": {
+                    "examples": "list",
+                    "curl_commands": "list"
+                }
+            }
+        ],
+        "endpoints": {
+            "list_endpoints": "POST /api/docs/list-endpoints",
+            "get_schema": "POST /api/docs/get-schema",
+            "get_examples": "POST /api/docs/get-examples"
+        }
     }
 
 

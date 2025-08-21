@@ -19,6 +19,233 @@ from app.logging_config import get_logger, security_logger
 
 logger = get_logger("security")
 
+"""
+Secure Secrets Management System
+
+This module provides secure handling of API keys and sensitive configuration
+with validation, rotation capabilities, and security monitoring.
+"""
+
+import os
+import logging
+import hashlib
+import secrets
+from typing import Optional, Dict, Any
+from datetime import datetime, timedelta
+import json
+from dataclasses import dataclass
+from pathlib import Path
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # Continue without dotenv if not available
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@dataclass
+class SecretConfig:
+    """Configuration for a secret"""
+    name: str
+    required: bool = True
+    min_length: int = 20
+    rotation_days: int = 90
+    last_rotation: Optional[datetime] = None
+
+class SecretsManager:
+    """Secure secrets management with validation and rotation"""
+    
+    def __init__(self):
+        self.secrets_config = {
+            'OPENAI_API_KEY': SecretConfig(
+                name='OPENAI_API_KEY',
+                required=True,
+                min_length=20,
+                rotation_days=90
+            ),
+            'DATABASE_URL': SecretConfig(
+                name='DATABASE_URL',
+                required=True,
+                min_length=10,
+                rotation_days=365
+            ),
+            'REDIS_URL': SecretConfig(
+                name='REDIS_URL',
+                required=False,
+                min_length=10,
+                rotation_days=365
+            )
+        }
+        self._validate_environment()
+    
+    def _validate_environment(self) -> None:
+        """Validate all required environment variables are present and secure"""
+        missing_secrets = []
+        weak_secrets = []
+        
+        for secret_name, config in self.secrets_config.items():
+            value = os.getenv(secret_name)
+            
+            if config.required and not value:
+                missing_secrets.append(secret_name)
+            elif value and len(value) < config.min_length:
+                weak_secrets.append(secret_name)
+        
+        if missing_secrets:
+            raise ValueError(f"Missing required environment variables: {', '.join(missing_secrets)}")
+        
+        if weak_secrets:
+            logger.warning(f"Weak secrets detected (too short): {', '.join(weak_secrets)}")
+    
+    def get_secret(self, secret_name: str) -> Optional[str]:
+        """Get a secret value with validation"""
+        if secret_name not in self.secrets_config:
+            logger.warning(f"Accessing unconfigured secret: {secret_name}")
+            return os.getenv(secret_name)
+        
+        value = os.getenv(secret_name)
+        config = self.secrets_config[secret_name]
+        
+        if config.required and not value:
+            raise ValueError(f"Required secret {secret_name} is not set")
+        
+        if value and len(value) < config.min_length:
+            logger.warning(f"Secret {secret_name} is shorter than recommended minimum length")
+        
+        return value
+    
+    def validate_api_key_format(self, api_key: str) -> bool:
+        """Validate OpenAI API key format"""
+        if not api_key:
+            return False
+        
+        # OpenAI API keys start with 'sk-' and are typically 51 characters
+        if not api_key.startswith('sk-'):
+            return False
+        
+        if len(api_key) < 20:
+            return False
+        
+        return True
+    
+    def get_openai_api_key(self) -> str:
+        """Get OpenAI API key with validation"""
+        api_key = self.get_secret('OPENAI_API_KEY')
+        
+        if not self.validate_api_key_format(api_key):
+            raise ValueError("Invalid OpenAI API key format")
+        
+        return api_key
+    
+    def generate_key_hash(self, api_key: str) -> str:
+        """Generate a hash of the API key for logging/monitoring"""
+        return hashlib.sha256(api_key.encode()).hexdigest()[:16]
+    
+    def log_key_usage(self, secret_name: str, operation: str) -> None:
+        """Log secret usage for monitoring (without exposing the actual key)"""
+        key_hash = self.generate_key_hash(self.get_secret(secret_name) or "")
+        logger.info(f"Secret usage: {secret_name} ({key_hash}) - {operation}")
+    
+    def check_key_rotation_needed(self, secret_name: str) -> bool:
+        """Check if a key needs rotation based on age"""
+        config = self.secrets_config.get(secret_name)
+        if not config or not config.last_rotation:
+            return True
+        
+        days_since_rotation = (datetime.now() - config.last_rotation).days
+        return days_since_rotation >= config.rotation_days
+    
+    def rotate_secret(self, secret_name: str, new_value: str) -> bool:
+        """Rotate a secret (requires manual implementation for production)"""
+        if secret_name not in self.secrets_config:
+            logger.error(f"Cannot rotate unconfigured secret: {secret_name}")
+            return False
+        
+        config = self.secrets_config[secret_name]
+        
+        if len(new_value) < config.min_length:
+            logger.error(f"New secret value too short for {secret_name}")
+            return False
+        
+        # In production, this would update the environment variable
+        # For now, we just log the rotation
+        logger.info(f"Secret rotation requested for {secret_name}")
+        config.last_rotation = datetime.now()
+        
+        return True
+
+# Global secrets manager instance
+secrets_manager = SecretsManager()
+
+def get_openai_client():
+    """Get OpenAI client with secure API key handling"""
+    try:
+        import openai
+        api_key = secrets_manager.get_openai_api_key()
+        secrets_manager.log_key_usage('OPENAI_API_KEY', 'OpenAI client creation')
+        return openai.OpenAI(api_key=api_key)
+    except Exception as e:
+        logger.error(f"Failed to create OpenAI client: {e}")
+        raise
+
+def validate_environment_security() -> Dict[str, Any]:
+    """Validate environment security and return status report"""
+    status = {
+        'timestamp': datetime.now().isoformat(),
+        'environment_valid': True,
+        'secrets_status': {},
+        'recommendations': []
+    }
+    
+    try:
+        for secret_name, config in secrets_manager.secrets_config.items():
+            secret_status = {
+                'present': bool(os.getenv(secret_name)),
+                'length': len(os.getenv(secret_name) or ""),
+                'meets_min_length': len(os.getenv(secret_name) or "") >= config.min_length,
+                'rotation_needed': secrets_manager.check_key_rotation_needed(secret_name)
+            }
+            
+            status['secrets_status'][secret_name] = secret_status
+            
+            if not secret_status['present'] and config.required:
+                status['environment_valid'] = False
+                status['recommendations'].append(f"Set required secret: {secret_name}")
+            
+            if secret_status['rotation_needed']:
+                status['recommendations'].append(f"Rotate secret: {secret_name}")
+        
+        return status
+    
+    except Exception as e:
+        status['environment_valid'] = False
+        status['error'] = str(e)
+        return status
+
+# Security monitoring
+def log_security_event(event_type: str, details: Dict[str, Any]) -> None:
+    """Log security events for monitoring"""
+    event = {
+        'timestamp': datetime.now().isoformat(),
+        'event_type': event_type,
+        'details': details
+    }
+    logger.info(f"Security event: {json.dumps(event)}")
+
+def check_for_suspicious_activity() -> Dict[str, Any]:
+    """Check for suspicious activity patterns"""
+    # This would integrate with your monitoring system
+    # For now, return basic status
+    return {
+        'timestamp': datetime.now().isoformat(),
+        'suspicious_activity_detected': False,
+        'checks_performed': ['api_key_usage', 'environment_validation']
+    }
+
 class InputValidator:
     """Validate and sanitize input data."""
     

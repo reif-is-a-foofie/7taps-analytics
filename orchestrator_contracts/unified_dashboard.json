@@ -1,0 +1,113 @@
+{
+  "module": "unified_dashboard",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "templates/dashboard.html",
+    "app/dashboard_template.html",
+    "app/main.py"
+  ],
+  "required_endpoints": ["GET /", "GET /api/dashboard/unified"],
+  "status": "draft",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T22:10:00Z",
+    "estimated_duration": "3h",
+    "dependencies": ["navigation_system"],
+    "subtasks": [
+      {
+        "id": "unified.1",
+        "description": "Integrate dashboard_template.html with main dashboard",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/dashboard.html", "app/dashboard_template.html"]
+      },
+      {
+        "id": "unified.2",
+        "description": "Create unified dashboard API endpoint",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/main.py"]
+      },
+      {
+        "id": "unified.3",
+        "description": "Add sub-app integration to dashboard",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/dashboard.html"]
+      },
+      {
+        "id": "unified.4",
+        "description": "Test unified dashboard functionality",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Dashboard integrates all sub-app data",
+      "Real-time metrics from all sub-apps",
+      "Interactive charts and visualizations",
+      "Sub-app quick access from dashboard"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test unified dashboard at http://localhost:8000/",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "app_contract": {
+    "name": "UnifiedDashboard",
+    "description": "Unified dashboard integrating all sub-apps",
+    "actions": [
+      {
+        "name": "load_unified",
+        "input": {},
+        "output": {
+          "dashboard_data": "object",
+          "sub_app_status": "object",
+          "metrics": "object"
+        }
+      },
+      {
+        "name": "get_sub_app_data",
+        "input": {
+          "app": "string"
+        },
+        "output": {
+          "data": "object",
+          "status": "string"
+        }
+      }
+    ]
+  },
+  "dashboard_sections": [
+    {
+      "name": "Overview Metrics",
+      "type": "metrics_grid",
+      "data_source": "dashboard"
+    },
+    {
+      "name": "Data Explorer Summary",
+      "type": "data_summary",
+      "data_source": "explorer"
+    },
+    {
+      "name": "AI Chat Insights",
+      "type": "chat_insights",
+      "data_source": "chat"
+    },
+    {
+      "name": "API Status",
+      "type": "api_status",
+      "data_source": "docs"
+    }
+  ],
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "ui_agent",
+    "handoff_notes": "Create unified dashboard that integrates all sub-apps",
+    "required_approval": false
+  }
+}

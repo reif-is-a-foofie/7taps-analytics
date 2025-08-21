@@ -1,409 +1,675 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>7taps Analytics Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #ffffff;
+            --card-bg: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
         }
+        
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            overflow: hidden;
+            padding: 2rem;
         }
+        
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 2.5em;
-            font-weight: 300;
-        }
-        .header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
-            font-size: 1.1em;
-        }
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            padding: 30px;
-            background: #f8f9fa;
-        }
-        .metric-card {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-        .metric-card:hover {
-            transform: translateY(-5px);
-        }
-        .metric-value {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: #667eea;
-            margin: 10px 0;
-        }
-        .metric-label {
-            color: #6c757d;
-            font-size: 0.9em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .metric-change {
-            font-size: 0.8em;
-            color: #28a745;
-            margin-top: 5px;
-        }
-        .charts-section {
-            padding: 30px;
-        }
-        .chart-container {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .chart-title {
-            font-size: 1.3em;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .chart-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-        .chart-wrapper {
-            position: relative;
-            height: 300px;
-        }
-        .status-bar {
-            background: #e9ecef;
-            padding: 15px 30px;
-            border-top: 1px solid #dee2e6;
-            font-size: 0.9em;
-            color: #6c757d;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
         }
-        .refresh-btn {
-            background: #667eea;
+        
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .nav-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .nav-link:hover {
+            background: var(--primary-color);
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
         }
-        .refresh-btn:hover {
-            background: #5a6fd8;
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
+        
+        .stat-card {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        .chart-container {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .chart-title {
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
         .loading {
             text-align: center;
-            padding: 40px;
-            color: #6c757d;
+            padding: 2rem;
+            color: var(--text-secondary);
         }
+        
         .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
         }
-        @media (max-width: 768px) {
-            .chart-grid {
-                grid-template-columns: 1fr;
-            }
-            .metrics-grid {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            }
+        
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5855eb;
+        }
+        
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        /* Analytics Section Styles */
+        .analytics-section {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .query-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .query-category {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .query-category h4 {
+            color: var(--primary-color);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .query-btn {
+            display: block;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .query-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .analytics-result {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .result-title {
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .result-content {
+            margin-bottom: 1rem;
+        }
+        
+        .metric-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .metric-label {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-left: 1rem;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+        
+        .analytics-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .analytics-table th,
+        .analytics-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .analytics-table th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .analytics-table tr:hover {
+            background: var(--card-bg);
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>7taps Analytics Dashboard</h1>
-            <p>Real-time metrics and insights for xAPI learning analytics</p>
-        </div>
-        
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-label">Total Users</div>
-                <div class="metric-value" id="totalUsers">{{ metrics.total_users | default(0) }}</div>
-                <div class="metric-change">+12% this week</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Total Statements</div>
-                <div class="metric-value" id="totalStatements">{{ metrics.total_statements | default(0) }}</div>
-                <div class="metric-change">+8% this week</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Completion Rate</div>
-                <div class="metric-value" id="completionRate">{{ "%.1f"|format(metrics.completion_rate | default(0)) }}%</div>
-                <div class="metric-change">+5% this week</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Active Users (7d)</div>
-                <div class="metric-value" id="activeUsers7d">{{ metrics.active_users_7d | default(0) }}</div>
-                <div class="metric-change">+15% this week</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Active Users (30d)</div>
-                <div class="metric-value" id="activeUsers30d">{{ metrics.active_users_30d | default(0) }}</div>
-                <div class="metric-change">+22% this month</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Avg. Engagement</div>
-                <div class="metric-value" id="avgEngagement">
-                    {% set total_users = metrics.total_users | default(0) %}
-                    {% if total_users > 0 %}
-                        {{ "%.1f"|format((metrics.total_statements | default(0)) / total_users) }}
-                    {% else %}
-                        0.0
-                    {% endif %}
-                </div>
-                <div class="metric-change">statements per user</div>
-            </div>
-        </div>
-        
-        <div class="charts-section">
-            <div class="chart-grid">
-                <div class="chart-container">
-                    <div class="chart-title">Top xAPI Verbs (Last 7 Days)</div>
-                    <div class="chart-wrapper">
-                        <canvas id="verbsChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="chart-container">
-                    <div class="chart-title">Cohort Completion Rates</div>
-                    <div class="chart-wrapper">
-                        <canvas id="cohortChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="chart-container">
-                    <div class="chart-title">Daily Activity (Last 30 Days)</div>
-                    <div class="chart-wrapper">
-                        <canvas id="activityChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="chart-container">
-                    <div class="chart-title">User Engagement Distribution</div>
-                    <div class="chart-wrapper">
-                        <canvas id="engagementChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="status-bar">
-            <div>
-                <strong>Last Updated:</strong> {{ last_updated }}
-                | <strong>Auto-refresh:</strong> Every {{ (refresh_interval | default(300)) // 60 }} minutes
-            </div>
-            <button class="refresh-btn" onclick="refreshDashboard()">Refresh Now</button>
+{% endblock %}
+
+{% block content %}
+<div class="controls">
+    <button class="btn btn-primary" onclick="loadDashboard()">Load Dashboard</button>
+    <button class="btn btn-secondary" onclick="loadMetrics()">Load Metrics</button>
+    <button class="btn btn-secondary" onclick="loadCharts()">Load Charts</button>
+</div>
+
+<!-- Analytics Query Buttons -->
+<div class="analytics-section">
+    <h3 class="section-title">Quick Analytics Queries</h3>
+    <div class="query-buttons">
+        <div class="query-category">
+            <h4>Quick Analytics</h4>
+            <button class="btn btn-secondary query-btn" onclick="executeAnalyticsQuery('completion_rates')">
+                📊 Completion Rates
+            </button>
+            <button class="btn btn-secondary query-btn" onclick="executeAnalyticsQuery('incomplete_students')">
+                👥 Incomplete Students
+            </button>
+            <button class="btn btn-secondary query-btn" onclick="executeAnalyticsQuery('engagement_time')">
+                📅 Activity Trends
+            </button>
         </div>
     </div>
+</div>
 
-    <script>
-        // Chart.js configuration
-        Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+<div id="stats-container" class="stats">
+    <div class="loading">Click "Load Dashboard" to view analytics</div>
+</div>
+
+<div id="charts-container">
+    <!-- Charts will be loaded here -->
+</div>
+
+<div id="analytics-results">
+    <!-- Analytics query results will be displayed here -->
+</div>
+{% endblock %}
+    
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Dashboard data from server-side rendering
+    const dashboardData = {
+        total_users: {{ total_users }},
+        total_activities: {{ total_activities }},
+        total_responses: {{ total_responses }},
+        total_questions: {{ total_questions }},
+        lesson_names: {{ lesson_names | safe }},
+        completion_rates: {{ completion_rates | safe }},
+        users_started: {{ users_started | safe }},
+        users_completed: {{ users_completed | safe }},
+        activity_dates: {{ activity_dates | safe }},
+        activity_counts: {{ activity_counts | safe }},
+        active_users: {{ active_users | safe }},
+        response_type_labels: {{ response_type_labels | safe }},
+        response_type_counts: {{ response_type_counts | safe }}
+    };
         
-        // Initialize charts with data from server
-        const verbsData = {{ metrics.top_verbs | tojson }};
-        const cohortData = {{ metrics.cohort_completion | tojson }};
-        const activityData = {{ metrics.daily_activity | tojson }};
-        
-        // Top Verbs Chart
-        const verbsChart = new Chart(document.getElementById('verbsChart'), {
-            type: 'bar',
-            data: {
-                labels: verbsData.map(item => item.verb || 'Unknown'),
-                datasets: [{
-                    label: 'Count',
-                    data: verbsData.map(item => item.count || 0),
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderColor: 'rgba(102, 126, 234, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
+        async function loadDashboard() {
+            const statsContainer = document.getElementById('stats-container');
+            const chartsContainer = document.getElementById('charts-container');
+            
+            statsContainer.innerHTML = '<div class="loading">Loading dashboard data...</div>';
+            chartsContainer.innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/dashboard/load');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayStats(data.data.metrics);
+                    displayCharts(data.data.charts);
+                } else {
+                    statsContainer.innerHTML = `<div class="error">Error: ${data.message}</div>`;
                 }
+            } catch (error) {
+                statsContainer.innerHTML = `<div class="error">Error loading dashboard: ${error.message}</div>`;
             }
-        });
+        }
         
-        // Cohort Completion Chart
-        const cohortChart = new Chart(document.getElementById('cohortChart'), {
-            type: 'doughnut',
-            data: {
-                labels: cohortData.map(item => item.cohort_name || 'Unknown'),
-                datasets: [{
-                    data: cohortData.map(item => item.completion_rate || 0),
-                    backgroundColor: [
-                        'rgba(102, 126, 234, 0.8)',
-                        'rgba(118, 75, 162, 0.8)',
-                        'rgba(40, 167, 69, 0.8)',
-                        'rgba(255, 193, 7, 0.8)',
-                        'rgba(220, 53, 69, 0.8)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Daily Activity Chart
-        const activityChart = new Chart(document.getElementById('activityChart'), {
-            type: 'line',
-            data: {
-                labels: activityData.map(item => new Date(item.date).toLocaleDateString()),
-                datasets: [{
-                    label: 'Active Users',
-                    data: activityData.map(item => item.active_users || 0),
-                    borderColor: 'rgba(102, 126, 234, 1)',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                    tension: 0.4
-                }, {
-                    label: 'Total Statements',
-                    data: activityData.map(item => item.total_statements || 0),
-                    borderColor: 'rgba(118, 75, 162, 1)',
-                    backgroundColor: 'rgba(118, 75, 162, 0.1)',
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-        
-        // Engagement Distribution Chart
-        const engagementChart = new Chart(document.getElementById('engagementChart'), {
-            type: 'pie',
-            data: {
-                labels: ['High Engagement', 'Medium Engagement', 'Low Engagement'],
-                datasets: [{
-                    data: [30, 45, 25],
-                    backgroundColor: [
-                        'rgba(40, 167, 69, 0.8)',
-                        'rgba(255, 193, 7, 0.8)',
-                        'rgba(220, 53, 69, 0.8)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-        
-        // Auto-refresh functionality
-        function refreshDashboard() {
-            fetch('/api/dashboard/metrics')
-                .then(response => response.json())
-                .then(data => {
-                    // Update metric values
-                    document.getElementById('totalUsers').textContent = data.metrics.total_users;
-                    document.getElementById('totalStatements').textContent = data.metrics.total_statements;
-                    document.getElementById('completionRate').textContent = data.metrics.completion_rate.toFixed(1) + '%';
-                    document.getElementById('activeUsers7d').textContent = data.metrics.active_users_7d;
-                    document.getElementById('activeUsers30d').textContent = data.metrics.active_users_30d;
-                    
-                    // Update charts with new data
-                    updateCharts(data.metrics);
-                    
-                    // Update last updated time
-                    const statusBar = document.querySelector('.status-bar div');
-                    statusBar.innerHTML = `<strong>Last Updated:</strong> ${new Date().toLocaleString()} | <strong>Auto-refresh:</strong> Every {{ refresh_interval // 60 }} minutes`;
-                })
-                .catch(error => {
-                    console.error('Failed to refresh dashboard:', error);
+        async function loadMetrics() {
+            const statsContainer = document.getElementById('stats-container');
+            
+            statsContainer.innerHTML = '<div class="loading">Loading metrics...</div>';
+            
+            try {
+                const response = await fetch('/api/dashboard/metrics', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ metric_type: 'all' })
                 });
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayStats(data.data.metrics);
+                } else {
+                    statsContainer.innerHTML = `<div class="error">Error: ${data.message}</div>`;
+                }
+            } catch (error) {
+                statsContainer.innerHTML = `<div class="error">Error loading metrics: ${error.message}</div>`;
+            }
         }
         
-        function updateCharts(metrics) {
-            // Update verbs chart
-            verbsChart.data.labels = metrics.top_verbs.map(item => item.verb || 'Unknown');
-            verbsChart.data.datasets[0].data = metrics.top_verbs.map(item => item.count || 0);
-            verbsChart.update();
+        async function loadCharts() {
+            const chartsContainer = document.getElementById('charts-container');
             
-            // Update cohort chart
-            cohortChart.data.labels = metrics.cohort_completion.map(item => item.cohort_name || 'Unknown');
-            cohortChart.data.datasets[0].data = metrics.cohort_completion.map(item => item.completion_rate || 0);
-            cohortChart.update();
+            chartsContainer.innerHTML = '<div class="loading">Loading charts...</div>';
             
-            // Update activity chart
-            activityChart.data.labels = metrics.daily_activity.map(item => new Date(item.date).toLocaleDateString());
-            activityChart.data.datasets[0].data = metrics.daily_activity.map(item => item.active_users || 0);
-            activityChart.data.datasets[1].data = metrics.daily_activity.map(item => item.total_statements || 0);
-            activityChart.update();
+            try {
+                const response = await fetch('/api/dashboard/charts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ chart_type: 'all' })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayCharts(data.data.charts);
+                } else {
+                    chartsContainer.innerHTML = `<div class="error">Error: ${data.message}</div>`;
+                }
+            } catch (error) {
+                chartsContainer.innerHTML = `<div class="error">Error loading charts: ${error.message}</div>`;
+            }
         }
         
-        // Auto-refresh every 5 minutes
-        setInterval(refreshDashboard, {{ refresh_interval * 1000 }});
+        function displayStats(metrics) {
+            const statsContainer = document.getElementById('stats-container');
+            
+            const statsHtml = metrics.map(metric => `
+                <div class="stat-card">
+                    <div class="stat-number">${metric.value}</div>
+                    <div class="stat-label">${metric.name}</div>
+                </div>
+            `).join('');
+            
+            statsContainer.innerHTML = statsHtml;
+        }
         
-        // Initial load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Dashboard loaded successfully');
+        function displayCharts(charts) {
+            const chartsContainer = document.getElementById('charts-container');
+            
+            let chartsHtml = '';
+            
+            charts.forEach((chart, index) => {
+                chartsHtml += `
+                    <div class="chart-container">
+                        <div class="chart-title">${chart.title}</div>
+                        <canvas id="chart-${index}" width="400" height="200"></canvas>
+                    </div>
+                `;
+            });
+            
+            chartsContainer.innerHTML = chartsHtml;
+            
+            // Render charts
+            charts.forEach((chart, index) => {
+                const ctx = document.getElementById(`chart-${index}`).getContext('2d');
+                
+                if (chart.type === 'lesson_completion') {
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: chart.data.map(d => d.lesson),
+                            datasets: [{
+                                label: 'Completion Rate (%)',
+                                data: chart.data.map(d => d.rate),
+                                backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                                borderColor: 'rgba(99, 102, 241, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    });
+                } else if (chart.type === 'activity_trends') {
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: chart.data.map(d => d.date),
+                            datasets: [{
+                                label: 'Activities',
+                                data: chart.data.map(d => d.activities),
+                                borderColor: 'rgba(99, 102, 241, 1)',
+                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                tension: 0.1
+                            }, {
+                                label: 'Active Users',
+                                data: chart.data.map(d => d.active_users),
+                                borderColor: 'rgba(16, 185, 129, 1)',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Analytics Query Functions
+        async function executeAnalyticsQuery(queryType) {
+            const resultsContainer = document.getElementById('analytics-results');
+            resultsContainer.innerHTML = '<div class="loading">Executing analytics query...</div>';
+            
+            try {
+                let endpoint = '';
+                let params = {};
+                
+                // Map query types to endpoints
+                switch(queryType) {
+                    case 'completion_rates':
+                        endpoint = '/api/analytics/completion-rates';
+                        break;
+                    case 'highest_lowest':
+                        endpoint = '/api/analytics/completion-rates?ranked=true';
+                        break;
+                    case 'engagement_time':
+                        endpoint = '/api/analytics/engagement-over-time';
+                        break;
+                    case 'incomplete_students':
+                        endpoint = '/api/analytics/incomplete-students';
+                        break;
+                    case 'average_completion':
+                        endpoint = '/api/analytics/average-completion';
+                        break;
+                    case 'lesson_comparison':
+                        endpoint = '/api/analytics/lesson-comparison?lesson1=1&lesson2=5';
+                        break;
+                    case 'completion_speed':
+                        endpoint = '/api/analytics/completion-speed?days=30';
+                        break;
+                    default:
+                        throw new Error('Unknown query type');
+                }
+                
+                const response = await fetch(endpoint);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayAnalyticsResult(data, queryType);
+                } else {
+                    resultsContainer.innerHTML = `<div class="error">Error: ${data.error || 'Query failed'}</div>`;
+                }
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="error">Error executing query: ${error.message}</div>`;
+            }
+        }
+        
+        function displayAnalyticsResult(data, queryType) {
+            const resultsContainer = document.getElementById('analytics-results');
+            
+            let resultHtml = `
+                <div class="analytics-result">
+                    <div class="result-title">${data.title}</div>
+                    <div class="result-content">
+            `;
+            
+            // Handle different chart types
+            switch(data.chart_type) {
+                case 'metric':
+                    resultHtml += `
+                        <div class="metric-display">
+                            <div class="metric-value">${data.data.value}%</div>
+                            <div class="metric-label">${data.data.label}</div>
+                        </div>
+                    `;
+                    if (data.data.details) {
+                        resultHtml += '<div class="details">';
+                        for (const [key, value] of Object.entries(data.data.details)) {
+                            resultHtml += `<p><strong>${key.replace(/_/g, ' ').toUpperCase()}:</strong> ${value}</p>`;
+                        }
+                        resultHtml += '</div>';
+                    }
+                    break;
+                    
+                case 'table':
+                    if (data.data.rows && data.data.rows.length > 0) {
+                        resultHtml += `
+                            <div class="table-container">
+                                <table class="analytics-table">
+                                    <thead>
+                                        <tr>
+                                            ${Object.keys(data.data.rows[0]).map(key => 
+                                                `<th>${key.replace(/_/g, ' ').toUpperCase()}</th>`
+                                            ).join('')}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.data.rows.map(row => 
+                                            `<tr>${Object.values(row).map(value => `<td>${value}</td>`).join('')}</tr>`
+                                        ).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    }
+                    break;
+                    
+                case 'bar':
+                case 'line':
+                case 'comparison':
+                case 'histogram':
+                    resultHtml += `<canvas id="analytics-chart" width="400" height="200"></canvas>`;
+                    break;
+            }
+            
+            resultHtml += `
+                    </div>
+                </div>
+            `;
+            
+            resultsContainer.innerHTML = resultHtml;
+            
+            // Render chart if needed
+            if (['bar', 'line', 'comparison', 'histogram'].includes(data.chart_type)) {
+                setTimeout(() => {
+                    renderAnalyticsChart(data);
+                }, 100);
+            }
+        }
+        
+        function renderAnalyticsChart(data) {
+            const canvas = document.getElementById('analytics-chart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            const chartConfig = {
+                type: data.chart_type === 'comparison' ? 'bar' : data.chart_type,
+                data: data.data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ...(data.chart_type === 'bar' && { max: 100 })
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            };
+            
+            new Chart(ctx, chartConfig);
+        }
+        
+        // Load dashboard on page load
+        window.addEventListener('load', () => {
+            loadDashboard();
         });
     </script>
-</body>
-</html> 
+{% endblock %} 

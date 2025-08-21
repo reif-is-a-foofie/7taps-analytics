@@ -1,0 +1,92 @@
+{
+  "module": "analytics_queries_revalidation",
+  "agent": "testing_agent",
+  "allowed_files": [
+    "reports/testing_agent/"
+  ],
+  "required_endpoints": [
+    "GET /api/analytics/completion-rates",
+    "GET /api/analytics/engagement-over-time",
+    "GET /api/analytics/incomplete-students",
+    "GET /api/analytics/average-completion",
+    "GET /api/analytics/lesson-comparison",
+    "GET /api/analytics/completion-speed"
+  ],
+  "status": "pending",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T22:15:00Z",
+    "estimated_duration": "15m",
+    "dependencies": ["analytics_endpoints_fix"],
+    "subtasks": [
+      {
+        "id": "reval.1",
+        "description": "Re-test all 7 analytics endpoints",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["reports/testing_agent/"]
+      },
+      {
+        "id": "reval.2",
+        "description": "Verify all endpoints return success: true",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["reports/testing_agent/"]
+      },
+      {
+        "id": "reval.3",
+        "description": "Generate final validation report",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["reports/testing_agent/"]
+      }
+    ],
+    "completion_criteria": [
+      "All 7 analytics endpoints return success: true",
+      "All endpoints have proper JSON structure",
+      "Validation report generated",
+      "analytics_queries.json marked as completed"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test all analytics endpoints at http://localhost:8000/api/analytics/",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [
+      "Backend agent must complete analytics_endpoints_fix first"
+    ],
+    "progress_percentage": 0
+  },
+  "app_contract": {
+    "name": "AnalyticsQueriesRevalidation",
+    "description": "Re-validate analytics_queries.json after backend fixes",
+    "actions": [
+      {
+        "name": "test_all_endpoints",
+        "input": {},
+        "output": {
+          "test_results": "object",
+          "success_count": "number",
+          "failed_endpoints": "list"
+        }
+      },
+      {
+        "name": "generate_report",
+        "input": {
+          "test_results": "object"
+        },
+        "output": {
+          "validation_report": "object",
+          "recommendation": "string"
+        }
+      }
+    ]
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "testing_agent",
+    "priority": "high",
+    "deadline": "2025-01-20T22:50:00Z",
+    "notes": "Re-validate analytics_queries.json after backend fixes are complete"
+  }
+}
