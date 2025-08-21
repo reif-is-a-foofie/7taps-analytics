@@ -9,8 +9,30 @@ from psycopg2.extras import RealDictCursor
 from datetime import datetime
 import plotly.graph_objects as go
 import plotly.express as px
+from app.security import get_openai_client, secrets_manager, log_security_event
 
 router = APIRouter()
+
+# Composable Sub-App Contract Models
+class AIChatActionRequest(BaseModel):
+    action: str = Field(..., description="Action to perform: ask_question, analyze_data, generate_chart")
+    query: Optional[str] = Field(None, description="Question or query for ask_question action")
+    data: Optional[Dict[str, Any]] = Field(None, description="Data for analyze_data or generate_chart actions")
+    analysis_type: Optional[str] = Field(None, description="Type of analysis for analyze_data action")
+    chart_type: Optional[str] = Field(None, description="Type of chart for generate_chart action")
+
+class AIChatActionResponse(BaseModel):
+    success: bool = Field(..., description="Whether the action was successful")
+    action: str = Field(..., description="The action that was performed")
+    text: Optional[str] = Field(None, description="Text response for ask_question action")
+    chart: Optional[Dict[str, Any]] = Field(None, description="Chart data for generate_chart action")
+    table: Optional[Dict[str, Any]] = Field(None, description="Table data for ask_question action")
+    confidence: Optional[float] = Field(None, description="Confidence score for ask_question action")
+    insights: Optional[List[str]] = Field(None, description="Insights for analyze_data action")
+    summary: Optional[str] = Field(None, description="Summary for analyze_data action")
+    recommendations: Optional[List[str]] = Field(None, description="Recommendations for analyze_data action")
+    config: Optional[Dict[str, Any]] = Field(None, description="Chart configuration for generate_chart action")
+    error: Optional[str] = Field(None, description="Error message if action failed")
 
 class ChatMessage(BaseModel):
     role: str = Field(..., description="Role of the message sender", example="user")
@@ -78,11 +100,140 @@ def get_preloaded_queries():
             "description": "Get current database statistics",
             "sql": """
                 SELECT 
-                    (SELECT COUNT(*) FROM statements_new) as total_statements,
                     (SELECT COUNT(*) FROM users) as total_users,
                     (SELECT COUNT(*) FROM lessons) as total_lessons,
                     (SELECT COUNT(*) FROM user_responses) as total_responses,
                     (SELECT COUNT(*) FROM user_activities) as total_activities
+            """
+        },
+        "completion_rates": {
+            "description": "Show completion rates for each lesson",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_started,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                    ROUND(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 1
+                    ) as completion_rate
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY l.lesson_number
+            """
+        },
+        "highest_lowest_completion": {
+            "description": "Which lessons have the highest and lowest completion rates",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_started,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                    ROUND(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 1
+                    ) as completion_rate
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                HAVING COUNT(DISTINCT ua.user_id) > 0
+                ORDER BY completion_rate DESC
+            """
+        },
+        "engagement_over_time": {
+            "description": "Show student engagement over time across the course",
+            "sql": """
+                SELECT 
+                    DATE(ua.timestamp) as activity_date,
+                    COUNT(DISTINCT ua.user_id) as active_users,
+                    COUNT(*) as total_activities,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as completions
+                FROM user_activities ua
+                WHERE ua.timestamp >= CURRENT_DATE - INTERVAL '30 days'
+                GROUP BY DATE(ua.timestamp)
+                ORDER BY activity_date
+            """
+        },
+        "incomplete_students": {
+            "description": "Which students have not finished the course yet",
+            "sql": """
+                SELECT 
+                    u.user_id,
+                    u.email,
+                    COUNT(DISTINCT ua.lesson_id) as lessons_started,
+                    (SELECT COUNT(*) FROM lessons) as total_lessons,
+                    (SELECT COUNT(*) FROM lessons) - COUNT(DISTINCT ua.lesson_id) as lessons_remaining,
+                    ROUND(
+                        (COUNT(DISTINCT ua.lesson_id)::float / (SELECT COUNT(*) FROM lessons)::float) * 100, 1
+                    ) as progress_percentage
+                FROM users u
+                LEFT JOIN user_activities ua ON u.id = ua.user_id
+                GROUP BY u.id, u.user_id, u.email
+                HAVING COUNT(DISTINCT ua.lesson_id) < (SELECT COUNT(*) FROM lessons)
+                ORDER BY progress_percentage DESC
+            """
+        },
+        "average_completion": {
+            "description": "Give me the average completion rate across all lessons",
+            "sql": """
+                SELECT 
+                    ROUND(AVG(completion_rate), 1) as average_completion_rate,
+                    COUNT(*) as total_lessons,
+                    SUM(users_started) as total_users_started,
+                    SUM(users_completed) as total_users_completed
+                FROM (
+                    SELECT 
+                        l.lesson_number,
+                        COUNT(DISTINCT ua.user_id) as users_started,
+                        COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                        ROUND(
+                            (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                             NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 1
+                        ) as completion_rate
+                    FROM lessons l
+                    LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                    GROUP BY l.id, l.lesson_number
+                    HAVING COUNT(DISTINCT ua.user_id) > 0
+                ) as lesson_stats
+            """
+        },
+        "lesson_comparison": {
+            "description": "Compare completion rates between specific lessons",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_started,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                    ROUND(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 1
+                    ) as completion_rate
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                WHERE l.lesson_number IN (1, 5)
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY l.lesson_number
+            """
+        },
+        "completion_speed": {
+            "description": "Show how many students completed the course within 30 days of starting",
+            "sql": """
+                SELECT 
+                    u.user_id,
+                    u.email,
+                    MIN(ua.timestamp) as first_activity,
+                    MAX(ua.timestamp) as last_activity,
+                    EXTRACT(DAYS FROM MAX(ua.timestamp) - MIN(ua.timestamp)) as days_to_complete,
+                    COUNT(DISTINCT ua.lesson_id) as lessons_completed
+                FROM users u
+                JOIN user_activities ua ON u.id = ua.user_id
+                GROUP BY u.id, u.user_id, u.email
+                HAVING COUNT(DISTINCT ua.lesson_id) >= (SELECT COUNT(*) FROM lessons) * 0.8
+                ORDER BY days_to_complete
             """
         },
         "lesson_completion_rates": {
@@ -93,7 +244,7 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_engaged,
                     COUNT(*) as total_activities,
-                    ((
+                    ROUND(
                         (COUNT(DISTINCT ua.user_id)::float / 
                          (SELECT COUNT(*) FROM users)::float) * 100, 2
                     ) as engagement_rate
@@ -112,7 +263,7 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_engaged,
                     COUNT(*) as total_activities,
-                    ((
+                    ROUND(
                         (COUNT(DISTINCT ua.user_id)::float / 
                          (SELECT COUNT(*) FROM users)::float) * 100, 2
                     ) as engagement_rate
@@ -166,7 +317,7 @@ def get_preloaded_queries():
                         l.lesson_number,
                         COUNT(DISTINCT ua.user_id) as users_engaged,
                         COUNT(*) as total_activities,
-                        ((
+                        ROUND(
                             (COUNT(DISTINCT ua.user_id)::float / 
                              (SELECT COUNT(*) FROM users)::float) * 100, 2
                         ) as engagement_rate
@@ -442,7 +593,7 @@ def execute_query(sql_query):
 
 def get_llm_intent_and_sql(user_message: str, schema: Dict, sample_data: Dict) -> Dict[str, Any]:
     """Use LLM to determine intent and generate SQL"""
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = get_openai_client()
     
     # Create context with schema and preloaded queries
     context = f"""
@@ -701,7 +852,7 @@ async def chat(request: ChatRequest):
     
     try:
         # Initialize OpenAI client
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = get_openai_client()
         
         # Get preloaded queries and schema
         preloaded_queries = get_preloaded_queries()
@@ -814,3 +965,322 @@ Please provide a concise response based on the query results."""
 async def chat_health():
     """Health check for chat service"""
     return {"status": "healthy", "service": "chat"}
+
+# Composable Sub-App Contract Endpoints
+@router.post("/chat/query", 
+    response_model=AIChatActionResponse,
+    summary="AIChat.ask_question action",
+    description="Ask a question and get AI-powered response with data analysis"
+)
+async def ai_chat_ask_question(request: AIChatActionRequest):
+    """AIChat.ask_question action - Standard contract endpoint for orchestrator calls"""
+    try:
+        if request.action != "ask_question":
+            return AIChatActionResponse(
+                success=False,
+                action=request.action,
+                error="Invalid action. Expected 'ask_question'"
+            )
+        
+        if not request.query:
+            return AIChatActionResponse(
+                success=False,
+                action=request.action,
+                error="Query is required for ask_question action"
+            )
+        
+        # Get preloaded queries and schema
+        preloaded_queries = get_preloaded_queries()
+        schema = get_database_schema()
+        
+        # Use LLM to determine intent and generate SQL
+        llm_result = get_llm_intent_and_sql(request.query, schema, preloaded_queries)
+        
+        # Execute the query
+        try:
+            if llm_result['sql'] in preloaded_queries:
+                query_sql = preloaded_queries[llm_result['sql']]['sql']
+                query_results = execute_query(query_sql)
+                data_summary = format_query_results(query_results, llm_result['intent'])
+            else:
+                # Fallback to stats query
+                query_sql = preloaded_queries['stats']['sql']
+                query_results = execute_query(query_sql)
+                data_summary = format_query_results(query_results, 'fallback')
+        except Exception as e:
+            return AIChatActionResponse(
+                success=False,
+                action=request.action,
+                error=f"Query execution failed: {str(e)}"
+            )
+        
+        # Generate visualization
+        visualization = None
+        if query_results:
+            visualization = generate_visualization(query_results, llm_result['intent'])
+        
+        # Generate AI response
+        client = get_openai_client()
+        schema_summary = {}
+        for table_name, columns in schema.items():
+            schema_summary[table_name] = [col['column'] for col in columns[:5]]
+        
+        messages = [
+            {
+                "role": "system",
+                "content": f"""You are Seven, an AI analytics assistant. Provide concise, data-driven responses.
+
+Database Schema: {json.dumps(schema_summary, indent=2)}
+
+Query Results: {data_summary}
+
+Respond in 2-3 sentences with specific numbers and insights."""
+            },
+            {
+                "role": "user",
+                "content": request.query
+            }
+        ]
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            max_tokens=300,
+            temperature=0.7
+        )
+        
+        # Calculate confidence based on data availability
+        confidence = 0.8 if query_results else 0.3
+        
+        return AIChatActionResponse(
+            success=True,
+            action=request.action,
+            text=response.choices[0].message.content,
+            chart=json.loads(visualization) if visualization else None,
+            table={"data": query_results[:10], "columns": list(query_results[0].keys()) if query_results else []},
+            confidence=confidence
+        )
+        
+    except Exception as e:
+        return AIChatActionResponse(
+            success=False,
+            action=request.action,
+            error=f"Action failed: {str(e)}"
+        )
+
+@router.post("/chat/analyze",
+    response_model=AIChatActionResponse,
+    summary="AIChat.analyze_data action",
+    description="Analyze provided data and generate insights"
+)
+async def ai_chat_analyze_data(request: AIChatActionRequest):
+    """AIChat.analyze_data action - Standard contract endpoint for orchestrator calls"""
+    try:
+        if request.action != "analyze_data":
+            return AIChatActionResponse(
+                success=False,
+                action=request.action,
+                error="Invalid action. Expected 'analyze_data'"
+            )
+        
+        if not request.data:
+            return AIChatActionResponse(
+                success=False,
+                action=request.action,
+                error="Data is required for analyze_data action"
+            )
+        
+        # Generate analysis using OpenAI
+        client = get_openai_client()
+        
+        analysis_prompt = f"""
+Analyze the following data and provide insights:
+
+Data: {json.dumps(request.data, indent=2)}
+Analysis Type: {request.analysis_type or 'general'}
+
+Provide:
+1. Key insights (3-5 bullet points)
+2. Summary (2-3 sentences)
+3. Recommendations (2-3 actionable items)
+
+Format as JSON:
+{{
+    "insights": ["insight1", "insight2", "insight3"],
+    "summary": "brief summary",
+    "recommendations": ["rec1", "rec2", "rec3"]
+}}
+"""
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": analysis_prompt}],
+            max_tokens=500,
+            temperature=0.7
+        )
+        
+        try:
+            analysis_result = json.loads(response.choices[0].message.content)
+            return AIChatActionResponse(
+                success=True,
+                action=request.action,
+                insights=analysis_result.get("insights", []),
+                summary=analysis_result.get("summary", ""),
+                recommendations=analysis_result.get("recommendations", [])
+            )
+        except json.JSONDecodeError:
+            # Fallback if JSON parsing fails
+            return AIChatActionResponse(
+                success=True,
+                action=request.action,
+                insights=["Data analysis completed"],
+                summary=response.choices[0].message.content[:200],
+                recommendations=["Review the data for patterns", "Consider additional metrics"]
+            )
+        
+    except Exception as e:
+        return AIChatActionResponse(
+            success=False,
+            action=request.action,
+            error=f"Analysis failed: {str(e)}"
+        )
+
+@router.post("/chat/chart",
+    response_model=AIChatActionResponse,
+    summary="AIChat.generate_chart action",
+    description="Generate chart visualization from provided data"
+)
+async def ai_chat_generate_chart(request: AIChatActionRequest):
+    """AIChat.generate_chart action - Standard contract endpoint for orchestrator calls"""
+    try:
+        if request.action != "generate_chart":
+            return AIChatActionResponse(
+                success=False,
+                action=request.action,
+                error="Invalid action. Expected 'generate_chart'"
+            )
+        
+        if not request.data:
+            return AIChatActionResponse(
+                success=False,
+                action=request.action,
+                error="Data is required for generate_chart action"
+            )
+        
+        # Generate chart based on data and chart type
+        chart_type = request.chart_type or "bar"
+        
+        try:
+            if chart_type == "bar":
+                # Create bar chart
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=list(request.data.keys()),
+                        y=list(request.data.values()),
+                        name='Data'
+                    )
+                ])
+                fig.update_layout(
+                    title='Data Visualization',
+                    xaxis_title='Categories',
+                    yaxis_title='Values',
+                    template='plotly_white'
+                )
+            elif chart_type == "pie":
+                # Create pie chart
+                fig = go.Figure(data=[
+                    go.Pie(
+                        labels=list(request.data.keys()),
+                        values=list(request.data.values())
+                    )
+                ])
+                fig.update_layout(title='Data Distribution')
+            elif chart_type == "line":
+                # Create line chart
+                fig = go.Figure(data=[
+                    go.Scatter(
+                        x=list(request.data.keys()),
+                        y=list(request.data.values()),
+                        mode='lines+markers'
+                    )
+                ])
+                fig.update_layout(
+                    title='Data Trend',
+                    xaxis_title='Time/Sequence',
+                    yaxis_title='Values'
+                )
+            else:
+                # Default to bar chart
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=list(request.data.keys()),
+                        y=list(request.data.values()),
+                        name='Data'
+                    )
+                ])
+                fig.update_layout(title='Data Visualization')
+            
+            chart_json = json.loads(fig.to_json())
+            
+            return AIChatActionResponse(
+                success=True,
+                action=request.action,
+                chart=chart_json,
+                config={"displayModeBar": True, "responsive": True}
+            )
+            
+        except Exception as e:
+            return AIChatActionResponse(
+                success=False,
+                action=request.action,
+                error=f"Chart generation failed: {str(e)}"
+            )
+        
+    except Exception as e:
+        return AIChatActionResponse(
+            success=False,
+            action=request.action,
+            error=f"Chart action failed: {str(e)}"
+        )
+
+@router.get("/chat/contract", summary="Get AIChat app contract")
+async def get_ai_chat_contract():
+    """Get the AIChat app contract for orchestrator integration"""
+    return {
+        "name": "AIChat",
+        "description": "Natural language analytics assistant",
+        "actions": [
+            {
+                "name": "ask_question",
+                "input": {"query": "string"},
+                "output": {
+                    "text": "string",
+                    "chart": "object",
+                    "table": "object", 
+                    "confidence": "float"
+                }
+            },
+            {
+                "name": "analyze_data",
+                "input": {"data": "object", "analysis_type": "string"},
+                "output": {
+                    "insights": "list",
+                    "summary": "string",
+                    "recommendations": "list"
+                }
+            },
+            {
+                "name": "generate_chart",
+                "input": {"data": "object", "chart_type": "string"},
+                "output": {
+                    "chart": "object",
+                    "config": "object"
+                }
+            }
+        ],
+        "endpoints": {
+            "ask_question": "POST /api/chat/query",
+            "analyze_data": "POST /api/chat/analyze", 
+            "generate_chart": "POST /api/chat/chart"
+        }
+    }

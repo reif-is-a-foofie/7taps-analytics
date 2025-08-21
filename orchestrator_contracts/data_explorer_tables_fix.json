@@ -1,0 +1,83 @@
+{
+  "module": "data_explorer_tables_fix",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "templates/explorer.html",
+    "app/api/data_explorer.py",
+    "app/main.py"
+  ],
+  "required_endpoints": [
+    "GET /explorer",
+    "GET /api/data/tables",
+    "GET /api/data/table/{table_name}",
+    "GET /api/data/filter"
+  ],
+  "status": "urgent",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T23:35:00Z",
+    "estimated_duration": "2h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "fix.1",
+        "description": "Implement data tables in explorer template",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/explorer.html"]
+      },
+      {
+        "id": "fix.2",
+        "description": "Add table rendering for user/lesson data",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/explorer.html"]
+      },
+      {
+        "id": "fix.3",
+        "description": "Implement filter/search functionality",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/explorer.html", "app/api/data_explorer.py"]
+      },
+      {
+        "id": "fix.4",
+        "description": "Ensure data loading and display works",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/api/data_explorer.py"]
+      },
+      {
+        "id": "fix.5",
+        "description": "Test explorer shows actual data tables",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/explorer.html", "app/api/data_explorer.py"]
+      }
+    ],
+    "progress_percentage": 0
+  },
+  "real_world_testing": {
+    "test_url": "http://localhost:8000/explorer",
+    "expected_outcome": "Data Explorer shows data tables with real data",
+    "validation_criteria": [
+      "Data tables found with selectors: table, [class*='table'], [class*='data-table']",
+      "Tables contain rows and cells with content",
+      "Filter/search functionality works",
+      "Real data displayed instead of empty tables"
+    ]
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "ui_agent",
+    "handoff_reason": "Critical issue: Data Explorer not showing any data tables confirmed by deep Selenium testing",
+    "priority": "URGENT"
+  },
+  "issue_details": {
+    "problem": "Data Explorer not showing any data tables",
+    "evidence": "Deep Selenium testing found no tables with any selector",
+    "user_report": "Data explorer is not working",
+    "test_confirmation": "Confirmed by deep Selenium testing",
+    "impact": "Users cannot explore data as intended",
+    "severity": "CRITICAL"
+  }
+}

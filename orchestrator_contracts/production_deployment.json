@@ -1,0 +1,110 @@
+{
+  "module": "production_deployment",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "docker-compose.yml",
+    "Dockerfile",
+    "config/docker-compose.yml",
+    "config/Dockerfile",
+    "Procfile",
+    "requirements.txt"
+  ],
+  "required_endpoints": ["GET /health", "GET /api/status", "GET /api/version"],
+  "status": "draft",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T22:00:00Z",
+    "estimated_duration": "3h",
+    "dependencies": ["comprehensive_testing_framework"],
+    "subtasks": [
+      {
+        "id": "deployment.1",
+        "description": "Create production Docker configuration",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["docker-compose.yml", "Dockerfile"]
+      },
+      {
+        "id": "deployment.2",
+        "description": "Configure environment and secrets management",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["config/docker-compose.yml", ".env.example"]
+      },
+      {
+        "id": "deployment.3",
+        "description": "Implement health checks and monitoring",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["app/api/health.py"]
+      },
+      {
+        "id": "deployment.4",
+        "description": "Test production deployment",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Production Docker configuration works",
+      "Environment and secrets are properly managed",
+      "Health checks and monitoring are functional",
+      "Deployment can be automated",
+      "System is production-ready"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Deploy to staging environment",
+      "docker_compose_required": true,
+      "test_environment": "staging deployment"
+    },
+    "blocking_issues": [
+      "Testing framework must be completed first",
+      "All sub-apps must be validated"
+    ],
+    "progress_percentage": 0
+  },
+  "app_contract": {
+    "name": "ProductionDeployment",
+    "description": "Production deployment and infrastructure management",
+    "actions": [
+      {
+        "name": "deploy",
+        "input": {
+          "environment": "string",
+          "version": "string"
+        },
+        "output": {
+          "deployment_id": "string",
+          "status": "string",
+          "url": "string"
+        }
+      },
+      {
+        "name": "health_check",
+        "input": {},
+        "output": {
+          "status": "string",
+          "components": "object",
+          "metrics": "object"
+        }
+      },
+      {
+        "name": "rollback",
+        "input": {
+          "version": "string"
+        },
+        "output": {
+          "rollback_id": "string",
+          "status": "string"
+        }
+      }
+    ]
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "backend_agent",
+    "handoff_notes": "Create production deployment configuration and infrastructure",
+    "required_approval": false
+  }
+}

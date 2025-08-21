@@ -1,0 +1,61 @@
+{
+  "module": "chat_interface_fix",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/api/chat.py",
+    "chat_interface.html"
+  ],
+  "required_endpoints": ["GET /chat", "POST /api/chat/query"],
+  "status": "draft",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T21:35:00Z",
+    "estimated_duration": "1h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "chat.1",
+        "description": "Fix chat API endpoint routing",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["app/api/chat.py"]
+      },
+      {
+        "id": "chat.2",
+        "description": "Ensure chat interface loads properly",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["chat_interface.html"]
+      },
+      {
+        "id": "chat.3",
+        "description": "Test chat functionality end-to-end",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Chat interface loads at /chat without errors",
+      "API endpoint /api/chat/query responds correctly",
+      "Chat functionality works end-to-end",
+      "Error handling for chat requests"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test chat at http://localhost:8000/chat",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [
+      "Chat API endpoint /api/chat/query returns 404",
+      "Chat router may not be properly configured"
+    ],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "backend_agent",
+    "handoff_notes": "Fix chat interface and API endpoints to ensure chat functionality works",
+    "required_approval": false
+  }
+}

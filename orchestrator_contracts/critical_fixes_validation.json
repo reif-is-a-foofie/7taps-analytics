@@ -1,0 +1,83 @@
+{
+  "module": "critical_fixes_validation",
+  "agent": "testing_agent",
+  "allowed_files": [
+    "reports/testing_agent/"
+  ],
+  "required_endpoints": [
+    "GET /",
+    "GET /explorer",
+    "GET /api/dashboard/metrics",
+    "GET /api/data/tables"
+  ],
+  "status": "pending",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T23:35:00Z",
+    "estimated_duration": "1h",
+    "dependencies": ["dashboard_false_data_fix", "data_explorer_tables_fix"],
+    "subtasks": [
+      {
+        "id": "validate.1",
+        "description": "Re-run deep Selenium tests after fixes",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["tests/deep_selenium_test.py"]
+      },
+      {
+        "id": "validate.2",
+        "description": "Validate dashboard shows real data",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["reports/testing_agent/"]
+      },
+      {
+        "id": "validate.3",
+        "description": "Validate data explorer shows tables",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["reports/testing_agent/"]
+      },
+      {
+        "id": "validate.4",
+        "description": "Generate final validation report",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["reports/testing_agent/"]
+      }
+    ],
+    "progress_percentage": 0
+  },
+  "real_world_testing": {
+    "test_url": "http://localhost:8000/",
+    "expected_outcome": "All critical issues resolved, system production-ready",
+    "validation_criteria": [
+      "Dashboard shows real data (no false indicators)",
+      "Data Explorer shows data tables with content",
+      "All functionality working as expected",
+      "System ready for production deployment"
+    ]
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "testing_agent",
+    "handoff_reason": "Validate critical fixes before marking system production-ready",
+    "priority": "HIGH"
+  },
+  "validation_requirements": {
+    "dashboard_validation": {
+      "test": "Dashboard Real Data",
+      "criteria": "No false data indicators, real metrics displayed",
+      "selenium_test": "test_dashboard_real_data"
+    },
+    "explorer_validation": {
+      "test": "Data Explorer Functionality", 
+      "criteria": "Data tables found with content, filter functionality works",
+      "selenium_test": "test_data_explorer_functionality"
+    },
+    "overall_validation": {
+      "test": "Complete System Validation",
+      "criteria": "All 5 deep Selenium tests pass",
+      "expected_success_rate": "100%"
+    }
+  }
+}

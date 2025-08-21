@@ -1,0 +1,1095 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #ffffff;
+            --card-bg: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .nav-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .nav-link:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .control-group label {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .control-group select,
+        .control-group input {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: var(--bg-color);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5855eb;
+        }
+        
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .data-table {
+            background: var(--bg-color);
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .table-header {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .table-header h3 {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--card-bg);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+        
+        td {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        tr:hover {
+            background: #f1f5f9;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-section {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .filter-section h3 {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+        
+        .multi-select-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .multi-select-item {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem 0;
+            cursor: pointer;
+        }
+        
+        .multi-select-item:hover {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        .multi-select-item input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+        
+        .multi-select-item label {
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .bulk-actions {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            border: 1px solid var(--border-color);
+            display: none;
+        }
+        
+        .bulk-actions.show {
+            display: block;
+        }
+        
+        .bulk-actions h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        
+        .bulk-actions .btn {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .table-checkbox {
+            margin-right: 0.5rem;
+        }
+        
+        .select-all-container {
+            padding: 0.5rem 1rem;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .multi-select-controls {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            display: none;
+        }
+        
+        .multi-select-controls.show {
+            display: block;
+        }
+        
+        .checkbox-cell {
+            width: 40px;
+            text-align: center;
+        }
+        
+        .checkbox-cell input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .select-all-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .bulk-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="table-select">Select Table:</label>
+                <select id="table-select">
+                    <option value="">Choose a table...</option>
+                    <option value="users">Users</option>
+                    <option value="user_activities">User Activities</option>
+                    <option value="user_responses">User Responses</option>
+                    <option value="questions">Questions</option>
+                    <option value="lessons">Lessons</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="limit-input">Limit:</label>
+                <input type="number" id="limit-input" value="100" min="1" max="1000">
+            </div>
+            
+            <div class="control-group">
+                <button class="btn btn-primary" onclick="loadTable()">Load Table</button>
+            </div>
+            
+            <div class="control-group">
+                <button class="btn btn-secondary" onclick="loadSampleData()">Load Sample Data</button>
+            </div>
+            
+            <div class="control-group">
+                <button class="btn btn-secondary" onclick="refreshTables()">Refresh Tables</button>
+            </div>
+        </div>
+        
+        <div class="filter-section">
+            <h3>Apply Filters</h3>
+            <div class="filter-controls">
+                <div class="control-group">
+                    <label for="filter-type">Filter Type:</label>
+                    <select id="filter-type" onchange="updateMultiSelect()">
+                        <option value="">Choose filter type...</option>
+                        <option value="lesson_ids">Lesson IDs</option>
+                        <option value="user_ids">User IDs</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="filter-value">Filter Value:</label>
+                    <input type="text" id="filter-value" placeholder="Enter comma-separated IDs...">
+                </div>
+                
+                <div class="control-group">
+                    <button class="btn btn-secondary" onclick="applyFilter()">Apply Filter</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="btn btn-secondary" onclick="showMultiSelect()">Visual Multi-Select</button>
+                </div>
+            </div>
+            
+            <div id="multi-select-container" class="multi-select-container" style="display: none;">
+                <div class="select-all-container">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                    <label for="select-all">Select All</label>
+                    <span id="selected-count" style="margin-left: auto; font-size: 0.8rem; color: var(--text-secondary);">0 selected</span>
+                </div>
+                <div id="multi-select-items"></div>
+            </div>
+        </div>
+        
+        <div id="data-container">
+            <div class="loading">Loading available tables...</div>
+        </div>
+        
+        <div id="search-container" style="display: none; margin-top: 1rem;">
+            <div class="filter-section">
+                <h3>Search & Filter</h3>
+                <div class="filter-controls">
+                    <div class="control-group">
+                        <label for="search-input">Search:</label>
+                        <input type="text" id="search-input" placeholder="Search in current table...">
+                    </div>
+                    <div class="control-group">
+                        <button class="btn btn-secondary" onclick="searchTable()">Search</button>
+                    </div>
+                    <div class="control-group">
+                        <button class="btn btn-secondary" onclick="clearSearch()">Clear</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="bulk-actions" class="bulk-actions">
+            <h4>Bulk Actions</h4>
+            <button class="btn btn-primary" onclick="applySelectedFilter()">Apply Selected Filter</button>
+            <button class="btn btn-secondary" onclick="exportSelected()">Export Selected</button>
+            <button class="btn btn-secondary" onclick="clearSelection()">Clear Selection</button>
+            <button class="btn btn-secondary" onclick="exportSelectedRows()">Export Selected Rows</button>
+        </div>
+    </div>
+    
+    <script>
+        async function loadTable() {
+            const tableSelect = document.getElementById('table-select');
+            const limitInput = document.getElementById('limit-input');
+            const dataContainer = document.getElementById('data-container');
+            
+            const table = tableSelect.value;
+            const limit = parseInt(limitInput.value) || 100;
+            
+            if (!table) {
+                dataContainer.innerHTML = '<div class="error">Please select a table</div>';
+                return;
+            }
+            
+            dataContainer.innerHTML = '<div class="loading">Loading table data...</div>';
+            
+            try {
+                const response = await fetch(`/api/data-explorer/table/${table}?limit=${limit}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayTableData(data.data, data.columns, data.total_rows);
+                } else {
+                    dataContainer.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                dataContainer.innerHTML = `<div class="error">Error loading table: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadSampleData() {
+            const dataContainer = document.getElementById('data-container');
+            dataContainer.innerHTML = '<div class="loading">Loading sample data...</div>';
+            
+            try {
+                // Load lessons table as sample data
+                const response = await fetch('/api/data-explorer/table/lessons?limit=10');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayTableData(data.data, data.columns, data.total_rows);
+                } else {
+                    dataContainer.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                dataContainer.innerHTML = `<div class="error">Error loading sample data: ${error.message}</div>`;
+            }
+        }
+        
+        async function applyFilter() {
+            const tableSelect = document.getElementById('table-select');
+            const filterType = document.getElementById('filter-type').value;
+            const filterValue = document.getElementById('filter-value').value;
+            const dataContainer = document.getElementById('data-container');
+            
+            const table = tableSelect.value;
+            
+            if (!table) {
+                dataContainer.innerHTML = '<div class="error">Please select a table first</div>';
+                return;
+            }
+            
+            if (!filterValue) {
+                dataContainer.innerHTML = '<div class="error">Please enter a filter value</div>';
+                return;
+            }
+            
+            dataContainer.innerHTML = '<div class="loading">Applying filter...</div>';
+            
+            try {
+                let url = `/api/data-explorer/table/${table}/filtered?limit=100`;
+                
+                if (filterType === 'lesson_ids') {
+                    url += `&lesson_ids=${encodeURIComponent(filterValue)}`;
+                } else if (filterType === 'user_ids') {
+                    url += `&user_ids=${encodeURIComponent(filterValue)}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayFilteredData(data.data, data.columns, data.total_rows, filterType, filterValue);
+                } else {
+                    dataContainer.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                dataContainer.innerHTML = `<div class="error">Error applying filter: ${error.message}</div>`;
+            }
+        }
+        
+        async function listTables() {
+            const dataContainer = document.getElementById('data-container');
+            
+            dataContainer.innerHTML = '<div class="loading">Loading available tables...</div>';
+            
+            try {
+                // Display available tables directly since we know them
+                const tables = [
+                    { name: 'users', description: 'User account information' },
+                    { name: 'user_activities', description: 'User activity tracking' },
+                    { name: 'user_responses', description: 'User responses to questions' },
+                    { name: 'questions', description: 'Question definitions' },
+                    { name: 'lessons', description: 'Lesson information' }
+                ];
+                
+                displayTablesList(tables);
+            } catch (error) {
+                dataContainer.innerHTML = `<div class="error">Error listing tables: ${error.message}</div>`;
+            }
+        }
+        
+        function displayTableData(rows, columns, totalCount) {
+            const dataContainer = document.getElementById('data-container');
+            const searchContainer = document.getElementById('search-container');
+            
+            // Store current data for search functionality
+            currentTableData = rows;
+            currentTableColumns = columns;
+            
+            // Show search container when we have data
+            searchContainer.style.display = 'block';
+            
+            if (!rows || rows.length === 0) {
+                dataContainer.innerHTML = '<div class="success">No data found for this table</div>';
+                searchContainer.style.display = 'none';
+                return;
+            }
+            
+            let tableHtml = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3>Data (${rows.length} of ${totalCount} rows)</h3>
+                        <div style="margin-top: 0.5rem;">
+                            <input type="checkbox" id="select-all-rows" onchange="toggleSelectAllRows()" class="table-checkbox">
+                            <label for="select-all-rows">Select All Rows</label>
+                            <span id="selected-rows-count" style="margin-left: 1rem; font-size: 0.8rem; color: var(--text-secondary);">0 selected</span>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">Select</th>
+            `;
+            
+            // Add column headers
+            columns.forEach(column => {
+                tableHtml += `<th>${column}</th>`;
+            });
+            
+            tableHtml += `
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            // Add data rows
+            rows.forEach((row, index) => {
+                tableHtml += '<tr>';
+                tableHtml += `<td><input type="checkbox" id="row_${index}" onchange="toggleRowSelection(${index})" class="table-checkbox"></td>`;
+                columns.forEach(column => {
+                    const value = row[column];
+                    let displayValue = value;
+                    
+                    if (value === null || value === undefined) {
+                        displayValue = '<em>null</em>';
+                    } else if (typeof value === 'object') {
+                        displayValue = JSON.stringify(value);
+                    } else if (typeof value === 'string' && value.length > 50) {
+                        displayValue = value.substring(0, 50) + '...';
+                    }
+                    
+                    tableHtml += `<td>${displayValue}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            
+            tableHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            dataContainer.innerHTML = tableHtml;
+        }
+        
+        function displayFilteredData(filteredRows, columns, totalRows, filterType, filterValue) {
+            const dataContainer = document.getElementById('data-container');
+            
+            if (!filteredRows || filteredRows.length === 0) {
+                dataContainer.innerHTML = '<div class="success">No data found matching the filter criteria</div>';
+                return;
+            }
+            
+            let tableHtml = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3>Filtered Data (${filteredRows.length} of ${totalRows} rows)</h3>
+                        <p>Applied filter: ${filterType}: ${filterValue}</p>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+            `;
+            
+            // Add column headers
+            columns.forEach(column => {
+                tableHtml += `<th>${column}</th>`;
+            });
+            
+            tableHtml += `
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            // Add data rows
+            filteredRows.forEach(row => {
+                tableHtml += '<tr>';
+                columns.forEach(column => {
+                    const value = row[column];
+                    let displayValue = value;
+                    
+                    if (value === null || value === undefined) {
+                        displayValue = '<em>null</em>';
+                    } else if (typeof value === 'object') {
+                        displayValue = JSON.stringify(value);
+                    } else if (typeof value === 'string' && value.length > 50) {
+                        displayValue = value.substring(0, 50) + '...';
+                    }
+                    
+                    tableHtml += `<td>${displayValue}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            
+            tableHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            dataContainer.innerHTML = tableHtml;
+        }
+        
+        function displayTablesList(tables) {
+            const dataContainer = document.getElementById('data-container');
+            
+            let tablesHtml = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3>Available Tables (${tables.length})</h3>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Table Name</th>
+                                    <th>Description</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            tables.forEach(table => {
+                tablesHtml += `
+                    <tr>
+                        <td><strong>${table.name}</strong></td>
+                        <td>${table.description}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="loadSpecificTable('${table.name}')" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
+                                Load Data
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tablesHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            dataContainer.innerHTML = tablesHtml;
+        }
+        
+        async function loadSpecificTable(tableName) {
+            const dataContainer = document.getElementById('data-container');
+            dataContainer.innerHTML = '<div class="loading">Loading table data...</div>';
+            
+            try {
+                const response = await fetch(`/api/data-explorer/table/${tableName}?limit=50`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayTableData(data.data, data.columns, data.total_rows);
+                } else {
+                    dataContainer.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                dataContainer.innerHTML = `<div class="error">Error loading table: ${error.message}</div>`;
+            }
+        }
+        
+        let currentTableData = null;
+        let currentTableColumns = null;
+        let availableLessons = [];
+        let availableUsers = [];
+        let selectedItems = new Set();
+        let selectedRows = new Set();
+        
+        function refreshTables() {
+            listTables();
+        }
+        
+        function searchTable() {
+            const searchInput = document.getElementById('search-input');
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            if (!currentTableData || !searchTerm) {
+                return;
+            }
+            
+            const filteredData = currentTableData.filter(row => {
+                return Object.values(row).some(value => 
+                    value && value.toString().toLowerCase().includes(searchTerm)
+                );
+            });
+            
+            displayTableData(filteredData, currentTableColumns, filteredData.length);
+        }
+        
+        function clearSearch() {
+            const searchInput = document.getElementById('search-input');
+            searchInput.value = '';
+            
+            if (currentTableData) {
+                displayTableData(currentTableData, currentTableColumns, currentTableData.length);
+            }
+        }
+        
+        async function showMultiSelect() {
+            const filterType = document.getElementById('filter-type').value;
+            const multiSelectContainer = document.getElementById('multi-select-container');
+            
+            if (!filterType) {
+                alert('Please select a filter type first');
+                return;
+            }
+            
+            multiSelectContainer.style.display = 'block';
+            await updateMultiSelect();
+        }
+        
+        async function updateMultiSelect() {
+            const filterType = document.getElementById('filter-type').value;
+            const multiSelectItems = document.getElementById('multi-select-items');
+            
+            if (!filterType) {
+                multiSelectItems.innerHTML = '<p>Please select a filter type</p>';
+                return;
+            }
+            
+            multiSelectItems.innerHTML = '<p>Loading options...</p>';
+            
+            try {
+                if (filterType === 'lesson_ids') {
+                    await loadAvailableLessons();
+                    displayLessonOptions();
+                } else if (filterType === 'user_ids') {
+                    await loadAvailableUsers();
+                    displayUserOptions();
+                }
+            } catch (error) {
+                multiSelectItems.innerHTML = `<p>Error loading options: ${error.message}</p>`;
+            }
+        }
+        
+        async function loadAvailableLessons() {
+            const response = await fetch('/api/data-explorer/table/lessons?limit=100');
+            const data = await response.json();
+            
+            if (data.success) {
+                availableLessons = data.data;
+            } else {
+                throw new Error(data.error);
+            }
+        }
+        
+        async function loadAvailableUsers() {
+            const response = await fetch('/api/data-explorer/table/users?limit=100');
+            const data = await response.json();
+            
+            if (data.success) {
+                availableUsers = data.data;
+            } else {
+                throw new Error(data.error);
+            }
+        }
+        
+        function displayLessonOptions() {
+            const multiSelectItems = document.getElementById('multi-select-items');
+            
+            let html = '';
+            availableLessons.forEach(lesson => {
+                const isChecked = selectedItems.has(`lesson_${lesson.id}`);
+                html += `
+                    <div class="multi-select-item">
+                        <input type="checkbox" id="lesson_${lesson.id}" value="${lesson.id}" 
+                               ${isChecked ? 'checked' : ''} onchange="toggleItem('lesson_${lesson.id}')">
+                        <label for="lesson_${lesson.id}">
+                            Lesson ${lesson.lesson_number}: ${lesson.lesson_name || 'Unnamed Lesson'}
+                        </label>
+                    </div>
+                `;
+            });
+            
+            multiSelectItems.innerHTML = html;
+            updateSelectedCount();
+        }
+        
+        function displayUserOptions() {
+            const multiSelectItems = document.getElementById('multi-select-items');
+            
+            let html = '';
+            availableUsers.forEach(user => {
+                const isChecked = selectedItems.has(`user_${user.id}`);
+                html += `
+                    <div class="multi-select-item">
+                        <input type="checkbox" id="user_${user.id}" value="${user.id}" 
+                               ${isChecked ? 'checked' : ''} onchange="toggleItem('user_${user.id}')">
+                        <label for="user_${user.id}">
+                            ${user.user_id || `User ${user.id}`} (${user.cohort || 'No cohort'})
+                        </label>
+                    </div>
+                `;
+            });
+            
+            multiSelectItems.innerHTML = html;
+            updateSelectedCount();
+        }
+        
+        function toggleItem(itemId) {
+            if (selectedItems.has(itemId)) {
+                selectedItems.delete(itemId);
+            } else {
+                selectedItems.add(itemId);
+            }
+            updateSelectedCount();
+            updateSelectAllState();
+        }
+        
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('select-all');
+            const filterType = document.getElementById('filter-type').value;
+            
+            if (selectAll.checked) {
+                // Select all
+                if (filterType === 'lesson_ids') {
+                    availableLessons.forEach(lesson => {
+                        selectedItems.add(`lesson_${lesson.id}`);
+                    });
+                } else if (filterType === 'user_ids') {
+                    availableUsers.forEach(user => {
+                        selectedItems.add(`user_${user.id}`);
+                    });
+                }
+            } else {
+                // Deselect all
+                selectedItems.clear();
+            }
+            
+            updateSelectedCount();
+            updateCheckboxes();
+        }
+        
+        function updateSelectedCount() {
+            const selectedCount = document.getElementById('selected-count');
+            selectedCount.textContent = `${selectedItems.size} selected`;
+            
+            // Show/hide bulk actions
+            const bulkActions = document.getElementById('bulk-actions');
+            if (selectedItems.size > 0) {
+                bulkActions.classList.add('show');
+            } else {
+                bulkActions.classList.remove('show');
+            }
+        }
+        
+        function updateSelectAllState() {
+            const selectAll = document.getElementById('select-all');
+            const filterType = document.getElementById('filter-type').value;
+            
+            let totalItems = 0;
+            if (filterType === 'lesson_ids') {
+                totalItems = availableLessons.length;
+            } else if (filterType === 'user_ids') {
+                totalItems = availableUsers.length;
+            }
+            
+            selectAll.checked = selectedItems.size === totalItems && totalItems > 0;
+            selectAll.indeterminate = selectedItems.size > 0 && selectedItems.size < totalItems;
+        }
+        
+        function updateCheckboxes() {
+            const filterType = document.getElementById('filter-type').value;
+            
+            if (filterType === 'lesson_ids') {
+                availableLessons.forEach(lesson => {
+                    const checkbox = document.getElementById(`lesson_${lesson.id}`);
+                    if (checkbox) {
+                        checkbox.checked = selectedItems.has(`lesson_${lesson.id}`);
+                    }
+                });
+            } else if (filterType === 'user_ids') {
+                availableUsers.forEach(user => {
+                    const checkbox = document.getElementById(`user_${user.id}`);
+                    if (checkbox) {
+                        checkbox.checked = selectedItems.has(`user_${user.id}`);
+                    }
+                });
+            }
+        }
+        
+        function applySelectedFilter() {
+            const filterType = document.getElementById('filter-type').value;
+            const filterValue = document.getElementById('filter-value');
+            
+            if (selectedItems.size === 0) {
+                alert('Please select at least one item');
+                return;
+            }
+            
+            // Convert selected items to comma-separated values
+            const selectedValues = Array.from(selectedItems).map(itemId => {
+                return itemId.split('_')[1]; // Extract the ID part
+            }).join(',');
+            
+            filterValue.value = selectedValues;
+            applyFilter();
+        }
+        
+        function exportSelected() {
+            const filterType = document.getElementById('filter-type').value;
+            
+            if (selectedItems.size === 0) {
+                alert('Please select at least one item');
+                return;
+            }
+            
+            const selectedValues = Array.from(selectedItems).map(itemId => {
+                return itemId.split('_')[1];
+            });
+            
+            const data = {
+                filterType: filterType,
+                selectedIds: selectedValues,
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `selected_${filterType}_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function clearSelection() {
+            selectedItems.clear();
+            updateSelectedCount();
+            updateSelectAllState();
+            updateCheckboxes();
+        }
+        
+        function toggleRowSelection(rowIndex) {
+            if (selectedRows.has(rowIndex)) {
+                selectedRows.delete(rowIndex);
+            } else {
+                selectedRows.add(rowIndex);
+            }
+            updateSelectedRowsCount();
+            updateSelectAllRowsState();
+        }
+        
+        function toggleSelectAllRows() {
+            const selectAllRows = document.getElementById('select-all-rows');
+            
+            if (selectAllRows.checked) {
+                // Select all rows
+                for (let i = 0; i < currentTableData.length; i++) {
+                    selectedRows.add(i);
+                }
+            } else {
+                // Deselect all rows
+                selectedRows.clear();
+            }
+            
+            updateSelectedRowsCount();
+            updateRowCheckboxes();
+        }
+        
+        function updateSelectedRowsCount() {
+            const selectedRowsCount = document.getElementById('selected-rows-count');
+            selectedRowsCount.textContent = `${selectedRows.size} selected`;
+        }
+        
+        function updateSelectAllRowsState() {
+            const selectAllRows = document.getElementById('select-all-rows');
+            
+            selectAllRows.checked = selectedRows.size === currentTableData.length && currentTableData.length > 0;
+            selectAllRows.indeterminate = selectedRows.size > 0 && selectedRows.size < currentTableData.length;
+        }
+        
+        function updateRowCheckboxes() {
+            for (let i = 0; i < currentTableData.length; i++) {
+                const checkbox = document.getElementById(`row_${i}`);
+                if (checkbox) {
+                    checkbox.checked = selectedRows.has(i);
+                }
+            }
+        }
+        
+        function exportSelectedRows() {
+            if (selectedRows.size === 0) {
+                alert('Please select at least one row');
+                return;
+            }
+            
+            const selectedData = Array.from(selectedRows).map(index => currentTableData[index]);
+            
+            const data = {
+                table: 'current_table',
+                selectedRows: selectedData,
+                columns: currentTableColumns,
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `selected_rows_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Load tables list on page load
+        window.addEventListener('load', () => {
+            listTables();
+        });
+    </script>
+{% endblock %}

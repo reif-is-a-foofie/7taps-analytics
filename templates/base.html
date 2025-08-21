@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - 7taps Analytics</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #5855eb;
+            --secondary-color: #8b5cf6;
+            --bg-color: #f8fafc;
+            --sidebar-bg: #1e293b;
+            --sidebar-hover: #334155;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --border-color: #e2e8f0;
+            --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --sidebar-width: 280px;
+            --header-height: 70px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-primary);
+            display: grid;
+            grid-template-areas: 
+                "sidebar header"
+                "sidebar main";
+            grid-template-columns: var(--sidebar-width) 1fr;
+            grid-template-rows: var(--header-height) 1fr;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--sidebar-bg);
+            color: white;
+            padding: 1.5rem 0;
+            overflow-y: auto;
+            position: fixed;
+            width: var(--sidebar-width);
+            height: 100vh;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            padding: 0 1.5rem 1.5rem 1.5rem;
+            border-bottom: 1px solid #334155;
+            margin-bottom: 1rem;
+        }
+        
+        .sidebar-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            opacity: 0.8;
+        }
+        
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+        
+        .nav-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0 1.5rem 0.5rem 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .nav-item {
+            display: block;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-light);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            font-weight: 500;
+        }
+        
+        .nav-item:hover {
+            background: var(--sidebar-hover);
+            color: white;
+            border-left-color: var(--primary-color);
+        }
+        
+        .nav-item.active {
+            background: var(--sidebar-hover);
+            color: white;
+            border-left-color: var(--primary-color);
+        }
+        
+        .nav-item-icon {
+            margin-right: 0.75rem;
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Header Styles */
+        .header {
+            grid-area: header;
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .header-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        /* Main Content Styles */
+        .main-content {
+            grid-area: main;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            body {
+                grid-template-areas: 
+                    "header"
+                    "main";
+                grid-template-columns: 1fr;
+                grid-template-rows: var(--header-height) 1fr;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+        
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        
+        .overlay.open {
+            display: block;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">7taps Analytics</div>
+            <div class="sidebar-subtitle">Learning Analytics Platform</div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Main Apps</div>
+            <a href="/" class="nav-item {{ 'active' if active_page == 'dashboard' else '' }}">
+                <span class="nav-item-icon">📊</span>
+                Analytics Dashboard
+            </a>
+            <a href="/explorer" class="nav-item {{ 'active' if active_page == 'explorer' else '' }}">
+                <span class="nav-item-icon">🔍</span>
+                Data Explorer
+            </a>
+            <a href="/chat" class="nav-item {{ 'active' if active_page == 'chat' else '' }}">
+                <span class="nav-item-icon">💬</span>
+                AI Chat
+            </a>
+            <a href="/docs" class="nav-item {{ 'active' if active_page == 'docs' else '' }}">
+                <span class="nav-item-icon">📚</span>
+                API Documentation
+            </a>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">System</div>
+            <a href="/health" class="nav-item">
+                <span class="nav-item-icon">💚</span>
+                Health Check
+            </a>
+        </div>
+    </nav>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+            <div>
+                <div class="header-title">{{ title }}</div>
+                <div class="header-subtitle">7taps Analytics Platform</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            {% block header_actions %}
+            <a href="/" class="btn btn-secondary">
+                <span>🏠</span>
+                Home
+            </a>
+            <a href="/ui/admin" class="btn btn-primary">
+                <span>⚙️</span>
+                Admin
+            </a>
+            {% endblock %}
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Mobile Overlay -->
+    <div class="overlay" id="overlay"></div>
+    
+    <script>
+        // Mobile Navigation
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        function toggleMobileMenu() {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+        
+        function closeMobileMenu() {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+        }
+        
+        mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+        overlay.addEventListener('click', closeMobileMenu);
+        
+        // Close mobile menu on window resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,126 @@
+{
+  "module": "orchestrator_app_controller",
+  "agent": "orchestrator_agent",
+  "allowed_files": [
+    "app/api/orchestrator.py",
+    "templates/orchestrator.html"
+  ],
+  "required_endpoints": ["GET /orchestrator", "POST /api/orchestrator/execute", "GET /api/orchestrator/apps"],
+  "status": "draft",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T21:50:00Z",
+    "estimated_duration": "3h",
+    "dependencies": ["analytics_dashboard_app", "data_explorer_app", "ai_chat_app", "api_docs_app"],
+    "subtasks": [
+      {
+        "id": "orchestrator.1",
+        "description": "Create orchestrator controller for sub-app coordination",
+        "status": "pending",
+        "agent": "orchestrator_agent",
+        "files": ["app/api/orchestrator.py"]
+      },
+      {
+        "id": "orchestrator.2",
+        "description": "Implement execute action to route between sub-apps",
+        "status": "pending",
+        "agent": "orchestrator_agent",
+        "files": ["app/api/orchestrator.py"]
+      },
+      {
+        "id": "orchestrator.3",
+        "description": "Create navigation mapping for left nav",
+        "status": "pending",
+        "agent": "orchestrator_agent",
+        "files": ["app/api/orchestrator.py"]
+      },
+      {
+        "id": "orchestrator.4",
+        "description": "Test orchestrator app coordination",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "Orchestrator can route to all 4 sub-apps",
+      "Navigation mapping works for left nav",
+      "Standard response format for all app calls",
+      "Error handling for app coordination",
+      "Orchestrator can compose multiple app calls"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test orchestrator coordination via UI navigation",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [
+      "Sub-apps must be completed first",
+      "No standard response format defined"
+    ],
+    "progress_percentage": 0
+  },
+  "app_contract": {
+    "name": "Orchestrator",
+    "description": "Coordinate and route between sub-apps",
+    "actions": [
+      {
+        "name": "execute",
+        "input": {
+          "app": "string",
+          "action": "string",
+          "params": "object"
+        },
+        "output": {
+          "app": "string",
+          "action": "string",
+          "success": "boolean",
+          "data": "object",
+          "errors": "list"
+        }
+      },
+      {
+        "name": "list_apps",
+        "input": {},
+        "output": {
+          "apps": "list",
+          "navigation": "list"
+        }
+      },
+      {
+        "name": "compose_workflow",
+        "input": {
+          "workflow": "list"
+        },
+        "output": {
+          "results": "list",
+          "summary": "object"
+        }
+      }
+    ]
+  },
+  "navigation_mapping": [
+    {
+      "label": "Analytics Dashboard",
+      "action": "AnalyticsDashboard.load_dashboard"
+    },
+    {
+      "label": "Data Explorer", 
+      "action": "DataExplorer.load_table"
+    },
+    {
+      "label": "AI Chat",
+      "action": "AIChat.ask_question"
+    },
+    {
+      "label": "API Documentation",
+      "action": "APIDocs.list_endpoints"
+    }
+  ],
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "orchestrator_agent",
+    "handoff_notes": "Create orchestrator controller to coordinate all sub-apps with standard contracts",
+    "required_approval": false
+  }
+}

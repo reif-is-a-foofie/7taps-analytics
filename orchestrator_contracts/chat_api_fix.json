@@ -1,0 +1,75 @@
+{
+  "module": "chat_api_fix",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/api/chat.py",
+    "app/main.py"
+  ],
+  "required_endpoints": ["POST /api/chat/query", "GET /api/chat/status"],
+  "status": "awaiting verification",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T22:10:00Z",
+    "estimated_duration": "1h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "chat_fix.1",
+        "description": "Fix chat API endpoint routing in main.py",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/main.py"]
+      },
+      {
+        "id": "chat_fix.2",
+        "description": "Implement /api/chat/query endpoint",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/chat.py"]
+      },
+      {
+        "id": "chat_fix.3",
+        "description": "Test chat API functionality",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "POST /api/chat/query endpoint responds correctly",
+      "Chat API returns standard response format",
+      "Chat interface can communicate with API",
+      "Error handling for chat requests"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test chat API at http://localhost:8000/api/chat/query",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "app_contract": {
+    "name": "ChatAPIFix",
+    "description": "Fix missing chat API endpoint",
+    "actions": [
+      {
+        "name": "query",
+        "input": {
+          "query": "string"
+        },
+        "output": {
+          "response": "string",
+          "confidence": "float",
+          "sources": "list"
+        }
+      }
+    ]
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "backend_agent",
+    "handoff_notes": "Fix the missing chat API endpoint to complete the chat sub-app",
+    "required_approval": false
+  }
+}

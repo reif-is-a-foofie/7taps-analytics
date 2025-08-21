@@ -1,0 +1,109 @@
+{
+  "module": "comprehensive_testing_framework",
+  "agent": "testing_agent",
+  "allowed_files": [
+    "tests/test_dashboard_app.py",
+    "tests/test_explorer_app.py", 
+    "tests/test_chat_app.py",
+    "tests/test_docs_app.py",
+    "tests/test_orchestrator.py",
+    "tests/test_data_access.py"
+  ],
+  "required_endpoints": ["GET /api/test/run-all", "GET /api/test/report", "POST /api/test/validate"],
+  "status": "draft",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T22:00:00Z",
+    "estimated_duration": "4h",
+    "dependencies": ["analytics_dashboard_app", "data_explorer_app", "ai_chat_app", "api_docs_app", "orchestrator_app_controller", "data_access_layer"],
+    "subtasks": [
+      {
+        "id": "testing.1",
+        "description": "Create test framework for all sub-apps",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["tests/test_dashboard_app.py", "tests/test_explorer_app.py", "tests/test_chat_app.py", "tests/test_docs_app.py"]
+      },
+      {
+        "id": "testing.2",
+        "description": "Implement orchestrator integration tests",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["tests/test_orchestrator.py"]
+      },
+      {
+        "id": "testing.3",
+        "description": "Create data access layer tests",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["tests/test_data_access.py"]
+      },
+      {
+        "id": "testing.4",
+        "description": "Implement end-to-end workflow tests",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": ["tests/test_end_to_end.py"]
+      }
+    ],
+    "completion_criteria": [
+      "All sub-apps have comprehensive test coverage",
+      "Orchestrator integration tests pass",
+      "Data access layer tests validate functionality",
+      "End-to-end workflows are tested",
+      "Test reporting and validation endpoints work"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Run full test suite against deployed system",
+      "docker_compose_required": true,
+      "test_environment": "docker-compose up with full stack"
+    },
+    "blocking_issues": [
+      "All sub-app contracts must be completed first",
+      "Data access layer must be implemented"
+    ],
+    "progress_percentage": 0
+  },
+  "app_contract": {
+    "name": "TestingFramework",
+    "description": "Comprehensive testing framework for all sub-apps",
+    "actions": [
+      {
+        "name": "run_all_tests",
+        "input": {},
+        "output": {
+          "results": "object",
+          "summary": "object",
+          "failed_tests": "list"
+        }
+      },
+      {
+        "name": "validate_app",
+        "input": {
+          "app_name": "string"
+        },
+        "output": {
+          "validation_result": "object",
+          "coverage": "float",
+          "issues": "list"
+        }
+      },
+      {
+        "name": "generate_report",
+        "input": {
+          "report_type": "string"
+        },
+        "output": {
+          "report": "object",
+          "recommendations": "list"
+        }
+      }
+    ]
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "testing_agent",
+    "handoff_notes": "Create comprehensive testing framework that validates all sub-apps and orchestrator",
+    "required_approval": false
+  }
+}
