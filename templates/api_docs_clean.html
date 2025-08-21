@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7taps Analytics - Data Flow API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8fafc;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+        
+        .flow-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .flow-header {
+            padding: 1.5rem;
+            color: white;
+        }
+        
+        .flow-header.ingestion {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .flow-header.extraction {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .flow-header h2 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .flow-header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .endpoint {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1.5rem;
+        }
+        
+        .endpoint:last-child {
+            border-bottom: none;
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-right: 1rem;
+        }
+        
+        .method.post { background: #3b82f6; color: white; }
+        .method.get { background: #10b981; color: white; }
+        
+        .url {
+            font-family: 'Monaco', 'Menlo', monospace;
+            background: #f1f5f9;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+        
+        .description {
+            margin-top: 1rem;
+            color: #64748b;
+            font-size: 1rem;
+        }
+        
+        .example {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            color: #374151;
+        }
+        
+        .response {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            color: #166534;
+        }
+        
+        .nav {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 2rem;
+        }
+        
+        .nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 2rem;
+            font-weight: 500;
+        }
+        
+        .nav a:hover {
+            text-decoration: underline;
+        }
+        
+        .diagram {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1rem 0;
+            text-align: center;
+            color: #64748b;
+        }
+        
+        .diagram h3 {
+            color: #475569;
+            margin-bottom: 1rem;
+        }
+        
+        .flow-step {
+            display: inline-block;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 0 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            min-width: 120px;
+        }
+        
+        .arrow {
+            font-size: 1.5rem;
+            color: #667eea;
+            margin: 0 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/explorer">Data Explorer</a>
+        <a href="/chat">Chat with Seven</a>
+        <a href="http://localhost:3000" target="_blank">SQLPad</a>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>7taps Analytics Data Flow</h1>
+            <p>Two simple ways to work with learning analytics data</p>
+        </div>
+        
+        <!-- Data Ingestion -->
+        <div class="flow-section">
+            <div class="flow-header ingestion">
+                <h2>📥 Data Ingestion</h2>
+                <p>Send learning data to our analytics platform</p>
+            </div>
+            
+            <div class="diagram">
+                <h3>Data Flow: xAPI → Analytics Platform</h3>
+                <div>
+                    <span class="flow-step">xAPI Statement</span>
+                    <span class="arrow">→</span>
+                    <span class="flow-step">API Endpoint</span>
+                    <span class="arrow">→</span>
+                    <span class="flow-step">Database</span>
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="url">/api/xapi/ingest</span>
+                <div class="description">
+                    Send xAPI learning statements to be processed and stored in our analytics database
+                </div>
+                <div class="example">
+curl -X POST "https://your-domain.com/api/xapi/ingest" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "actor": {"account": {"name": "user123"}},
+    "verb": {"id": "http://adlnet.gov/expapi/verbs/completed"},
+    "object": {"id": "https://example.com/activity/1"},
+    "timestamp": "2025-01-21T12:00:00Z"
+  }'
+                </div>
+                <div class="response">
+{
+  "success": true,
+  "message": "Statement queued for processing",
+  "queue_id": "uuid-12345",
+  "timestamp": "2025-01-21T12:00:00Z"
+}
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="url">/api/7taps/webhook</span>
+                <div class="description">
+                    Webhook endpoint for 7taps platform integration (requires Basic Auth)
+                </div>
+                <div class="example">
+curl -X POST "https://your-domain.com/api/7taps/webhook" \
+  -H "Authorization: Basic base64-encoded-credentials" \
+  -H "Content-Type: application/json" \
+  -d '{"event_type": "xapi_statement", "data": {...}}'
+                </div>
+            </div>
+        </div>
+        
+        <!-- Data Extraction -->
+        <div class="flow-section">
+            <div class="flow-header extraction">
+                <h2>📤 Data Extraction</h2>
+                <p>Get analytics data out of our platform</p>
+            </div>
+            
+            <div class="diagram">
+                <h3>Data Flow: Database → Analytics API</h3>
+                <div>
+                    <span class="flow-step">Database</span>
+                    <span class="arrow">→</span>
+                    <span class="flow-step">API Endpoint</span>
+                    <span class="arrow">→</span>
+                    <span class="flow-step">Your App</span>
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="url">/api/public/metrics/overview</span>
+                <div class="description">
+                    Get high-level metrics: total users, activities, responses, and recent activity
+                </div>
+                <div class="example">
+curl -X GET "https://your-domain.com/api/public/metrics/overview"
+                </div>
+                <div class="response">
+{
+  "success": true,
+  "data": {
+    "total_users": 1234,
+    "total_activities": 5678,
+    "total_responses": 3456,
+    "recent_activity": 234
+  },
+  "metadata": {
+    "generated_at": "2025-01-21T12:00:00Z"
+  }
+}
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="url">/api/public/analytics/lesson-completion</span>
+                <div class="description">
+                    Get lesson completion rates and engagement data for each lesson
+                </div>
+                <div class="example">
+curl -X GET "https://your-domain.com/api/public/analytics/lesson-completion"
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="url">/api/public/analytics/user-engagement</span>
+                <div class="description">
+                    Get user engagement patterns and activity trends over time
+                </div>
+                <div class="example">
+curl -X GET "https://your-domain.com/api/public/analytics/user-engagement"
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="url">/api/data-explorer/load-table</span>
+                <div class="description">
+                    Load raw data from any table (users, activities, responses, etc.)
+                </div>
+                <div class="example">
+curl -X POST "https://your-domain.com/api/data-explorer/load-table" \
+  -H "Content-Type: application/json" \
+  -d '{"table": "user_responses", "limit": 100}'
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Start -->
+        <div class="flow-section">
+            <div class="flow-header" style="background: #10b981;">
+                <h2>🚀 Quick Start</h2>
+                <p>Get started in 2 minutes</p>
+            </div>
+            
+            <div class="endpoint">
+                <div class="description">
+                    <strong>1. Send Data:</strong><br>
+                    <code>POST /api/xapi/ingest</code> - Send your first learning statement<br><br>
+                    
+                    <strong>2. Get Data:</strong><br>
+                    <code>GET /api/public/metrics/overview</code> - See your data in the system<br><br>
+                    
+                    <strong>3. Explore:</strong><br>
+                    <code>POST /api/data-explorer/load-table</code> - Query specific tables<br><br>
+                    
+                    <strong>Base URL:</strong> https://your-domain.com<br>
+                    <strong>Format:</strong> All requests/responses are JSON<br>
+                    <strong>Authentication:</strong> Most endpoints are public (except 7taps webhook)
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

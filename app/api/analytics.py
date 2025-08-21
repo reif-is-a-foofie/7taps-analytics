@@ -97,7 +97,7 @@ async def get_completion_rates(ranked: bool = Query(False, description="Return r
                     COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
                     CAST(
                         (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(10,1)
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -116,7 +116,7 @@ async def get_completion_rates(ranked: bool = Query(False, description="Return r
                     COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
                     CAST(
                         (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(10,1)
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -295,7 +295,7 @@ async def get_average_completion():
     try:
         sql = """
             SELECT 
-                CAST(AVG(completion_rate) AS NUMERIC(10,1)) as average_completion_rate,
+                CAST(AVG(completion_rate) AS NUMERIC(5,1)) as average_completion_rate,
                 COUNT(*) as total_lessons,
                 SUM(users_started) as total_users_started,
                 SUM(users_completed) as total_users_completed
@@ -306,7 +306,7 @@ async def get_average_completion():
                     COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
                     CAST(
                         (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(10,1)
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -365,7 +365,7 @@ async def get_lesson_comparison(
                 COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
                 CAST(
                     (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                     NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(10,1)
+                     NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
                 ) as completion_rate
             FROM lessons l
             LEFT JOIN user_activities ua ON l.id = ua.lesson_id

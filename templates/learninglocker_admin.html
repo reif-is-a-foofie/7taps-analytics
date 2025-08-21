@@ -292,7 +292,7 @@
                     🔄 Trigger Manual Sync
                 </button>
                 <button class="btn" onclick="refreshStatus()">
-                    📊 Refresh Status
+                    Refresh Status
                 </button>
                 <button class="btn" onclick="viewLogs()">
                     📋 View Logs
@@ -394,7 +394,7 @@
                 await loadDashboardData();
                 
                 setTimeout(() => {
-                    button.textContent = '📊 Refresh Status';
+                    button.textContent = 'Refresh Status';
                 }, 1000);
                 
             } catch (error) {
@@ -435,7 +435,7 @@
         
         function showSuccess(message) {
             // Simple success notification
-            alert('✅ ' + message);
+                            alert('SUCCESS: ' + message);
         }
         
         function showError(message) {

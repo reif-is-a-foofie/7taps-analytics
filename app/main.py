@@ -7,9 +7,11 @@ import os
 from app.config import settings
 
 app = FastAPI(
-    title="7taps Analytics ETL",
-    description="Streaming ETL for xAPI analytics using direct database connections",
-    version="1.0.0"
+    title="7taps Analytics API",
+    description="Public API for learning analytics data extraction and ingestion",
+    version="1.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
 )
 
 # CORS middleware
@@ -39,6 +41,15 @@ async def api_docs(request: Request):
     return templates.TemplateResponse("docs.html", {
         "request": request,
         "active_page": "docs",
+        "title": "API Documentation"
+    })
+
+@app.get("/api-docs", response_class=HTMLResponse)
+async def clean_api_docs(request: Request):
+    """Clean API documentation endpoint"""
+    return templates.TemplateResponse("api_docs_clean.html", {
+        "request": request,
+        "active_page": "api-docs",
         "title": "API Documentation"
     })
 
@@ -87,13 +98,13 @@ async def dashboard(request: Request):
             SELECT 
                 l.lesson_name,
                 COUNT(DISTINCT ua.user_id) as users_started,
-                COUNT(DISTINCT ur.user_id) as users_completed,
-                ROUND(
-                    (COUNT(DISTINCT ur.user_id)::float / NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100)::numeric, 1
+                COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                CAST(
+                    (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                     NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100) AS NUMERIC(5,1)
                 ) as completion_rate
             FROM lessons l
             LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-            LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
             GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
         """)
@@ -189,64 +200,23 @@ async def dashboard(request: Request):
             "error": str(e)
         })
 
-# Import and include routers
-try:
-    from app.api.etl import router as etl_router
-except Exception:
-    etl_router = None
-from app.api.orchestrator import router as orchestrator_router
-# from app.api.nlp import router as nlp_router
-from app.api.xapi import router as xapi_router
-from app.api.seventaps import router as seventaps_router
-from app.api.xapi_lrs import router as xapi_lrs_router
-from app.api.learninglocker_sync import router as learninglocker_sync_router
+# Import only the essential public API routers
 from app.api.health import router as health_router
-from app.api.data_normalization import router as data_normalization_router
-from app.api.data_import import router as data_import_router
-from app.api.migration import router as migration_router
-from app.api.focus_group_import import router as focus_group_import_router
-from app.api.csv_to_xapi import router as csv_to_xapi_router
-from app.api.data_access import router as data_access_router
-from app.api.chat import router as chat_router
-from app.api.public import router as public_router
 from app.api.public_data import router as public_data_router
 from app.api.data_explorer import router as data_explorer_router
+from app.api.xapi import router as xapi_router
+from app.api.seventaps import router as seventaps_router
+from app.api.chat import router as chat_router
 from app.api.dashboard import router as dashboard_router
-from app.api.analytics import router as analytics_router
-from app.ui.admin import router as admin_router
-# from app.ui.dashboard import router as dashboard_router
-from app.ui.data_import import router as data_import_ui_router
-# from app.api.monitoring import router as monitoring_router
-# from app.ui.production_dashboard import router as production_dashboard_router
 
-# Internal/Admin routers - hidden from public API
-# app.include_router(etl_router, prefix="/ui", tags=["ETL"])
-app.include_router(orchestrator_router, prefix="/api", tags=["Orchestrator"])
-# app.include_router(nlp_router, prefix="/api", tags=["NLP"])
-# app.include_router(xapi_router, tags=["xAPI"])
-# app.include_router(seventaps_router, tags=["7taps"])
-# app.include_router(xapi_lrs_router, tags=["xAPI LRS"])
-# app.include_router(learninglocker_sync_router, prefix="/api", tags=["Learning Locker"])
-app.include_router(data_normalization_router, prefix="/api", tags=["Data Normalization"])
-app.include_router(data_import_router, prefix="/api", tags=["Data Import"])
-app.include_router(migration_router, prefix="/api", tags=["Migration"])
-app.include_router(focus_group_import_router, prefix="/api", tags=["Focus Group Import"])
-app.include_router(csv_to_xapi_router, prefix="/api", tags=["CSV to xAPI"])
-app.include_router(data_access_router, prefix="/api", tags=["Data Access"])
+# Public API endpoints - only essential data extraction and ingestion
+app.include_router(health_router, prefix="/api", tags=["Health Check"])
+app.include_router(public_data_router, tags=["Data Extraction"])
+app.include_router(data_explorer_router, tags=["Data Explorer"])
+app.include_router(xapi_router, tags=["xAPI Ingestion"])
+app.include_router(seventaps_router, tags=["7taps Integration"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(dashboard_router, prefix="/api", tags=["Dashboard"])
-app.include_router(analytics_router, prefix="/api", tags=["Analytics"])
-# app.include_router(public_router, tags=["Public"])
-# app.include_router(data_import_ui_router, tags=["Data Import UI"])
-# app.include_router(admin_router, tags=["Admin"])
-# app.include_router(dashboard_router, tags=["Dashboard"])
-# app.include_router(monitoring_router, prefix="/api", tags=["Monitoring"])
-# app.include_router(production_dashboard_router, tags=["Production Dashboard"])
-
-# Public API - only essential data extraction endpoints
-app.include_router(data_explorer_router, tags=["Data Explorer"])
-app.include_router(health_router, tags=["Health"])
-app.include_router(public_data_router, tags=["Public Data API"])
 
 if __name__ == "__main__":
     import uvicorn

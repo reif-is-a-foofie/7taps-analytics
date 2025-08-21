@@ -322,7 +322,7 @@ async def get_users():
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT id, user_id 
+            SELECT id, user_id, COALESCE(cohort, 'Unknown') as cohort
             FROM users 
             ORDER BY user_id
         """)
@@ -332,7 +332,8 @@ async def get_users():
             users.append({
                 "id": row[0],
                 "email": row[1] or f"User {row[0]}",
-                "user_id": row[1]
+                "user_id": row[1],
+                "display_name": f"{row[1]} ({row[2]})" if row[1] else f"User {row[0]} ({row[2]})"
             })
         
         cursor.close()
@@ -518,12 +519,18 @@ async def get_filtered_table_data(
                 conditions.append(f"lesson_number IN ({placeholders})")
             elif table_name in ['questions', 'user_activities']:
                 conditions.append(f"lesson_id IN ({placeholders})")
+            elif table_name == 'lessons':
+                conditions.append(f"lesson_number IN ({placeholders})")
             params.extend(lesson_id_list)
         
-        if user_id_list and table_name in ['user_activities', 'user_responses']:
+        if user_id_list:
             placeholders = ','.join(['%s'] * len(user_id_list))
-            conditions.append(f"user_id IN ({placeholders})")
-            params.extend(user_id_list)
+            if table_name in ['user_activities', 'user_responses']:
+                conditions.append(f"user_id IN ({placeholders})")
+                params.extend(user_id_list)
+            elif table_name == 'users':
+                conditions.append(f"id IN ({placeholders})")
+                params.extend(user_id_list)
         
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
