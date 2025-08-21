@@ -240,7 +240,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 Enhanced Analytics Dashboard</h1>
+            <h1>Enhanced Analytics Dashboard</h1>
             <p>Learning Locker integration with real-time metrics and visualizations</p>
         </div>
         
@@ -492,8 +492,8 @@
                     const timelineItem = document.createElement('div');
                     timelineItem.className = `timeline-item ${item.status}`;
                     
-                    const icon = item.status === 'success' ? '✅' : 
-                               item.status === 'warning' ? '⚠️' : '❌';
+                    const icon = item.status === 'success' ? 'OK' : 
+                                                               item.status === 'warning' ? 'WARN' : 'ERROR';
                     
                     timelineItem.innerHTML = `
                         <div class="timeline-icon">${icon}</div>

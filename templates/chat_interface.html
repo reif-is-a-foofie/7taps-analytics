@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}AI Chat - 7taps Analytics{% endblock %}
+{% block title %}Chat with Seven - 7taps Analytics{% endblock %}
 
 {% block extra_css %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -272,24 +272,28 @@
 
         .suggested-questions-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
         }
 
         .suggested-question {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 1rem;
+            gap: 0.5rem;
+            padding: 0.75rem;
             background: white;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
             text-align: left;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #2d3748;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .suggested-question:hover {
@@ -299,14 +303,60 @@
             background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
         }
 
-        .question-icon {
-            font-size: 1.5rem;
-            flex-shrink: 0;
-        }
-
         .question-text {
             flex: 1;
             line-height: 1.4;
+            text-align: center;
+        }
+        
+        /* Plotly Capabilities Styles */
+        .plotly-info {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .plotly-info h4 {
+            color: #2d3748;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        
+        .plotly-info p {
+            color: #4a5568;
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+            text-align: center;
+        }
+        
+        .capabilities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .capability {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+            color: #4a5568;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .capability-note {
+            font-size: 0.8rem;
+            color: #718096;
+            font-style: italic;
+            text-align: center;
+            margin: 0;
         }
         
         /* Query Category Styles */
@@ -415,12 +465,22 @@
             
             .suggested-questions-grid {
                 grid-template-columns: 1fr;
-                gap: 0.75rem;
+                gap: 0.5rem;
             }
             
             .suggested-question {
                 padding: 0.75rem;
                 font-size: 0.85rem;
+            }
+            
+            .capabilities-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+            
+            .capability {
+                font-size: 0.75rem;
+                padding: 0.4rem;
             }
             
             .question-icon {
@@ -433,76 +493,52 @@
 {% block content %}
     <div class="chat-container">
         <div class="header">
-            <h1>Chat with 7</h1>
+            <h1>Chat with Seven</h1>
         </div>
         
         <div class="messages" id="messages">
             <div class="message assistant">
                 <div class="avatar assistant">7</div>
                 <div class="message-content">
-                    Hi! I'm 7, your AI analytics assistant. Ask me anything about your learning data, engagement patterns, or create visualizations. What would you like to explore?
+                    Hi! I'm Seven, your AI analytics assistant. I can help you analyze engagement dropoff, identify problematic users, track energy levels, understand digital behavior patterns, discover learning priorities, and explore reflection themes. Use the suggested categories below or ask your own question.
                 </div>
             </div>
             
             <!-- Analytics Query Suggestions Section -->
             <div class="suggested-questions-container">
                 <div class="suggested-questions-header">
-                    <h3>📊 Quick Analytics Queries</h3>
-                    <p>Click any query to get instant analytics results</p>
+                    <h3>Quick Analytics</h3>
+                    <p>Click any query or ask your own question</p>
                 </div>
                 
-                <!-- Completion Analysis -->
-                <div class="query-category">
-                    <h4>Completion Analysis</h4>
-                    <div class="suggested-questions-grid">
-                        <button class="suggested-question" onclick="executeAnalyticsQuery('completion_rates')">
-                            <div class="question-icon">📊</div>
-                            <div class="question-text">Show completion rates for each lesson</div>
-                        </button>
-                        
-                        <button class="suggested-question" onclick="executeAnalyticsQuery('highest_lowest')">
-                            <div class="question-icon">🏆</div>
-                            <div class="question-text">Which lessons have highest/lowest completion?</div>
-                        </button>
-                        
-                        <button class="suggested-question" onclick="executeAnalyticsQuery('average_completion')">
-                            <div class="question-icon">📈</div>
-                            <div class="question-text">What's the average completion rate?</div>
-                        </button>
-                    </div>
+                <!-- New Hardcoded Analytics Categories -->
+                <div class="suggested-questions-grid">
+                    <button class="suggested-question" onclick="sendMessage('Show engagement dropoff')">
+                        📉 Engagement Drop-Off
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Find problematic users')">
+                        🚨 Problematic Users
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Energy levels over time')">
+                        ⚡ Sentiment Shift
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Screen time patterns')">
+                        📱 Digital Behavior
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Learning priorities')">
+                        🧠 Learning Priorities
+                    </button>
+                    
+                    <button class="suggested-question" onclick="sendMessage('Reflection themes')">
+                        📝 Reflection Themes
+                    </button>
                 </div>
                 
-                <!-- Student Progress -->
-                <div class="query-category">
-                    <h4>Student Progress</h4>
-                    <div class="suggested-questions-grid">
-                        <button class="suggested-question" onclick="executeAnalyticsQuery('incomplete_students')">
-                            <div class="question-icon">👥</div>
-                            <div class="question-text">Who hasn't finished the course yet?</div>
-                        </button>
-                        
-                        <button class="suggested-question" onclick="executeAnalyticsQuery('completion_speed')">
-                            <div class="question-icon">⏱️</div>
-                            <div class="question-text">How many completed within 30 days?</div>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Engagement & Trends -->
-                <div class="query-category">
-                    <h4>Engagement & Trends</h4>
-                    <div class="suggested-questions-grid">
-                        <button class="suggested-question" onclick="executeAnalyticsQuery('engagement_time')">
-                            <div class="question-icon">📅</div>
-                            <div class="question-text">Show student engagement over time</div>
-                        </button>
-                        
-                        <button class="suggested-question" onclick="executeAnalyticsQuery('lesson_comparison')">
-                            <div class="question-icon">⚖️</div>
-                            <div class="question-text">Compare Lesson 1 vs Lesson 5</div>
-                        </button>
-                    </div>
-                </div>
+
             </div>
         </div>
         
@@ -549,6 +585,48 @@
         }
 
         function addMessage(content, isUser = false, visualization = null) {
+            // If there's a visualization, create the visualization first, then the text response below
+            if (visualization && !isUser) {
+                try {
+                    // Create visualization container
+                    const vizContainer = document.createElement('div');
+                    vizContainer.className = 'message assistant';
+                    
+                    const vizAvatar = document.createElement('div');
+                    vizAvatar.className = 'avatar assistant';
+                    vizAvatar.textContent = '7';
+                    
+                    const vizContent = document.createElement('div');
+                    vizContent.className = 'message-content';
+                    vizContent.style.maxWidth = '90%';
+                    vizContent.style.padding = '1rem';
+                    
+                    const vizDiv = document.createElement('div');
+                    vizDiv.className = 'visualization';
+                    vizDiv.style.width = '100%';
+                    vizDiv.style.height = '400px';
+                    vizDiv.style.border = '1px solid #e2e8f0';
+                    vizDiv.style.borderRadius = '8px';
+                    vizDiv.style.overflow = 'hidden';
+                    vizDiv.style.marginBottom = '0';
+                    
+                    const plotData = JSON.parse(visualization);
+                    Plotly.newPlot(vizDiv, plotData.data, plotData.layout, {
+                        responsive: true,
+                        displayModeBar: false
+                    });
+                    
+                    vizContent.appendChild(vizDiv);
+                    vizContainer.appendChild(vizAvatar);
+                    vizContainer.appendChild(vizContent);
+                    messagesContainer.appendChild(vizContainer);
+                    
+                } catch (error) {
+                    console.error('Visualization error:', error);
+                }
+            }
+            
+            // Create the text message (either standalone or below visualization)
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
             
@@ -562,30 +640,6 @@
             
             messageDiv.appendChild(avatar);
             messageDiv.appendChild(messageContent);
-            
-            // Add visualization if provided
-            if (visualization && !isUser) {
-                try {
-                    const vizDiv = document.createElement('div');
-                    vizDiv.className = 'visualization';
-                    vizDiv.style.marginTop = '15px';
-                    vizDiv.style.width = '100%';
-                    vizDiv.style.height = '400px';
-                    vizDiv.style.border = '1px solid #e2e8f0';
-                    vizDiv.style.borderRadius = '8px';
-                    vizDiv.style.overflow = 'hidden';
-                    
-                    const plotData = JSON.parse(visualization);
-                    Plotly.newPlot(vizDiv, plotData.data, plotData.layout, {
-                        responsive: true,
-                        displayModeBar: false
-                    });
-                    
-                    messageDiv.appendChild(vizDiv);
-                } catch (error) {
-                    console.error('Visualization error:', error);
-                }
-            }
             
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -710,165 +764,7 @@
             }
         }
 
-        // Analytics Query Functions
-        async function executeAnalyticsQuery(queryType) {
-            // Add user message showing the query being executed
-            const queryMessages = {
-                'completion_rates': 'Show completion rates for each lesson',
-                'highest_lowest': 'Which lessons have highest/lowest completion?',
-                'engagement_time': 'Show student engagement over time',
-                'incomplete_students': 'Who hasn\'t finished the course yet?',
-                'average_completion': 'What\'s the average completion rate?',
-                'lesson_comparison': 'Compare Lesson 1 vs Lesson 5',
-                'completion_speed': 'How many completed within 30 days?'
-            };
-            
-            addMessage(queryMessages[queryType] || 'Executing analytics query...', true);
-            
-            // Show typing indicator
-            showTypingIndicator();
-            
-            try {
-                let endpoint = '';
-                
-                // Map query types to endpoints
-                switch(queryType) {
-                    case 'completion_rates':
-                        endpoint = '/api/analytics/completion-rates';
-                        break;
-                    case 'highest_lowest':
-                        endpoint = '/api/analytics/completion-rates?ranked=true';
-                        break;
-                    case 'engagement_time':
-                        endpoint = '/api/analytics/engagement-over-time';
-                        break;
-                    case 'incomplete_students':
-                        endpoint = '/api/analytics/incomplete-students';
-                        break;
-                    case 'average_completion':
-                        endpoint = '/api/analytics/average-completion';
-                        break;
-                    case 'lesson_comparison':
-                        endpoint = '/api/analytics/lesson-comparison?lesson1=1&lesson2=5';
-                        break;
-                    case 'completion_speed':
-                        endpoint = '/api/analytics/completion-speed?days=30';
-                        break;
-                    default:
-                        throw new Error('Unknown query type');
-                }
-                
-                const response = await fetch(endpoint);
-                const data = await response.json();
-                
-                hideTypingIndicator();
-                
-                if (data.success) {
-                    displayAnalyticsResult(data, queryType);
-                } else {
-                    addMessage(`Error: ${data.error || 'Query failed'}`, false);
-                }
-            } catch (error) {
-                hideTypingIndicator();
-                addMessage(`Error executing query: ${error.message}`, false);
-            }
-        }
-        
-        function displayAnalyticsResult(data, queryType) {
-            let resultHtml = `
-                <div class="analytics-result">
-                    <h3>${data.title}</h3>
-            `;
-            
-            // Handle different chart types
-            switch(data.chart_type) {
-                case 'metric':
-                    resultHtml += `
-                        <div class="metric-display">
-                            <div class="metric-value">${data.data.value}%</div>
-                            <div class="metric-label">${data.data.label}</div>
-                        </div>
-                    `;
-                    if (data.data.details) {
-                        resultHtml += '<div style="margin-top: 1rem;">';
-                        for (const [key, value] of Object.entries(data.data.details)) {
-                            resultHtml += `<p><strong>${key.replace(/_/g, ' ').toUpperCase()}:</strong> ${value}</p>`;
-                        }
-                        resultHtml += '</div>';
-                    }
-                    break;
-                    
-                case 'table':
-                    if (data.data.rows && data.data.rows.length > 0) {
-                        resultHtml += `
-                            <table class="analytics-table">
-                                <thead>
-                                    <tr>
-                                        ${Object.keys(data.data.rows[0]).map(key => 
-                                            `<th>${key.replace(/_/g, ' ').toUpperCase()}</th>`
-                                        ).join('')}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${data.data.rows.map(row => 
-                                        `<tr>${Object.values(row).map(value => `<td>${value}</td>`).join('')}</tr>`
-                                    ).join('')}
-                                </tbody>
-                            </table>
-                        `;
-                    }
-                    break;
-                    
-                case 'bar':
-                case 'line':
-                case 'comparison':
-                case 'histogram':
-                    resultHtml += `<div id="analytics-chart-${Date.now()}" class="analytics-chart"></div>`;
-                    break;
-            }
-            
-            resultHtml += '</div>';
-            
-            addMessage(resultHtml, false);
-            
-            // Render chart if needed
-            if (['bar', 'line', 'comparison', 'histogram'].includes(data.chart_type)) {
-                setTimeout(() => {
-                    renderAnalyticsChart(data, `analytics-chart-${Date.now()}`);
-                }, 100);
-            }
-        }
-        
-        function renderAnalyticsChart(data, chartId) {
-            const chartDiv = document.getElementById(chartId);
-            if (!chartDiv) return;
-            
-            const chartConfig = {
-                data: data.data.datasets.map(dataset => ({
-                    x: data.data.labels,
-                    y: dataset.data,
-                    type: data.chart_type === 'comparison' ? 'bar' : data.chart_type,
-                    name: dataset.label,
-                    marker: {
-                        color: dataset.backgroundColor || '#667eea'
-                    }
-                })),
-                layout: {
-                    title: data.title,
-                    xaxis: { title: 'Categories' },
-                    yaxis: { title: 'Values' },
-                    margin: { l: 50, r: 50, t: 50, b: 50 },
-                    showlegend: true,
-                    height: 400
-                },
-                config: {
-                    responsive: true,
-                    displayModeBar: false
-                }
-            };
-            
-            Plotly.newPlot(chartId, chartConfig.data, chartConfig.layout, chartConfig.config);
-        }
+
         
         // Initialize
         loadDataStatus();

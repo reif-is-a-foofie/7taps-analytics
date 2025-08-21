@@ -200,8 +200,8 @@ PREBUILT_QUERIES = [
             AVG(LENGTH(r.response)) as avg_response_length,
             COUNT(CASE WHEN LENGTH(r.response) > 100 THEN 1 END) as detailed_responses,
             COUNT(CASE WHEN LENGTH(r.response) <= 50 THEN 1 END) as brief_responses,
-            ROUND(
-                COUNT(CASE WHEN LENGTH(r.response) > 100 THEN 1 END) * 100.0 / COUNT(*), 2
+            CAST(
+                COUNT(CASE WHEN LENGTH(r.response) > 100 THEN 1 END) * 100.0 / COUNT(*) AS NUMERIC(5,2)
             ) as detailed_response_rate
         FROM statements_new s
         JOIN results_new r ON s.statement_id = r.statement_id

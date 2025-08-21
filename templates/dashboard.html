@@ -46,6 +46,9 @@
             color: var(--primary-color);
             font-size: 2rem;
             font-weight: 600;
+            line-height: 1.2;
+            margin: 0;
+            overflow: visible;
         }
         
         .nav-links {
@@ -101,6 +104,53 @@
             border-radius: 12px;
             box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
+            width: 48%;
+            height: 400px;
+            position: relative;
+            float: left;
+            margin-right: 2%;
+        }
+        
+        .chart-container:nth-child(even) {
+            float: right;
+            margin-right: 0;
+        }
+        
+        .chart-container canvas {
+            max-height: 320px;
+            width: 100% !important;
+            height: auto !important;
+        }
+        
+        #charts-container {
+            width: 100%;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        #charts-container::after {
+            content: '';
+            display: table;
+            clear: both;
+        }
+        
+        /* Responsive design for smaller screens */
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+                margin: 1rem 0;
+            }
+            
+            .chart-container canvas {
+                max-height: 220px;
+            }
+        }
+        
+        .chart-info {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            text-align: center;
         }
         
         .chart-title {
@@ -170,190 +220,190 @@
             background: #e2e8f0;
         }
         
-        /* Analytics Section Styles */
-        .analytics-section {
+        .chart-card {
             background: var(--bg-color);
             padding: 1.5rem;
             border-radius: 12px;
             box-shadow: var(--card-shadow);
-            margin-bottom: 2rem;
-        }
-        
-        .section-title {
-            color: var(--text-primary);
-            font-size: 1.3rem;
-            font-weight: 600;
             margin-bottom: 1.5rem;
-            text-align: center;
         }
         
-        .query-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .query-category {
-            background: var(--card-bg);
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-        
-        .query-category h4 {
-            color: var(--primary-color);
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-        
-        .query-btn {
-            display: block;
-            width: 100%;
-            margin-bottom: 0.5rem;
-            text-align: left;
-            padding: 0.75rem 1rem;
-            font-size: 0.9rem;
-        }
-        
-        .query-btn:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .analytics-result {
-            background: var(--bg-color);
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: var(--card-shadow);
-            margin-bottom: 2rem;
-        }
-        
-        .result-title {
+        .chart-card h3 {
             color: var(--text-primary);
+            margin-bottom: 1rem;
             font-size: 1.2rem;
             font-weight: 600;
-            margin-bottom: 1rem;
         }
         
-        .result-content {
-            margin-bottom: 1rem;
-        }
-        
-        .metric-display {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-            background: var(--card-bg);
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-        
-        .metric-value {
-            font-size: 3rem;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-        
-        .metric-label {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            margin-left: 1rem;
-        }
-        
-        .table-container {
+        .problematic-users-table {
             overflow-x: auto;
+        }
+        
+        .problematic-users-table table {
+            width: 100%;
+            border-collapse: collapse;
             margin-top: 1rem;
         }
         
-        .analytics-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .analytics-table th,
-        .analytics-table td {
+        .problematic-users-table th,
+        .problematic-users-table td {
             padding: 0.75rem;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
         }
         
-        .analytics-table th {
-            background: var(--primary-color);
-            color: white;
+        .problematic-users-table th {
+            background: var(--card-bg);
             font-weight: 600;
+            color: var(--text-primary);
         }
         
-        .analytics-table tr:hover {
-            background: var(--card-bg);
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
         }
+        
+        .status-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-badge.critical {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .charts-section {
+            padding: 2rem;
+        }
+        
+        .chart-card {
+            background: var(--bg-color);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .chart-card h3 {
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            padding: 1rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: var(--danger-color);
+            background: #fee2e2;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1024px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .chart-card {
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .chart-container {
+                height: 350px;
+                padding: 0.75rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            
+            .chart-card {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .chart-container {
+                height: 300px;
+                padding: 0.5rem;
+            }
+            
+            .chart-card h3 {
+                font-size: 1.1rem;
+                margin-bottom: 1rem;
+            }
+        }
+
     </style>
 {% endblock %}
 
 {% block content %}
-<div class="controls">
-    <button class="btn btn-primary" onclick="loadDashboard()">Load Dashboard</button>
-    <button class="btn btn-secondary" onclick="loadMetrics()">Load Metrics</button>
-    <button class="btn btn-secondary" onclick="loadCharts()">Load Charts</button>
-</div>
 
-<!-- Analytics Query Buttons -->
-<div class="analytics-section">
-    <h3 class="section-title">Quick Analytics Queries</h3>
-    <div class="query-buttons">
-        <div class="query-category">
-            <h4>Quick Analytics</h4>
-            <button class="btn btn-secondary query-btn" onclick="executeAnalyticsQuery('completion_rates')">
-                📊 Completion Rates
-            </button>
-            <button class="btn btn-secondary query-btn" onclick="executeAnalyticsQuery('incomplete_students')">
-                👥 Incomplete Students
-            </button>
-            <button class="btn btn-secondary query-btn" onclick="executeAnalyticsQuery('engagement_time')">
-                📅 Activity Trends
-            </button>
-        </div>
-    </div>
-</div>
+
+
 
 <div id="stats-container" class="stats">
-    <div class="loading">Click "Load Dashboard" to view analytics</div>
+    <div class="loading">Loading analytics dashboard...</div>
 </div>
 
 <div id="charts-container">
     <!-- Charts will be loaded here -->
 </div>
 
-<div id="analytics-results">
-    <!-- Analytics query results will be displayed here -->
-</div>
+
 {% endblock %}
     
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    // Dashboard data from server-side rendering
-    const dashboardData = {
-        total_users: {{ total_users }},
-        total_activities: {{ total_activities }},
-        total_responses: {{ total_responses }},
-        total_questions: {{ total_questions }},
-        lesson_names: {{ lesson_names | safe }},
-        completion_rates: {{ completion_rates | safe }},
-        users_started: {{ users_started | safe }},
-        users_completed: {{ users_completed | safe }},
-        activity_dates: {{ activity_dates | safe }},
-        activity_counts: {{ activity_counts | safe }},
-        active_users: {{ active_users | safe }},
-        response_type_labels: {{ response_type_labels | safe }},
-        response_type_counts: {{ response_type_counts | safe }}
-    };
+    <script>
+        // Initialize dashboard with API data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboard();
+        });
         
         async function loadDashboard() {
             const statsContainer = document.getElementById('stats-container');
@@ -377,56 +427,6 @@
             }
         }
         
-        async function loadMetrics() {
-            const statsContainer = document.getElementById('stats-container');
-            
-            statsContainer.innerHTML = '<div class="loading">Loading metrics...</div>';
-            
-            try {
-                const response = await fetch('/api/dashboard/metrics', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ metric_type: 'all' })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    displayStats(data.data.metrics);
-                } else {
-                    statsContainer.innerHTML = `<div class="error">Error: ${data.message}</div>`;
-                }
-            } catch (error) {
-                statsContainer.innerHTML = `<div class="error">Error loading metrics: ${error.message}</div>`;
-            }
-        }
-        
-        async function loadCharts() {
-            const chartsContainer = document.getElementById('charts-container');
-            
-            chartsContainer.innerHTML = '<div class="loading">Loading charts...</div>';
-            
-            try {
-                const response = await fetch('/api/dashboard/charts', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ chart_type: 'all' })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    displayCharts(data.data.charts);
-                } else {
-                    chartsContainer.innerHTML = `<div class="error">Error: ${data.message}</div>`;
-                }
-            } catch (error) {
-                chartsContainer.innerHTML = `<div class="error">Error loading charts: ${error.message}</div>`;
-            }
-        }
-        
         function displayStats(metrics) {
             const statsContainer = document.getElementById('stats-container');
             
@@ -443,233 +443,184 @@
         function displayCharts(charts) {
             const chartsContainer = document.getElementById('charts-container');
             
-            let chartsHtml = '';
+            if (!charts || charts.length === 0) {
+                chartsContainer.innerHTML = '<div class="error">No chart data available</div>';
+                return;
+            }
+            
+            // Create a grid layout for charts
+            chartsContainer.innerHTML = '<div class="chart-grid"></div>';
+            const chartGrid = chartsContainer.querySelector('.chart-grid');
             
             charts.forEach((chart, index) => {
-                chartsHtml += `
+                const chartCard = document.createElement('div');
+                chartCard.className = 'chart-card';
+                chartCard.innerHTML = `
+                    <h3>${chart.title}</h3>
                     <div class="chart-container">
-                        <div class="chart-title">${chart.title}</div>
-                        <canvas id="chart-${index}" width="400" height="200"></canvas>
+                        <canvas id="chart-${index}"></canvas>
                     </div>
                 `;
+                chartGrid.appendChild(chartCard);
             });
             
-            chartsContainer.innerHTML = chartsHtml;
-            
-            // Render charts
+            // Render charts with proper spacing
             charts.forEach((chart, index) => {
-                const ctx = document.getElementById(`chart-${index}`).getContext('2d');
-                
-                if (chart.type === 'lesson_completion') {
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: chart.data.map(d => d.lesson),
-                            datasets: [{
-                                label: 'Completion Rate (%)',
-                                data: chart.data.map(d => d.rate),
-                                backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                                borderColor: 'rgba(99, 102, 241, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    max: 100
-                                }
-                            }
-                        }
-                    });
-                } else if (chart.type === 'activity_trends') {
-                    new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: chart.data.map(d => d.date),
-                            datasets: [{
-                                label: 'Activities',
-                                data: chart.data.map(d => d.activities),
-                                borderColor: 'rgba(99, 102, 241, 1)',
-                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                                tension: 0.1
-                            }, {
-                                label: 'Active Users',
-                                data: chart.data.map(d => d.active_users),
-                                borderColor: 'rgba(16, 185, 129, 1)',
-                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                tension: 0.1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            scales: {
-                                y: {
-                                    beginAtZero: true
-                                }
-                            }
-                        }
-                    });
-                }
+                setTimeout(() => {
+                    renderChart(chart, index);
+                }, 200 * (index + 1));
             });
         }
         
-        // Analytics Query Functions
-        async function executeAnalyticsQuery(queryType) {
-            const resultsContainer = document.getElementById('analytics-results');
-            resultsContainer.innerHTML = '<div class="loading">Executing analytics query...</div>';
+        function renderChart(chart, index) {
+            const ctx = document.getElementById(`chart-${index}`);
+            if (!ctx) return;
             
-            try {
-                let endpoint = '';
-                let params = {};
+            if (chart.type === 'lesson_completion') {
+                const labels = chart.data.map(d => d.lesson || 'Unknown Lesson');
+                const rates = chart.data.map(d => parseFloat(d.rate) || 0);
+                const started = chart.data.map(d => parseInt(d.started) || 0);
+                const completed = chart.data.map(d => parseInt(d.completed) || 0);
                 
-                // Map query types to endpoints
-                switch(queryType) {
-                    case 'completion_rates':
-                        endpoint = '/api/analytics/completion-rates';
-                        break;
-                    case 'highest_lowest':
-                        endpoint = '/api/analytics/completion-rates?ranked=true';
-                        break;
-                    case 'engagement_time':
-                        endpoint = '/api/analytics/engagement-over-time';
-                        break;
-                    case 'incomplete_students':
-                        endpoint = '/api/analytics/incomplete-students';
-                        break;
-                    case 'average_completion':
-                        endpoint = '/api/analytics/average-completion';
-                        break;
-                    case 'lesson_comparison':
-                        endpoint = '/api/analytics/lesson-comparison?lesson1=1&lesson2=5';
-                        break;
-                    case 'completion_speed':
-                        endpoint = '/api/analytics/completion-speed?days=30';
-                        break;
-                    default:
-                        throw new Error('Unknown query type');
-                }
-                
-                const response = await fetch(endpoint);
-                const data = await response.json();
-                
-                if (data.success) {
-                    displayAnalyticsResult(data, queryType);
-                } else {
-                    resultsContainer.innerHTML = `<div class="error">Error: ${data.error || 'Query failed'}</div>`;
-                }
-            } catch (error) {
-                resultsContainer.innerHTML = `<div class="error">Error executing query: ${error.message}</div>`;
-            }
-        }
-        
-        function displayAnalyticsResult(data, queryType) {
-            const resultsContainer = document.getElementById('analytics-results');
-            
-            let resultHtml = `
-                <div class="analytics-result">
-                    <div class="result-title">${data.title}</div>
-                    <div class="result-content">
-            `;
-            
-            // Handle different chart types
-            switch(data.chart_type) {
-                case 'metric':
-                    resultHtml += `
-                        <div class="metric-display">
-                            <div class="metric-value">${data.data.value}%</div>
-                            <div class="metric-label">${data.data.label}</div>
-                        </div>
-                    `;
-                    if (data.data.details) {
-                        resultHtml += '<div class="details">';
-                        for (const [key, value] of Object.entries(data.data.details)) {
-                            resultHtml += `<p><strong>${key.replace(/_/g, ' ').toUpperCase()}:</strong> ${value}</p>`;
-                        }
-                        resultHtml += '</div>';
-                    }
-                    break;
-                    
-                case 'table':
-                    if (data.data.rows && data.data.rows.length > 0) {
-                        resultHtml += `
-                            <div class="table-container">
-                                <table class="analytics-table">
-                                    <thead>
-                                        <tr>
-                                            ${Object.keys(data.data.rows[0]).map(key => 
-                                                `<th>${key.replace(/_/g, ' ').toUpperCase()}</th>`
-                                            ).join('')}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${data.data.rows.map(row => 
-                                            `<tr>${Object.values(row).map(value => `<td>${value}</td>`).join('')}</tr>`
-                                        ).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        `;
-                    }
-                    break;
-                    
-                case 'bar':
-                case 'line':
-                case 'comparison':
-                case 'histogram':
-                    resultHtml += `<canvas id="analytics-chart" width="400" height="200"></canvas>`;
-                    break;
-            }
-            
-            resultHtml += `
-                    </div>
-                </div>
-            `;
-            
-            resultsContainer.innerHTML = resultHtml;
-            
-            // Render chart if needed
-            if (['bar', 'line', 'comparison', 'histogram'].includes(data.chart_type)) {
-                setTimeout(() => {
-                    renderAnalyticsChart(data);
-                }, 100);
-            }
-        }
-        
-        function renderAnalyticsChart(data) {
-            const canvas = document.getElementById('analytics-chart');
-            if (!canvas) return;
-            
-            const ctx = canvas.getContext('2d');
-            
-            const chartConfig = {
-                type: data.chart_type === 'comparison' ? 'bar' : data.chart_type,
-                data: data.data,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ...(data.chart_type === 'bar' && { max: 100 })
-                        }
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Completion Rate (%)',
+                            data: rates,
+                            backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Users Started',
+                            data: started,
+                            backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y1',
+                            type: 'line'
+                        }, {
+                            label: 'Users Completed',
+                            data: completed,
+                            backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                            borderColor: 'rgba(239, 68, 68, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y1',
+                            type: 'line'
+                        }]
                     },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Completion Rate (%)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Users'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.dataset.label || '';
+                                        const value = context.parsed.y;
+                                        if (context.datasetIndex === 0) {
+                                            return `${label}: ${value}%`;
+                                        } else {
+                                            return `${label}: ${value} users`;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
-                }
-            };
-            
-            new Chart(ctx, chartConfig);
+                });
+            } else if (chart.type === 'problematic_users') {
+                const labels = chart.data.map(d => d.user || 'Unknown User');
+                const rates = chart.data.map(d => parseFloat(d.rate) || 0);
+                const activities = chart.data.map(d => parseInt(d.activities) || 0);
+                const started = chart.data.map(d => parseInt(d.lessons_started) || 0);
+                const completed = chart.data.map(d => parseInt(d.lessons_completed) || 0);
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Completion Rate (%)',
+                            data: rates,
+                            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                            borderColor: 'rgba(239, 68, 68, 1)',
+                            borderWidth: 1
+                        }, {
+                            label: 'Total Activities',
+                            data: activities,
+                            backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Count'
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterBody: function(context) {
+                                        const dataIndex = context[0].dataIndex;
+                                        const data = chart.data[dataIndex];
+                                        return [
+                                            `Cohort: ${data.user_info}`,
+                                            `Lessons Started: ${data.lessons_started}`,
+                                            `Lessons Completed: ${data.lessons_completed}`,
+                                            `Total Activities: ${data.activities}`
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         }
-        
-        // Load dashboard on page load
-        window.addEventListener('load', () => {
-            loadDashboard();
-        });
     </script>
 {% endblock %} 

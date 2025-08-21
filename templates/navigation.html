@@ -8,7 +8,7 @@
     <div class="nav-section">
         <div class="nav-section-title">Main Apps</div>
         <a href="/" class="nav-item {{ 'active' if active_page == 'dashboard' else '' }}" data-app="dashboard">
-            <span class="nav-item-icon">📊</span>
+                            <span class="nav-item-icon"></span>
             Analytics Dashboard
         </a>
         <a href="/explorer" class="nav-item {{ 'active' if active_page == 'explorer' else '' }}" data-app="explorer">
@@ -17,7 +17,7 @@
         </a>
         <a href="/chat" class="nav-item {{ 'active' if active_page == 'chat' else '' }}" data-app="chat">
             <span class="nav-item-icon">💬</span>
-            AI Chat
+                            Chat with 7
         </a>
         <a href="/docs" class="nav-item {{ 'active' if active_page == 'docs' else '' }}" data-app="docs">
             <span class="nav-item-icon">📚</span>
@@ -109,7 +109,7 @@ class NavigationSystem {
                     active: this.currentApp === 'explorer'
                 },
                 {
-                    label: 'AI Chat',
+                    label: 'Chat with 7',
                     url: '/chat',
                     icon: 'chat',
                     app: 'chat',

@@ -99,32 +99,41 @@ async def load_dashboard():
             SELECT 
                 l.lesson_name,
                 COUNT(DISTINCT ua.user_id) as users_started,
-                COUNT(DISTINCT ur.user_id) as users_completed,
-                ROUND(
-                    (COUNT(DISTINCT ur.user_id)::float / NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100)::numeric, 1
+                COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                CAST(
+                    (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                     NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100) AS NUMERIC(5,1)
                 ) as completion_rate
             FROM lessons l
             LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-            LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
             GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
         """)
         lesson_completion_data = cursor.fetchall()
         lesson_completion_data = validate_chart_dataset(lesson_completion_data, 'lesson_completion')
         
-        # Get activity trends with validation
+        # Get problematic users with lowest completion rates
         cursor.execute("""
             SELECT 
-                DATE(ua.created_at) as activity_date,
-                COUNT(*) as activities,
-                COUNT(DISTINCT ua.user_id) as active_users
-            FROM user_activities ua
-            WHERE ua.created_at >= NOW() - INTERVAL '30 days'
-            GROUP BY DATE(ua.created_at)
-            ORDER BY activity_date
+                u.user_id,
+                COALESCE(u.cohort, 'Unknown') as user_info,
+                COUNT(DISTINCT ua.lesson_id) as lessons_started,
+                COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.lesson_id END) as lessons_completed,
+                CAST(
+                    (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.lesson_id END)::float / 
+                     NULLIF(COUNT(DISTINCT ua.lesson_id), 0) * 100) AS NUMERIC(5,1)
+                ) as completion_rate,
+                COUNT(ua.id) as total_activities
+            FROM users u
+            LEFT JOIN user_activities ua ON u.id = ua.user_id
+            WHERE ua.lesson_id IS NOT NULL
+            GROUP BY u.id, u.user_id, u.cohort
+            HAVING COUNT(DISTINCT ua.lesson_id) > 0
+            ORDER BY completion_rate ASC, total_activities ASC
+            LIMIT 10
         """)
-        activity_trends = cursor.fetchall()
-        activity_trends = validate_chart_dataset(activity_trends, 'activity_trends')
+        problematic_users_data = cursor.fetchall()
+        problematic_users_data = validate_chart_dataset(problematic_users_data, 'problematic_users')
         
         cursor.close()
         conn.close()
@@ -147,19 +156,24 @@ async def load_dashboard():
                 ]
             })
         
-        if activity_trends:
+        if problematic_users_data:
             charts.append({
-                "type": "activity_trends",
-                "title": "Activity Trends (30 Days)",
+                "type": "problematic_users",
+                "title": "Problematic Users - Lowest Completion Rates",
                 "data": [
                     {
-                        "date": validate_database_value(row['activity_date'], 'activity_date', 'date').strftime('%Y-%m-%d') if hasattr(validate_database_value(row['activity_date'], 'activity_date', 'date'), 'strftime') else str(validate_database_value(row['activity_date'], 'activity_date', 'date')),
-                        "activities": validate_database_value(row['activities'], 'activities', 'int'),
-                        "active_users": validate_database_value(row['active_users'], 'active_users', 'int')
+                        "user": validate_database_value(row['user_id'], 'user_id', 'str'),
+                        "user_info": validate_database_value(row['user_info'], 'user_info', 'str'),
+                        "lessons_started": validate_database_value(row['lessons_started'], 'lessons_started', 'int'),
+                        "lessons_completed": validate_database_value(row['lessons_completed'], 'lessons_completed', 'int'),
+                        "rate": validate_database_value(row['completion_rate'], 'completion_rate', 'float'),
+                        "activities": validate_database_value(row['total_activities'], 'total_activities', 'int')
                     }
-                    for row in activity_trends
+                    for row in problematic_users_data
                 ]
             })
+        
+
         
         # Prepare metrics data with validation
         metrics = [
@@ -198,7 +212,6 @@ async def load_dashboard():
         summary = {
             "total_lessons": len(lesson_completion_data),
             "avg_completion_rate": avg_completion_rate,
-            "total_activity_days": len(activity_trends),
             "last_updated": datetime.utcnow().isoformat()
         }
         
@@ -324,31 +337,18 @@ async def get_charts(request: ChartsRequest):
                 SELECT 
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
-                    COUNT(DISTINCT ur.user_id) as users_completed,
-                    ROUND(
-                        (COUNT(DISTINCT ur.user_id)::float / NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100)::numeric, 1
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                    CAST(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100) AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-                LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
                 GROUP BY l.id, l.lesson_name, l.lesson_number
                 ORDER BY l.lesson_number
             """)
             lesson_completion_data = cursor.fetchall()
             lesson_completion_data = validate_chart_dataset(lesson_completion_data, 'lesson_completion')
-            
-            cursor.execute("""
-                SELECT 
-                    DATE(ua.created_at) as activity_date,
-                    COUNT(*) as activities,
-                    COUNT(DISTINCT ua.user_id) as active_users
-                FROM user_activities ua
-                WHERE ua.created_at >= NOW() - INTERVAL '30 days'
-                GROUP BY DATE(ua.created_at)
-                ORDER BY activity_date
-            """)
-            activity_trends = cursor.fetchall()
-            activity_trends = validate_chart_dataset(activity_trends, 'activity_trends')
             
             charts = [
                 {
@@ -363,18 +363,6 @@ async def get_charts(request: ChartsRequest):
                         }
                         for row in lesson_completion_data
                     ]
-                },
-                {
-                    "type": "activity_trends",
-                    "title": "Activity Trends (30 Days)",
-                    "data": [
-                        {
-                            "date": validate_database_value(row['activity_date'], 'activity_date', 'date').strftime('%Y-%m-%d') if hasattr(validate_database_value(row['activity_date'], 'activity_date', 'date'), 'strftime') else str(validate_database_value(row['activity_date'], 'activity_date', 'date')),
-                            "activities": validate_database_value(row['activities'], 'activities', 'int'),
-                            "active_users": validate_database_value(row['active_users'], 'active_users', 'int')
-                        }
-                        for row in activity_trends
-                    ]
                 }
             ]
         elif request.chart_type == "lesson_completion":
@@ -382,13 +370,13 @@ async def get_charts(request: ChartsRequest):
                 SELECT 
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
-                    COUNT(DISTINCT ur.user_id) as users_completed,
-                    ROUND(
-                        (COUNT(DISTINCT ur.user_id)::float / NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100)::numeric, 1
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                    CAST(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100) AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-                LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
                 GROUP BY l.id, l.lesson_name, l.lesson_number
                 ORDER BY l.lesson_number
             """)
@@ -408,32 +396,7 @@ async def get_charts(request: ChartsRequest):
                     for row in lesson_completion_data
                 ]
             }]
-        elif request.chart_type == "activity_trends":
-            cursor.execute("""
-                SELECT 
-                    DATE(ua.created_at) as activity_date,
-                    COUNT(*) as activities,
-                    COUNT(DISTINCT ua.user_id) as active_users
-                FROM user_activities ua
-                WHERE ua.created_at >= NOW() - INTERVAL '30 days'
-                GROUP BY DATE(ua.created_at)
-                ORDER BY activity_date
-            """)
-            activity_trends = cursor.fetchall()
-            activity_trends = validate_chart_dataset(activity_trends, 'activity_trends')
-            
-            charts = [{
-                "type": "activity_trends",
-                "title": "Activity Trends (30 Days)",
-                "data": [
-                    {
-                        "date": validate_database_value(row['activity_date'], 'activity_date', 'date').strftime('%Y-%m-%d') if hasattr(validate_database_value(row['activity_date'], 'activity_date', 'date'), 'strftime') else str(validate_database_value(row['activity_date'], 'activity_date', 'date')),
-                        "activities": validate_database_value(row['activities'], 'activities', 'int'),
-                        "active_users": validate_database_value(row['active_users'], 'active_users', 'int')
-                    }
-                    for row in activity_trends
-                ]
-            }]
+
         else:
             raise HTTPException(status_code=400, detail=f"Unknown chart type: {request.chart_type}")
         

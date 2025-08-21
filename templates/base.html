@@ -18,7 +18,7 @@
             --border-color: #e2e8f0;
             --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
             --sidebar-width: 280px;
-            --header-height: 70px;
+            --header-height: 80px;
         }
         
         * {
@@ -119,23 +119,28 @@
             grid-area: header;
             background: white;
             border-bottom: 1px solid var(--border-color);
-            padding: 0 2rem;
+            padding: 1rem 2rem;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
             box-shadow: var(--card-shadow);
+            min-height: var(--header-height);
         }
         
         .header-left {
             display: flex;
             align-items: center;
             gap: 1rem;
+            flex: 1;
         }
         
         .header-title {
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 1.75rem;
+            font-weight: 700;
             color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+            overflow: visible;
         }
         
         .header-subtitle {
@@ -250,7 +255,7 @@
         <div class="nav-section">
             <div class="nav-section-title">Main Apps</div>
             <a href="/" class="nav-item {{ 'active' if active_page == 'dashboard' else '' }}">
-                <span class="nav-item-icon">📊</span>
+                <span class="nav-item-icon"></span>
                 Analytics Dashboard
             </a>
             <a href="/explorer" class="nav-item {{ 'active' if active_page == 'explorer' else '' }}">
@@ -259,11 +264,11 @@
             </a>
             <a href="/chat" class="nav-item {{ 'active' if active_page == 'chat' else '' }}">
                 <span class="nav-item-icon">💬</span>
-                AI Chat
+                Chat with 7
             </a>
-            <a href="/docs" class="nav-item {{ 'active' if active_page == 'docs' else '' }}">
-                <span class="nav-item-icon">📚</span>
-                API Documentation
+            <a href="/api-docs" class="nav-item {{ 'active' if active_page == 'api-docs' else '' }}">
+                <span class="nav-item-icon">🔗</span>
+                API
             </a>
         </div>
         
@@ -272,6 +277,10 @@
             <a href="/health" class="nav-item">
                 <span class="nav-item-icon">💚</span>
                 Health Check
+            </a>
+            <a href="http://localhost:3000" target="_blank" class="nav-item">
+                <span class="nav-item-icon">🗄️</span>
+                Database Terminal
             </a>
         </div>
     </nav>
@@ -291,7 +300,11 @@
                 <span>🏠</span>
                 Home
             </a>
-            <a href="/ui/admin" class="btn btn-primary">
+            <a href="http://localhost:3000" target="_blank" class="btn btn-primary">
+                <span>🗄️</span>
+                Database
+            </a>
+            <a href="/ui/admin" class="btn btn-secondary">
                 <span>⚙️</span>
                 Admin
             </a>

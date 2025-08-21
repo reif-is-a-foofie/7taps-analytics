@@ -44,6 +44,7 @@ services:
       SQLPAD_ADMIN_PASSWORD: admin123
       SQLPAD_APP_LOG_LEVEL: info
       SQLPAD_WEB_LOG_LEVEL: info
+
     volumes:
       - sqlpad_data:/var/lib/sqlpad
     depends_on:

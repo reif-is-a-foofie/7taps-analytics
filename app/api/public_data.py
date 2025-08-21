@@ -106,16 +106,16 @@ async def get_metrics_overview():
         # Get average completion rate
         completion_query = """
             SELECT 
-                ROUND(AVG(completion_rate), 1) as avg_completion_rate
+                CAST(AVG(completion_rate) AS NUMERIC(5,1)) as avg_completion_rate
             FROM (
                 SELECT 
                     l.lesson_number,
-                    ROUND(
-                        (COUNT(DISTINCT ur.user_id)::float / NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100)::numeric, 1
+                    CAST(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100) AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-                LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
                 GROUP BY l.id, l.lesson_number
                 HAVING COUNT(DISTINCT ua.user_id) > 0
             ) lesson_stats
@@ -161,14 +161,14 @@ async def get_lesson_completion_analytics():
                 l.lesson_number,
                 l.lesson_name,
                 COUNT(DISTINCT ua.user_id) as users_started,
-                COUNT(DISTINCT ur.user_id) as users_completed,
-                ROUND(
-                    (COUNT(DISTINCT ur.user_id)::float / NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100)::numeric, 1
+                COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                CAST(
+                    (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                     NULLIF(COUNT(DISTINCT ua.user_id), 0) * 100) AS NUMERIC(5,1)
                 ) as completion_rate,
                 COUNT(*) as total_interactions
             FROM lessons l
             LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-            LEFT JOIN user_responses ur ON l.lesson_number = ur.lesson_number
             GROUP BY l.id, l.lesson_name, l.lesson_number
             ORDER BY l.lesson_number
         """

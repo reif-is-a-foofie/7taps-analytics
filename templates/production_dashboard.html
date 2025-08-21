@@ -428,8 +428,8 @@
                 document.getElementById('cpu-usage').textContent = formatPercentage(health.cpu_percent);
                 document.getElementById('memory-usage').textContent = formatPercentage(health.memory_percent);
                 document.getElementById('disk-usage').textContent = formatPercentage(health.disk_percent);
-                document.getElementById('db-status').textContent = health.database_connected ? '✅ Connected' : '❌ Disconnected';
-                document.getElementById('redis-status').textContent = health.redis_connected ? '✅ Connected' : '❌ Disconnected';
+                            document.getElementById('db-status').textContent = health.database_connected ? 'Connected' : 'Disconnected';
+            document.getElementById('redis-status').textContent = health.redis_connected ? 'Connected' : 'Disconnected';
                 
                 updateProgressBar('cpu-progress', health.cpu_percent);
                 updateProgressBar('memory-progress', health.memory_percent);
@@ -457,8 +457,8 @@
                     document.getElementById('avg-memory').textContent = formatPercentage(perf.system_performance.avg_memory_percent);
                     
                     const stability = perf.system_performance.connection_stability;
-                    const dbStable = stability.database ? '✅' : '❌';
-                    const redisStable = stability.redis ? '✅' : '❌';
+                                const dbStable = stability.database ? 'OK' : 'ERROR';
+            const redisStable = stability.redis ? 'OK' : 'ERROR';
                     document.getElementById('connection-stability').textContent = `DB: ${dbStable} Redis: ${redisStable}`;
                 }
                 

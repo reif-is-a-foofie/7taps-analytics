@@ -96,14 +96,131 @@ def get_database_schema():
 def get_preloaded_queries():
     """Get preloaded SQL queries for common analytics"""
     return {
-        "stats": {
-            "description": "Get current database statistics",
+        "engagement_dropoff": {
+            "description": "📉 Engagement Drop-Off - Lesson completion funnel",
             "sql": """
                 SELECT 
-                    (SELECT COUNT(*) FROM users) as total_users,
-                    (SELECT COUNT(*) FROM lessons) as total_lessons,
-                    (SELECT COUNT(*) FROM user_responses) as total_responses,
-                    (SELECT COUNT(*) FROM user_activities) as total_activities
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_started,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
+                    COUNT(DISTINCT ur.user_id) as users_engaged,
+                    CAST(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
+                    ) as completion_rate,
+                    CAST(
+                        (COUNT(DISTINCT ur.user_id)::float / 
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
+                    ) as engagement_rate
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                LEFT JOIN questions q ON l.id = q.lesson_id
+                LEFT JOIN user_responses ur ON q.id = ur.question_id
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY l.lesson_number
+            """
+        },
+        "problematic_users": {
+            "description": "🚨 Problematic Users - Learners with low completion or engagement",
+            "sql": """
+                SELECT 
+                    u.user_id,
+                    COUNT(DISTINCT ua.lesson_id) as lessons_accessed,
+                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.lesson_id END) as lessons_completed,
+                    CAST(
+                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.lesson_id END)::float / 
+                         NULLIF(COUNT(DISTINCT ua.lesson_id), 0)::float) * 100 AS NUMERIC(5,1)
+                    ) as completion_percentage,
+                    COUNT(ur.id) as total_responses
+                FROM users u
+                LEFT JOIN user_activities ua ON u.id = ua.user_id
+                LEFT JOIN user_responses ur ON u.id = ur.user_id
+                GROUP BY u.id, u.user_id
+                HAVING COUNT(DISTINCT ua.lesson_id) > 0
+                ORDER BY completion_percentage ASC
+                LIMIT 10
+            """
+        },
+        "sentiment_shift": {
+            "description": "⚡ Sentiment Shift / Energy Levels - Energy-related responses over lessons",
+            "sql": """
+                SELECT 
+                    l.lesson_number,
+                    l.lesson_name,
+                    COUNT(DISTINCT ua.user_id) as users_engaged,
+                    COUNT(ur.id) as total_responses,
+                    COUNT(CASE WHEN ur.response_text ILIKE '%energy%' OR ur.response_text ILIKE '%tired%' OR ur.response_text ILIKE '%energized%' THEN 1 END) as energy_mentions,
+                    COUNT(CASE WHEN ur.response_text ILIKE '%tired%' OR ur.response_text ILIKE '%exhausted%' OR ur.response_text ILIKE '%drained%' THEN 1 END) as low_energy,
+                    COUNT(CASE WHEN ur.response_text ILIKE '%energized%' OR ur.response_text ILIKE '%motivated%' OR ur.response_text ILIKE '%focused%' THEN 1 END) as high_energy
+                FROM lessons l
+                LEFT JOIN user_activities ua ON l.id = ua.lesson_id
+                LEFT JOIN questions q ON l.id = q.lesson_id
+                LEFT JOIN user_responses ur ON q.id = ur.question_id
+                GROUP BY l.id, l.lesson_number, l.lesson_name
+                ORDER BY l.lesson_number
+            """
+        },
+        "digital_behavior": {
+            "description": "📱 Digital Behavior Snapshot - Screen time and device usage patterns",
+            "sql": """
+                SELECT 
+                    CASE 
+                        WHEN ur.response_text ILIKE '%5%hour%' OR ur.response_text ILIKE '%6%hour%' OR ur.response_text ILIKE '%7%hour%' THEN '5-7 hours'
+                        WHEN ur.response_text ILIKE '%3%hour%' OR ur.response_text ILIKE '%4%hour%' THEN '3-4 hours'
+                        WHEN ur.response_text ILIKE '%8%hour%' OR ur.response_text ILIKE '%9%hour%' OR ur.response_text ILIKE '%10%hour%' THEN '8+ hours'
+                        WHEN ur.response_text ILIKE '%1%hour%' OR ur.response_text ILIKE '%2%hour%' THEN '1-2 hours'
+                        WHEN ur.response_text ILIKE '%screen%' OR ur.response_text ILIKE '%phone%' OR ur.response_text ILIKE '%device%' THEN 'Device Usage'
+                        ELSE 'Other'
+                    END as screen_time_category,
+                    COUNT(*) as user_count,
+                    COUNT(DISTINCT ur.user_id) as unique_users
+                FROM user_responses ur
+                WHERE ur.response_text IS NOT NULL AND ur.response_text != ''
+                GROUP BY screen_time_category
+                ORDER BY user_count DESC
+            """
+        },
+        "learning_priorities": {
+            "description": "🧠 Learning Priorities - What learners rank as most important",
+            "sql": """
+                SELECT 
+                    CASE 
+                        WHEN ur.response_text ILIKE '%sleep%' THEN 'Sleep'
+                        WHEN ur.response_text ILIKE '%productivity%' OR ur.response_text ILIKE '%focus%' THEN 'Productivity'
+                        WHEN ur.response_text ILIKE '%stress%' OR ur.response_text ILIKE '%anxiety%' THEN 'Stress Management'
+                        WHEN ur.response_text ILIKE '%social%' OR ur.response_text ILIKE '%connection%' THEN 'Social Connection'
+                        WHEN ur.response_text ILIKE '%health%' OR ur.response_text ILIKE '%wellness%' THEN 'Health & Wellness'
+                        ELSE 'Other'
+                    END as priority_category,
+                    COUNT(*) as mention_count,
+                    COUNT(DISTINCT ur.user_id) as unique_users
+                FROM user_responses ur
+                WHERE ur.response_text IS NOT NULL AND ur.response_text != ''
+                AND LENGTH(ur.response_text) > 10
+                GROUP BY priority_category
+                ORDER BY mention_count DESC
+            """
+        },
+        "reflection_themes": {
+            "description": "📝 Reflection Themes - Common emotional and behavioral themes",
+            "sql": """
+                SELECT 
+                    CASE 
+                        WHEN ur.response_text ILIKE '%lonely%' OR ur.response_text ILIKE '%alone%' THEN 'Loneliness'
+                        WHEN ur.response_text ILIKE '%stressed%' OR ur.response_text ILIKE '%overwhelmed%' THEN 'Stress'
+                        WHEN ur.response_text ILIKE '%procrastinate%' OR ur.response_text ILIKE '%delay%' THEN 'Procrastination'
+                        WHEN ur.response_text ILIKE '%distract%' OR ur.response_text ILIKE '%focus%' THEN 'Distraction'
+                        WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 'Improvement'
+                        ELSE 'Other'
+                    END as theme_category,
+                    COUNT(*) as mention_count,
+                    COUNT(DISTINCT ur.user_id) as unique_users
+                FROM user_responses ur
+                WHERE ur.response_text IS NOT NULL AND ur.response_text != ''
+                AND LENGTH(ur.response_text) > 20
+                GROUP BY theme_category
+                ORDER BY mention_count DESC
             """
         },
         "completion_rates": {
@@ -114,9 +231,9 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
                     COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
-                    ROUND(
+                    CAST(
                         (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 1
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -132,9 +249,9 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
                     COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
-                    ROUND(
+                    CAST(
                         (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 1
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -161,26 +278,22 @@ def get_preloaded_queries():
             "description": "Which students have not finished the course yet",
             "sql": """
                 SELECT 
-                    u.user_id,
-                    u.email,
-                    COUNT(DISTINCT ua.lesson_id) as lessons_started,
+                    (SELECT COUNT(*) FROM users) as total_users,
                     (SELECT COUNT(*) FROM lessons) as total_lessons,
-                    (SELECT COUNT(*) FROM lessons) - COUNT(DISTINCT ua.lesson_id) as lessons_remaining,
-                    ROUND(
-                        (COUNT(DISTINCT ua.lesson_id)::float / (SELECT COUNT(*) FROM lessons)::float) * 100, 1
-                    ) as progress_percentage
-                FROM users u
-                LEFT JOIN user_activities ua ON u.id = ua.user_id
-                GROUP BY u.id, u.user_id, u.email
-                HAVING COUNT(DISTINCT ua.lesson_id) < (SELECT COUNT(*) FROM lessons)
-                ORDER BY progress_percentage DESC
+                    COUNT(DISTINCT ur.user_id) as users_with_responses,
+                    (SELECT COUNT(*) FROM users) - COUNT(DISTINCT ur.user_id) as users_without_responses,
+                    CAST(
+                        ((SELECT COUNT(*) FROM users) - COUNT(DISTINCT ur.user_id))::float / 
+                        (SELECT COUNT(*) FROM users)::float * 100 AS NUMERIC(5,1)
+                    ) as incomplete_percentage
+                FROM user_responses ur
             """
         },
         "average_completion": {
             "description": "Give me the average completion rate across all lessons",
             "sql": """
                 SELECT 
-                    ROUND(AVG(completion_rate), 1) as average_completion_rate,
+                    CAST(AVG(completion_rate) AS NUMERIC(5,1)) as average_completion_rate,
                     COUNT(*) as total_lessons,
                     SUM(users_started) as total_users_started,
                     SUM(users_completed) as total_users_completed
@@ -189,9 +302,9 @@ def get_preloaded_queries():
                         l.lesson_number,
                         COUNT(DISTINCT ua.user_id) as users_started,
                         COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
-                        ROUND(
+                        CAST(
                             (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                             NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 1
+                             NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
                         ) as completion_rate
                     FROM lessons l
                     LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -208,9 +321,9 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_started,
                     COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
-                    ROUND(
+                    CAST(
                         (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 1
+                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100 AS NUMERIC(5,1)
                     ) as completion_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -244,9 +357,9 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_engaged,
                     COUNT(*) as total_activities,
-                    ROUND(
+                    CAST(
                         (COUNT(DISTINCT ua.user_id)::float / 
-                         (SELECT COUNT(*) FROM users)::float) * 100, 2
+                         (SELECT COUNT(*) FROM users)::float) * 100 AS NUMERIC(5,2)
                     ) as engagement_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -263,9 +376,9 @@ def get_preloaded_queries():
                     l.lesson_name,
                     COUNT(DISTINCT ua.user_id) as users_engaged,
                     COUNT(*) as total_activities,
-                    ROUND(
+                    CAST(
                         (COUNT(DISTINCT ua.user_id)::float / 
-                         (SELECT COUNT(*) FROM users)::float) * 100, 2
+                         (SELECT COUNT(*) FROM users)::float) * 100 AS NUMERIC(5,2)
                     ) as engagement_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -288,22 +401,7 @@ def get_preloaded_queries():
                 ORDER BY activity_date
             """
         },
-        "incomplete_students": {
-            "description": "Which students have not finished the course yet",
-            "sql": """
-                SELECT 
-                    u.user_id,
-                    u.email,
-                    COUNT(DISTINCT ua.lesson_id) as lessons_started,
-                    (SELECT COUNT(*) FROM lessons) as total_lessons,
-                    (SELECT COUNT(*) FROM lessons) - COUNT(DISTINCT ua.lesson_id) as lessons_remaining
-                FROM users u
-                LEFT JOIN user_activities ua ON u.id = ua.user_id
-                GROUP BY u.id, u.user_id, u.email
-                HAVING COUNT(DISTINCT ua.lesson_id) < (SELECT COUNT(*) FROM lessons)
-                ORDER BY lessons_remaining DESC
-            """
-        },
+
         "average_completion_rate": {
             "description": "Give me the average engagement rate across all lessons",
             "sql": """
@@ -317,9 +415,9 @@ def get_preloaded_queries():
                         l.lesson_number,
                         COUNT(DISTINCT ua.user_id) as users_engaged,
                         COUNT(*) as total_activities,
-                        ROUND(
+                        CAST(
                             (COUNT(DISTINCT ua.user_id)::float / 
-                             (SELECT COUNT(*) FROM users)::float) * 100, 2
+                             (SELECT COUNT(*) FROM users)::float) * 100 AS NUMERIC(5,2)
                         ) as engagement_rate
                     FROM lessons l
                     LEFT JOIN user_activities ua ON l.id = ua.lesson_id
@@ -330,20 +428,20 @@ def get_preloaded_queries():
             """
         },
         "lesson_comparison": {
-            "description": "Compare completion rates between specific lessons",
+            "description": "Compare engagement rates between specific lessons",
             "sql": """
                 SELECT 
                     l.lesson_number,
                     l.lesson_name,
-                    COUNT(DISTINCT ua.user_id) as users_started,
-                    COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END) as users_completed,
-                    ((
-                        (COUNT(DISTINCT CASE WHEN ua.activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN ua.user_id END)::float / 
-                         NULLIF(COUNT(DISTINCT ua.user_id), 0)::float) * 100, 2
-                    ) as completion_rate
+                    COUNT(DISTINCT ua.user_id) as users_engaged,
+                    COUNT(*) as total_activities,
+                    CAST(
+                        (COUNT(DISTINCT ua.user_id)::float / 
+                         (SELECT COUNT(*) FROM users)::float) * 100 AS NUMERIC(5,2)
+                    ) as engagement_rate
                 FROM lessons l
                 LEFT JOIN user_activities ua ON l.id = ua.lesson_id
-                WHERE l.lesson_number IN (1, 5)
+                WHERE l.lesson_number IN (1, 5) AND ua.activity_type = 'http://adlnet.gov/expapi/verbs/answered'
                 GROUP BY l.id, l.lesson_number, l.lesson_name
                 ORDER BY l.lesson_number
             """
@@ -353,14 +451,14 @@ def get_preloaded_queries():
             "sql": """
                 SELECT 
                     u.user_id,
-                    u.email,
                     MIN(ua.timestamp) as first_activity,
                     MAX(ua.timestamp) as last_activity,
                     EXTRACT(DAYS FROM MAX(ua.timestamp) - MIN(ua.timestamp)) as days_to_complete,
-                    COUNT(DISTINCT ua.lesson_id) as lessons_completed
+                    COUNT(DISTINCT ua.lesson_id) as lessons_engaged,
+                    (SELECT COUNT(*) FROM lessons) as total_lessons
                 FROM users u
                 JOIN user_activities ua ON u.id = ua.user_id
-                GROUP BY u.id, u.user_id, u.email
+                GROUP BY u.id, u.user_id
                 HAVING COUNT(DISTINCT ua.lesson_id) >= (SELECT COUNT(*) FROM lessons) * 0.8
                 ORDER BY days_to_complete
             """
@@ -512,7 +610,7 @@ def get_preloaded_queries():
                     COUNT(DISTINCT ur.user_id) as students_engaged,
                     COUNT(ur.id) as total_responses,
                     COUNT(CASE WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 1 END) as positive_changes,
-                    ((COUNT(CASE WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 1 END) * 100.0 / COUNT(ur.id), 1) as improvement_rate
+                    CAST((COUNT(CASE WHEN ur.response_text ILIKE '%improve%' OR ur.response_text ILIKE '%better%' THEN 1 END) * 100.0 / COUNT(ur.id)) AS NUMERIC(5,1)) as improvement_rate
                 FROM lessons l
                 LEFT JOIN user_responses ur ON l.id = ur.lesson_id
                 WHERE ur.response_text IS NOT NULL
@@ -568,6 +666,105 @@ def get_preloaded_queries():
         }
     }
 
+def get_all_database_content():
+    """Get relevant database content for LLM context (limited to fit token limits)"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Get lessons (limited)
+            cur.execute("""
+                SELECT id, lesson_number, lesson_name 
+                FROM lessons 
+                ORDER BY lesson_number
+                LIMIT 10
+            """)
+            lessons = [dict(row) for row in cur.fetchall()]
+            
+            # Get questions (limited)
+            cur.execute("""
+                SELECT q.id, q.question_number, q.question_text, q.lesson_id,
+                       l.lesson_number, l.lesson_name
+                FROM questions q
+                JOIN lessons l ON q.lesson_id = l.id
+                ORDER BY l.lesson_number, q.question_number
+                LIMIT 20
+            """)
+            questions = [dict(row) for row in cur.fetchall()]
+            
+            # Get key user responses (limited and focused on important topics)
+            cur.execute("""
+                SELECT ur.id, ur.response_text, ur.user_id, ur.timestamp,
+                       q.question_text, q.question_number,
+                       l.lesson_number, l.lesson_name
+                FROM user_responses ur
+                JOIN questions q ON ur.question_id = q.id
+                JOIN lessons l ON q.lesson_id = l.id
+                WHERE ur.response_text IS NOT NULL 
+                AND ur.response_text != ''
+                AND (
+                    ur.response_text ILIKE '%sleep%' OR
+                    ur.response_text ILIKE '%energy%' OR
+                    ur.response_text ILIKE '%screen%' OR
+                    ur.response_text ILIKE '%phone%' OR
+                    ur.response_text ILIKE '%priority%' OR
+                    ur.response_text ILIKE '%stress%' OR
+                    ur.response_text ILIKE '%tired%' OR
+                    ur.response_text ILIKE '%focus%' OR
+                    ur.response_text ILIKE '%habit%' OR
+                    ur.response_text ILIKE '%improve%'
+                )
+                ORDER BY ur.timestamp DESC
+                LIMIT 30
+            """)
+            responses = [dict(row) for row in cur.fetchall()]
+            
+            # Get user activities (limited)
+            cur.execute("""
+                SELECT ua.id, ua.user_id, ua.activity_type, ua.timestamp,
+                       l.lesson_number, l.lesson_name
+                FROM user_activities ua
+                JOIN lessons l ON ua.lesson_id = l.id
+                ORDER BY ua.timestamp DESC
+                LIMIT 20
+            """)
+            activities = [dict(row) for row in cur.fetchall()]
+            
+            # Get user info (limited)
+            cur.execute("""
+                SELECT id, user_id, created_at
+                FROM users
+                ORDER BY created_at
+                LIMIT 10
+            """)
+            users = [dict(row) for row in cur.fetchall()]
+            
+            # Convert datetime objects to strings for JSON serialization
+            def convert_datetime(obj):
+                if hasattr(obj, 'isoformat'):
+                    return obj.isoformat()
+                elif hasattr(obj, 'quantize'):  # Decimal objects
+                    return str(obj)
+                return obj
+            
+            def clean_dict(d):
+                return {k: convert_datetime(v) for k, v in d.items()}
+            
+            def clean_list_of_dicts(lst):
+                return [clean_dict(d) for d in lst]
+            
+            return {
+                "lessons": clean_list_of_dicts(lessons),
+                "questions": clean_list_of_dicts(questions),
+                "responses": clean_list_of_dicts(responses),
+                "activities": clean_list_of_dicts(activities),
+                "users": clean_list_of_dicts(users)
+            }
+    except Exception as e:
+        print(f"Error fetching database content: {e}")
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
 def execute_query(sql_query):
     """Execute a SQL query and return results"""
     conn = get_db_connection()
@@ -576,10 +773,12 @@ def execute_query(sql_query):
             cur.execute(sql_query)
             results = cur.fetchall()
             
-            # Convert datetime objects to strings for JSON serialization
+            # Convert datetime objects and Decimal to strings for JSON serialization
             def convert_datetime(obj):
                 if hasattr(obj, 'isoformat'):
                     return obj.isoformat()
+                elif hasattr(obj, 'quantize'):  # Decimal objects
+                    return str(obj)
                 return obj
             
             def clean_dict(d):
@@ -595,10 +794,16 @@ def get_llm_intent_and_sql(user_message: str, schema: Dict, sample_data: Dict) -
     """Use LLM to determine intent and generate SQL"""
     client = get_openai_client()
     
-    # Create context with schema and preloaded queries
+    # Get all database content for context
+    all_database_content = get_all_database_content()
+    
+    # Create context with schema, all database content, and preloaded queries
     context = f"""
 Database Schema:
 {json.dumps(schema, indent=2)}
+
+Complete Database Content:
+{json.dumps(all_database_content, indent=2)}
 
 Preloaded Queries Available:
 {json.dumps(sample_data, indent=2)}
@@ -607,38 +812,29 @@ User Question: {user_message}
 
 CRITICAL INSTRUCTIONS:
 1. You MUST return a JSON object with exactly this format: {{"intent": "description", "sql": "query_name", "explanation": "what this does"}}
-2. For "sql" field, use ONLY the exact query name from the preloaded queries (stats, habit_changes, top_users, lesson_completion, recent_activity, screen_time_responses)
+2. For "sql" field, use ONLY the exact query name from the preloaded queries (engagement_dropoff, problematic_users, sentiment_shift, digital_behavior, learning_priorities, reflection_themes)
 3. DO NOT generate custom SQL - only use the preloaded query names
 4. DO NOT make up numbers or data - you must execute the actual query
-5. For user count questions, use "stats"
-6. For habit change questions, use "habit_changes"
-7. For engagement questions, use "top_users"
+5. For specific topic questions (like "sleep", "energy", "screen time"), analyze the Complete Database Content to find relevant responses and choose the most appropriate preloaded query
+6. For engagement questions, use "engagement_dropoff"
+7. For user behavior questions, use "digital_behavior"
+8. For priority questions, use "learning_priorities"
 
 Available Preloaded Queries:
-- stats: Get current database statistics (users, lessons, activities, responses)
-- lesson_completion_rates: Show engagement rates for each lesson in the course
-- highest_lowest_completion: Which lessons have the highest and lowest engagement rates
-- student_engagement_over_time: Show student engagement over time across the course
-- incomplete_students: Which students have not finished the course yet
-- average_completion_rate: Give me the average engagement rate across all lessons
-- lesson_comparison: Compare engagement rates between specific lessons
-- time_to_completion: Show how many students completed the course within 30 days of starting
-- habit_changes: Get evidence of habit changes across lessons
-- top_users: Get most engaged users
-- recent_activity: Get recent user activity
-- screen_time_responses: Get responses about screen time habits
+- engagement_dropoff: 📉 Engagement Drop-Off - Lesson completion funnel
+- problematic_users: 🚨 Problematic Users - Learners with low completion or engagement  
+- sentiment_shift: ⚡ Sentiment Shift / Energy Levels - Energy-related responses over lessons
+- digital_behavior: 📱 Digital Behavior Snapshot - Screen time and device usage patterns
+- learning_priorities: 🧠 Learning Priorities - What learners rank as most important
+- reflection_themes: 📝 Reflection Themes - Common emotional and behavioral themes
 
 EXAMPLE RESPONSES:
-- "how many users" → {{"intent": "user_count", "sql": "stats", "explanation": "Get total user count from database"}}
-- "show completion rates" → {{"intent": "completion_analysis", "sql": "lesson_completion_rates", "explanation": "Get completion rates for each lesson"}}
-- "highest and lowest completion" → {{"intent": "completion_ranking", "sql": "highest_lowest_completion", "explanation": "Get lessons ranked by completion rate"}}
-- "engagement over time" → {{"intent": "engagement_timeline", "sql": "student_engagement_over_time", "explanation": "Get engagement trends over time"}}
-- "students not finished" → {{"intent": "incomplete_analysis", "sql": "incomplete_students", "explanation": "Get students who haven't completed the course"}}
-- "average completion rate" → {{"intent": "completion_summary", "sql": "average_completion_rate", "explanation": "Get overall completion rate"}}
-- "compare lesson 1 and 5" → {{"intent": "lesson_comparison", "sql": "lesson_comparison", "explanation": "Compare completion between lessons"}}
-- "time to completion" → {{"intent": "completion_timing", "sql": "time_to_completion", "explanation": "Get completion timing analysis"}}
-- "show habit changes" → {{"intent": "habit_analysis", "sql": "habit_changes", "explanation": "Get evidence of habit changes"}}
-- "most engaged users" → {{"intent": "engagement_analysis", "sql": "top_users", "explanation": "Get most engaged users"}}
+- "show engagement dropoff" → {{"intent": "engagement_analysis", "sql": "engagement_dropoff", "explanation": "Get lesson completion funnel"}}
+- "problematic users" → {{"intent": "user_analysis", "sql": "problematic_users", "explanation": "Get users with low completion rates"}}
+- "energy levels" → {{"intent": "sentiment_analysis", "sql": "sentiment_shift", "explanation": "Get energy-related responses over lessons"}}
+- "screen time" → {{"intent": "behavior_analysis", "sql": "digital_behavior", "explanation": "Get screen time usage patterns"}}
+- "learning priorities" → {{"intent": "priority_analysis", "sql": "learning_priorities", "explanation": "Get what learners prioritize most"}}
+- "reflection themes" → {{"intent": "theme_analysis", "sql": "reflection_themes", "explanation": "Get common emotional themes"}}
 """
     
     response = client.chat.completions.create(
@@ -658,12 +854,12 @@ EXAMPLE RESPONSES:
             raise ValueError("Invalid response format")
         
         # Ensure sql field is a valid preloaded query name
-        valid_queries = ['stats', 'lesson_completion_rates', 'highest_lowest_completion', 'student_engagement_over_time', 'incomplete_students', 'average_completion_rate', 'lesson_comparison', 'time_to_completion', 'habit_changes', 'top_users', 'recent_activity', 'screen_time_responses', 'lesson_details', 'engagement_health', 'lesson_engagement', 'behavior_priorities', 'student_impact', 'unique_insights']
+        valid_queries = ['engagement_dropoff', 'problematic_users', 'sentiment_shift', 'digital_behavior', 'learning_priorities', 'reflection_themes']
         if result.get('sql') not in valid_queries:
-            # Force use of stats query if invalid
-            result['sql'] = 'stats'
+            # Force use of engagement_dropoff query if invalid
+            result['sql'] = 'engagement_dropoff'
             result['intent'] = 'fallback_query'
-            result['explanation'] = 'Using stats query as fallback'
+            result['explanation'] = 'Using engagement dropoff query as fallback'
         
         return result
     except (json.JSONDecodeError, ValueError, KeyError):
@@ -692,23 +888,49 @@ def generate_visualization(results: List[Dict], intent: str) -> Optional[str]:
         cleaned_results = [clean_dict(result) for result in results]
         
         # Generate different visualizations based on intent and data structure
-        if 'completion' in intent.lower():
+        if 'engagement' in intent.lower() or 'dropoff' in intent.lower():
             if cleaned_results and 'completion_rate' in cleaned_results[0]:
-                # Completion rates bar chart
-                fig = go.Figure(data=[
-                    go.Bar(
-                        x=[f"Lesson {r.get('lesson_number', i+1)}" for i, r in enumerate(cleaned_results)],
-                        y=[r.get('completion_rate', 0) for r in cleaned_results],
-                        name='Completion Rate (%)',
-                        marker_color='#6366f1'
-                    )
-                ])
+                # Completion rates and engagement dropoff chart
+                fig = go.Figure()
+                
+                # Add completion rate bars
+                fig.add_trace(go.Bar(
+                    x=[f"Lesson {r.get('lesson_number', i+1)}" for i, r in enumerate(cleaned_results)],
+                    y=[float(r.get('completion_rate', 0)) for r in cleaned_results],
+                    name='Completion Rate (%)',
+                    marker_color='#6366f1',
+                    text=[f"{r.get('completion_rate', 0)}%" for r in cleaned_results],
+                    textposition='auto',
+                    yaxis='y'
+                ))
+                
+                # Add users engaged line (engagement dropoff)
+                fig.add_trace(go.Scatter(
+                    x=[f"Lesson {r.get('lesson_number', i+1)}" for i, r in enumerate(cleaned_results)],
+                    y=[r.get('users_engaged', 0) for r in cleaned_results],
+                    name='Users Engaged',
+                    mode='lines+markers',
+                    line=dict(color='#ef4444', width=3),
+                    marker=dict(size=8),
+                    yaxis='y2'
+                ))
+                
                 fig.update_layout(
-                    title='Lesson Completion Rates',
+                    title='Engagement Dropoff & Completion Rates',
                     xaxis_title='Lesson',
-                    yaxis_title='Completion Rate (%)',
+                    yaxis=dict(
+                        title='Completion Rate (%)',
+                        range=[0, 100],
+                        side='left'
+                    ),
+                    yaxis2=dict(
+                        title='Users Engaged',
+                        side='right',
+                        overlaying='y'
+                    ),
                     template='plotly_white',
-                    yaxis=dict(range=[0, 100])
+                    height=400,
+                    legend=dict(x=0.02, y=0.98)
                 )
                 return fig.to_json()
             elif cleaned_results and 'average_completion_rate' in cleaned_results[0]:
@@ -717,7 +939,7 @@ def generate_visualization(results: List[Dict], intent: str) -> Optional[str]:
                 fig = go.Figure(data=[
                     go.Indicator(
                         mode="gauge+number+delta",
-                        value=avg_rate,
+                        value=float(avg_rate),
                         domain={'x': [0, 1], 'y': [0, 1]},
                         title={'text': "Average Completion Rate (%)"},
                         gauge={'axis': {'range': [None, 100]},
@@ -727,7 +949,7 @@ def generate_visualization(results: List[Dict], intent: str) -> Optional[str]:
                                         {'range': [80, 100], 'color': "green"}]}
                     )
                 ])
-                fig.update_layout(template='plotly_white')
+                fig.update_layout(template='plotly_white', height=400)
                 return fig.to_json()
         
         elif 'engagement' in intent.lower() or 'lesson' in intent.lower():
@@ -735,52 +957,174 @@ def generate_visualization(results: List[Dict], intent: str) -> Optional[str]:
                 # Lesson engagement chart
                 fig = go.Figure(data=[
                     go.Bar(
-                        x=[r.get('lesson_number', r.get('lesson_name', f'Lesson {i}')) for i, r in enumerate(cleaned_results)],
-                        y=[r.get('total_responses', r.get('users_reached', 0)) for r in cleaned_results],
-                        name='Responses'
+                        x=[f"Lesson {r.get('lesson_number', i+1)}" for i, r in enumerate(cleaned_results)],
+                        y=[r.get('total_responses', r.get('users_reached', r.get('users_engaged', 0))) for r in cleaned_results],
+                        name='User Engagement',
+                        marker_color='#48bb78',
+                        text=[str(r.get('total_responses', r.get('users_reached', r.get('users_engaged', 0)))) for r in cleaned_results],
+                        textposition='auto'
                     )
                 ])
                 fig.update_layout(
                     title='Lesson Engagement',
                     xaxis_title='Lesson',
-                    yaxis_title='Responses',
-                    template='plotly_white'
+                    yaxis_title='Users Engaged',
+                    template='plotly_white',
+                    height=400
                 )
                 return fig.to_json()
         
-        elif 'behavior' in intent.lower() or 'priority' in intent.lower():
-            if 'behavior_category' in cleaned_results[0]:
-                # Behavior priorities pie chart
+        elif 'behavior' in intent.lower() or 'priority' in intent.lower() or 'digital' in intent.lower():
+            if cleaned_results and ('priority_category' in cleaned_results[0] or 'screen_time_category' in cleaned_results[0]):
+                # Learning priorities or digital behavior pie chart
+                category_key = 'priority_category' if 'priority_category' in cleaned_results[0] else 'screen_time_category'
+                value_key = 'mention_count' if 'mention_count' in cleaned_results[0] else 'user_count'
+                
                 fig = go.Figure(data=[
                     go.Pie(
-                        labels=[r.get('behavior_category', 'Other') for r in cleaned_results],
-                        values=[r.get('mention_count', 0) for r in cleaned_results],
-                        hole=0.3
+                        labels=[r.get(category_key, 'Other') for r in cleaned_results],
+                        values=[r.get(value_key, 0) for r in cleaned_results],
+                        hole=0.3,
+                        textinfo='label+percent',
+                        textposition='inside'
                     )
                 ])
                 fig.update_layout(
-                    title='Behavior Priorities',
-                    template='plotly_white'
+                    title='Learning Priorities' if 'priority_category' in cleaned_results[0] else 'Screen Time Distribution',
+                    template='plotly_white',
+                    height=400
                 )
                 return fig.to_json()
         
-        elif 'user' in intent.lower() or 'stats' in intent.lower():
-            # Simple bar chart for user stats
+        elif 'sentiment' in intent.lower() or 'energy' in intent.lower():
+            if cleaned_results and 'lesson_number' in cleaned_results[0]:
+                # Energy levels over lessons line chart
+                fig = go.Figure()
+                
+                # Add low energy line
+                fig.add_trace(go.Scatter(
+                    x=[f"Lesson {r.get('lesson_number', i+1)}" for i, r in enumerate(cleaned_results)],
+                    y=[r.get('low_energy', 0) for r in cleaned_results],
+                    mode='lines+markers',
+                    name='Low Energy',
+                    line=dict(color='red', width=3),
+                    marker=dict(size=8)
+                ))
+                
+                # Add high energy line
+                fig.add_trace(go.Scatter(
+                    x=[f"Lesson {r.get('lesson_number', i+1)}" for i, r in enumerate(cleaned_results)],
+                    y=[r.get('high_energy', 0) for r in cleaned_results],
+                    mode='lines+markers',
+                    name='High Energy',
+                    line=dict(color='green', width=3),
+                    marker=dict(size=8)
+                ))
+                
+                fig.update_layout(
+                    title='Energy Levels Over Lessons',
+                    xaxis_title='Lesson',
+                    yaxis_title='Number of Responses',
+                    template='plotly_white',
+                    height=400
+                )
+                return fig.to_json()
+        
+        elif 'theme' in intent.lower() or 'reflection' in intent.lower():
+            if cleaned_results and 'theme_category' in cleaned_results[0]:
+                # Reflection themes bar chart
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=[r.get('theme_category', 'Other') for r in cleaned_results],
+                        y=[r.get('mention_count', 0) for r in cleaned_results],
+                        name='Theme Mentions',
+                        marker_color='#8b5cf6',
+                        text=[str(r.get('mention_count', 0)) for r in cleaned_results],
+                        textposition='auto'
+                    )
+                ])
+                fig.update_layout(
+                    title='Reflection Themes',
+                    xaxis_title='Theme',
+                    yaxis_title='Number of Mentions',
+                    template='plotly_white',
+                    height=400
+                )
+                return fig.to_json()
+        
+        elif 'problematic' in intent.lower() or 'user' in intent.lower():
+            if cleaned_results and 'completion_percentage' in cleaned_results[0]:
+                # Problematic users scatter plot
+                fig = go.Figure(data=[
+                    go.Scatter(
+                        x=[r.get('completion_percentage', 0) for r in cleaned_results],
+                        y=[r.get('total_responses', 0) for r in cleaned_results],
+                        mode='markers',
+                        name='Users',
+                        marker=dict(
+                            size=10,
+                            color=[r.get('completion_percentage', 0) for r in cleaned_results],
+                            colorscale='RdYlGn',
+                            showscale=True,
+                            colorbar=dict(title="Completion %")
+                        ),
+                        text=[r.get('user_id', 'Unknown') for r in cleaned_results],
+                        hovertemplate='User: %{text}<br>Completion: %{x}%<br>Responses: %{y}<extra></extra>'
+                    )
+                ])
+                fig.update_layout(
+                    title='User Completion vs Engagement',
+                    xaxis_title='Completion Percentage',
+                    yaxis_title='Total Responses',
+                    template='plotly_white',
+                    height=400
+                )
+                return fig.to_json()
+        
+        elif 'user' in intent.lower() or 'stats' in intent.lower() or 'incomplete' in intent.lower():
+            # Simple bar chart for user stats and incomplete students
             keys = list(cleaned_results[0].keys())
             numeric_keys = [k for k in keys if isinstance(cleaned_results[0][k], (int, float))]
             if numeric_keys:
                 fig = go.Figure(data=[
                     go.Bar(
-                        x=numeric_keys,
+                        x=[k.replace('_', ' ').title() for k in numeric_keys],
                         y=[cleaned_results[0][k] for k in numeric_keys],
-                        name='Count'
+                        name='Count',
+                        marker_color='#ed8936',
+                        text=[str(cleaned_results[0][k]) for k in numeric_keys],
+                        textposition='auto'
                     )
                 ])
                 fig.update_layout(
-                    title='Database Statistics',
+                    title='Student Completion Status',
                     xaxis_title='Metric',
                     yaxis_title='Count',
-                    template='plotly_white'
+                    template='plotly_white',
+                    height=400
+                )
+                return fig.to_json()
+        
+        # Add time-based visualization for engagement over time
+        elif 'time' in intent.lower() or 'trend' in intent.lower():
+            if cleaned_results and 'activity_date' in cleaned_results[0]:
+                # Time series chart for engagement over time
+                fig = go.Figure(data=[
+                    go.Scatter(
+                        x=[r.get('activity_date') for r in cleaned_results],
+                        y=[r.get('active_users', r.get('users_engaged', 0)) for r in cleaned_results],
+                        mode='lines+markers',
+                        name='Active Users',
+                        line=dict(color='#667eea', width=3),
+                        marker=dict(size=8)
+                    )
+                ])
+                fig.update_layout(
+                    title='Student Engagement Over Time',
+                    xaxis_title='Date',
+                    yaxis_title='Active Users',
+                    template='plotly_white',
+                    height=400
                 )
                 return fig.to_json()
         
@@ -875,8 +1219,8 @@ async def chat(request: ChatRequest):
                 data_summary = format_query_results(query_results, llm_result['intent'])
             else:
                 print(f"DEBUG: Query name '{llm_result['sql']}' not found in preloaded queries")
-                # Fallback to stats query
-                query_sql = preloaded_queries['stats']['sql']
+                # Fallback to engagement_dropoff query
+                query_sql = preloaded_queries['engagement_dropoff']['sql']
                 query_results = execute_query(query_sql)
                 data_summary = format_query_results(query_results, 'fallback')
         except Exception as e:
@@ -890,6 +1234,9 @@ async def chat(request: ChatRequest):
             visualization = generate_visualization(query_results, llm_result['intent'])
         
         # Prepare conversation history with dynamic schema context
+        # Get all database content for context
+        all_database_content = get_all_database_content()
+        
         # Create a simplified schema summary for the LLM
         schema_summary = {}
         for table_name, columns in schema.items():
@@ -903,25 +1250,32 @@ async def chat(request: ChatRequest):
 Database Schema:
 {json.dumps(schema_summary, indent=2)}
 
-Available Queries: lesson_completion_rates, highest_lowest_completion, student_engagement_over_time, incomplete_students, average_completion_rate, lesson_comparison, time_to_completion, stats, habit_changes, top_users, recent_activity, screen_time_responses, lesson_details, engagement_health, lesson_engagement, behavior_priorities, student_impact, unique_insights
+Complete Database Content:
+{json.dumps(all_database_content, indent=2)}
+
+Available Queries: engagement_dropoff, problematic_users, sentiment_shift, digital_behavior, learning_priorities, reflection_themes
 
 FORMATTING RULES:
 1. ALWAYS put text summary ABOVE any visualization
 2. Keep text concise but informative (2-4 sentences)
 3. Use specific numbers and percentages from the data
-4. For completion rates: "Lesson X has Y% completion rate"
-5. For comparisons: "Lesson A (X%) vs Lesson B (Y%)"
-6. For averages: "Average completion rate is X% across all lessons"
-7. For incomplete students: "X students have not finished the course"
-8. For engagement over time: "Peak engagement was X users on Y date"
-9. Never use emojis - keep professional tone
-10. If no data found, say "No completion data available for this query"
+4. For engagement data, focus on user counts (users_engaged) rather than percentages
+4. For engagement dropoff: "Lesson X has Y% completion rate with Z users engaged, showing dropoff from A users in Lesson X-1 to B users in Lesson X"
+5. For problematic users: "X users have completion rates below 50%, with Y users stuck at Lesson Z"
+6. For sentiment shift: "Energy levels shift from X% low energy at start to Y% energized by Lesson Z"
+7. For digital behavior: "Most learners report X-Y hours daily screen time, with Z% in the high usage category"
+8. For learning priorities: "X% ranked Sleep as top priority, followed by Y% for Productivity"
+9. For reflection themes: "Loneliness is the most common theme (X mentions), especially tied to high screen time"
+10. Never use emojis - keep professional tone
+11. If no data found, say "No data available for this analysis"
 
 EXAMPLE RESPONSES:
-- "Lesson 1 has the highest completion rate at 85%, while Lesson 5 is lowest at 45%."
-- "Average completion rate across all lessons is 67%."
-- "15 students have not finished the course yet, with 3-5 lessons remaining each."
-- "Peak engagement was 12 users on August 18th, with steady decline since then."""
+- "Lesson 3 shows the steepest drop-off with 0% completion rate and 7 users engaged, down from 8 users in Lesson 2."
+- "8 users have completion rates below 50%, with 3 users stuck at Lesson 2."
+- "Energy levels improve from 70% low energy at start to 55% energized by Lesson 6."
+- "Most learners report 5-7 hours daily screen time, with 60% in the high usage category."
+- "45% ranked Sleep as their top priority, followed by Productivity at 30%."
+- "Loneliness is the most common emotional theme (25 mentions), especially tied to high screen time."""
             }
         ]
         
@@ -937,6 +1291,8 @@ EXAMPLE RESPONSES:
 User: {request.message}
 
 Query Results: {data_summary}
+
+IMPORTANT: For engagement dropoff analysis, focus on the 'users_engaged' field (actual user counts) rather than percentage rates. Use the format: "Lesson X has Y users engaged with Z% completion rate."
 
 Please provide a concise response based on the query results."""
         
@@ -1003,8 +1359,8 @@ async def ai_chat_ask_question(request: AIChatActionRequest):
                 query_results = execute_query(query_sql)
                 data_summary = format_query_results(query_results, llm_result['intent'])
             else:
-                # Fallback to stats query
-                query_sql = preloaded_queries['stats']['sql']
+                # Fallback to engagement_dropoff query
+                query_sql = preloaded_queries['engagement_dropoff']['sql']
                 query_results = execute_query(query_sql)
                 data_summary = format_query_results(query_results, 'fallback')
         except Exception as e:

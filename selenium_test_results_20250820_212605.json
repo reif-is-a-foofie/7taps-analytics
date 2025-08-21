@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-08-20T21:26:05.895488",
+  "base_url": "http://localhost:8000",
+  "summary": {
+    "total_tests": 9,
+    "passed_tests": 5,
+    "failed_tests": 4,
+    "success_rate": 55.55555555555556
+  },
+  "results": [
+    {
+      "test": "Page Load: Dashboard",
+      "url": "http://localhost:8000/",
+      "success": true,
+      "duration": 1.02,
+      "error": null
+    },
+    {
+      "test": "Page Load: AI Chat",
+      "url": "http://localhost:8000/chat",
+      "success": true,
+      "duration": 1.47,
+      "error": null
+    },
+    {
+      "test": "Page Load: Data Explorer",
+      "url": "http://localhost:8000/explorer",
+      "success": true,
+      "duration": 0.08,
+      "error": null
+    },
+    {
+      "test": "Page Load: API Documentation",
+      "url": "http://localhost:8000/docs",
+      "success": true,
+      "duration": 0.64,
+      "error": null
+    },
+    {
+      "test": "Navigation System",
+      "url": "http://localhost:8000",
+      "success": true,
+      "duration": null,
+      "error": null
+    },
+    {
+      "test": "Dashboard Analytics",
+      "url": "http://localhost:8000/",
+      "success": false,
+      "duration": null,
+      "error": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+    },
+    {
+      "test": "Chat Interface",
+      "url": "http://localhost:8000/chat",
+      "success": false,
+      "duration": null,
+      "error": "HTTPConnectionPool(host='localhost', port=57259): Max retries exceeded with url: /session/ad5f360eb269661302941797b46aa53c/url (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x101a642b0>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+    },
+    {
+      "test": "Data Explorer",
+      "url": "http://localhost:8000/explorer",
+      "success": false,
+      "duration": null,
+      "error": "HTTPConnectionPool(host='localhost', port=57259): Max retries exceeded with url: /session/ad5f360eb269661302941797b46aa53c/url (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x101a689e0>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+    },
+    {
+      "test": "API Documentation",
+      "url": "http://localhost:8000/docs",
+      "success": false,
+      "duration": null,
+      "error": "HTTPConnectionPool(host='localhost', port=57259): Max retries exceeded with url: /session/ad5f360eb269661302941797b46aa53c/url (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x101a69480>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+    }
+  ]
+}
