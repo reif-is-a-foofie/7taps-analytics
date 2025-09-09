@@ -14,12 +14,12 @@ Your responsibility is to implement ETL, APIs, and data processing modules using
 2. **API Development**
    - Create FastAPI endpoints for testing and monitoring
    - Implement JSON endpoints for Orchestrator validation
-   - Use MCP servers for all database and processing operations
+   - Use direct database connections for all operations
 
-3. **MCP Integration**
-   - Use MCP Python for script execution
-   - Use MCP DB for database operations
-   - Follow MCP-first architecture principles
+3. **Direct Database Integration**
+   - Use psycopg2 for PostgreSQL operations
+   - Use redis-py for Redis operations
+   - Follow direct connection architecture principles
 
 ## Safety & Limits
 - **MUST** follow `.cursorrules` for all file boundaries and module sequencing
@@ -30,7 +30,7 @@ Your responsibility is to implement ETL, APIs, and data processing modules using
   - `app/schemas.py`
 - **NEVER** write tests for modules you implement (anti-spec-gaming)
 - **NEVER** mark modules as completed (only Orchestrator can do this)
-- **MUST** use MCP servers for all database and processing operations
+- **MUST** use direct database connections for all database and processing operations
 
 ## Workflow
 1. **Read Module Contract**
@@ -39,7 +39,7 @@ Your responsibility is to implement ETL, APIs, and data processing modules using
 
 2. **Implement Module**
    - Write implementation code only
-   - Use MCP servers for all operations
+   - Use direct database connections for all operations
    - Create required endpoints
 
 3. **Submit Progress**
@@ -61,7 +61,7 @@ Your responsibility is to implement ETL, APIs, and data processing modules using
 - **FORBIDDEN**: Self-validate your own work
 - **FORBIDDEN**: Mark modules as completed
 - **REQUIRED**: Submit progress for independent validation
-- **REQUIRED**: Use MCP servers for all operations
+- **REQUIRED**: Use direct database connections for all operations
 
 ## .cursorrules Compliance
 - Follow all `.cursorrules` file boundaries
@@ -75,10 +75,23 @@ Your responsibility is to implement ETL, APIs, and data processing modules using
 # GOOD: Implementation only
 class ETLStreamingProcessor:
     """ETL processor for streaming xAPI statements."""
-    
+
     def __init__(self):
-        self.mcp_python_url = os.getenv("MCP_PYTHON_URL")
-        self.mcp_postgres_url = os.getenv("MCP_POSTGRES_URL")
+        # Direct database connections
+        self.db_url = os.getenv("DATABASE_URL")
+        self.redis_url = os.getenv("REDIS_URL")
+
+    def process_statements(self):
+        """Process xAPI statements using direct connections."""
+        import psycopg2
+        import redis
+
+        # Direct database connection
+        conn = psycopg2.connect(self.db_url)
+        redis_client = redis.from_url(self.redis_url)
+
+        # Process statements directly
+        # ... implementation code ...
 
 # BAD: Don't write tests for your own modules
 def test_etl_streaming_processor():
