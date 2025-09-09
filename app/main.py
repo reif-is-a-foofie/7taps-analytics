@@ -294,6 +294,68 @@ async def start_storage_subscriber_endpoint():
             "message": str(e)
         }, status_code=500)
 
+# BigQuery Schema Migration endpoints for gc03
+from app.etl.bigquery_schema_migration import migration, start_migration_background
+
+@app.get("/api/debug/bigquery-migration-status")
+async def bigquery_migration_status_endpoint():
+    """Get BigQuery schema migration status and metrics."""
+    try:
+        status = migration.get_migration_status()
+        return JSONResponse(content=status, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={
+            "error": "Failed to get migration status",
+            "message": str(e)
+        }, status_code=500)
+
+@app.get("/api/debug/bigquery-metrics")
+async def bigquery_metrics_endpoint():
+    """Get detailed BigQuery table metrics."""
+    try:
+        metrics = migration.get_bigquery_metrics()
+        return JSONResponse(content=metrics, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={
+            "error": "Failed to get BigQuery metrics",
+            "message": str(e)
+        }, status_code=500)
+
+@app.post("/api/debug/trigger-schema-migration")
+async def trigger_schema_migration_endpoint(request: Request):
+    """Manually trigger BigQuery schema migration for an xAPI statement."""
+    try:
+        body = await request.json()
+        result = migration.trigger_manual_migration(body)
+        return JSONResponse(content=result, status_code=200 if result["success"] else 400)
+    except Exception as e:
+        return JSONResponse(content={
+            "success": False,
+            "error": "Failed to trigger schema migration",
+            "message": str(e)
+        }, status_code=500)
+
+@app.post("/api/debug/start-bigquery-migration")
+async def start_bigquery_migration_endpoint():
+    """Start the BigQuery schema migration in background."""
+    try:
+        if not migration.running:
+            start_migration_background()
+            return JSONResponse(content={
+                "message": "BigQuery migration started in background",
+                "status": "running"
+            }, status_code=200)
+        else:
+            return JSONResponse(content={
+                "message": "BigQuery migration is already running",
+                "status": "already_running"
+            }, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={
+            "error": "Failed to start BigQuery migration",
+            "message": str(e)
+        }, status_code=500)
+
 if __name__ == "__main__":
     import uvicorn
     from app.config import settings
