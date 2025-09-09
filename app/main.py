@@ -246,6 +246,54 @@ async def cloud_function_status_endpoint():
     response_data, status_code = get_cloud_function_status()
     return JSONResponse(content=json.loads(response_data), status_code=status_code)
 
+# Pub/Sub Storage Subscriber endpoints for gc02
+from app.etl.pubsub_storage_subscriber import subscriber, start_subscriber_background
+
+@app.get("/api/debug/storage-subscriber-status")
+async def storage_subscriber_status_endpoint():
+    """Get Pub/Sub storage subscriber status and metrics."""
+    try:
+        status = subscriber.get_status()
+        return JSONResponse(content=status, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={
+            "error": "Failed to get subscriber status",
+            "message": str(e)
+        }, status_code=500)
+
+@app.get("/api/debug/storage-metrics")
+async def storage_metrics_endpoint():
+    """Get detailed Cloud Storage metrics."""
+    try:
+        metrics = subscriber.get_storage_metrics()
+        return JSONResponse(content=metrics, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={
+            "error": "Failed to get storage metrics",
+            "message": str(e)
+        }, status_code=500)
+
+@app.post("/api/debug/start-storage-subscriber")
+async def start_storage_subscriber_endpoint():
+    """Start the Pub/Sub storage subscriber in background."""
+    try:
+        if not subscriber.running:
+            start_subscriber_background()
+            return JSONResponse(content={
+                "message": "Storage subscriber started in background",
+                "status": "running"
+            }, status_code=200)
+        else:
+            return JSONResponse(content={
+                "message": "Storage subscriber is already running",
+                "status": "already_running"
+            }, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={
+            "error": "Failed to start storage subscriber",
+            "message": str(e)
+        }, status_code=500)
+
 if __name__ == "__main__":
     import uvicorn
     from app.config import settings
