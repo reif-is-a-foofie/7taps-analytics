@@ -1,0 +1,69 @@
+{
+  "module": "gc01_cloud_function_ingestion",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/api/cloud_function_ingestion.py",
+    "app/config/gcp_config.py",
+    "tests/test_cloud_function_ingestion.py"
+  ],
+  "required_endpoints": [
+    "POST /api/xapi/cloud-ingest",
+    "GET /api/debug/cloud-function-status"
+  ],
+  "status": "awaiting_review",
+  "task_tracking": {
+    "assigned_at": "2024-01-20T00:00:00Z",
+    "estimated_duration": "4h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "gc01.1",
+        "description": "Create Cloud Function HTTP trigger for xAPI ingestion",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/api/cloud_function_ingestion.py"]
+      },
+      {
+        "id": "gc01.2",
+        "description": "Configure GCP service account authentication",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/config/gcp_config.py"]
+      },
+      {
+        "id": "gc01.3",
+        "description": "Implement Pub/Sub message publishing from Cloud Function",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/api/cloud_function_ingestion.py"]
+      },
+      {
+        "id": "gc01.4",
+        "description": "Add test endpoint for Cloud Function status monitoring",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/api/cloud_function_ingestion.py"]
+      }
+    ],
+    "completion_criteria": [
+      "Cloud Function receives xAPI JSON from 7taps",
+      "Function publishes raw payloads to Pub/Sub topic",
+      "Test endpoint shows Cloud Function health status",
+      "pytest tests/test_cloud_function_ingestion.py passes"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Requires GCP service account key and Pub/Sub topic setup",
+      "docker_compose_required": false,
+      "test_environment": "Google Cloud Functions with Pub/Sub integration"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "backend_agent",
+    "handoff_notes": "Replace Heroku server with Cloud Function for xAPI ingestion",
+    "required_approval": false
+  }
+}

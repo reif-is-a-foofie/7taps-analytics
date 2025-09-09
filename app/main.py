@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
+import json
 from app.config import settings
 
 app = FastAPI(
@@ -217,6 +218,33 @@ app.include_router(xapi_router, tags=["xAPI Ingestion"])
 app.include_router(seventaps_router, tags=["7taps Integration"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(dashboard_router, prefix="/api", tags=["Dashboard"])
+
+# Cloud Function endpoints for gc01
+from app.api.cloud_function_ingestion import cloud_ingest_xapi, get_cloud_function_status
+
+@app.post("/api/xapi/cloud-ingest")
+async def cloud_ingest_endpoint(request: Request):
+    """Cloud Function-compatible endpoint for xAPI ingestion."""
+    try:
+        # Convert FastAPI request to format expected by cloud function
+        body = await request.json()
+        response_data, status_code = cloud_ingest_xapi(type('MockRequest', (), {
+            'method': 'POST',
+            'get_json': lambda: body,
+            'data': request.stream.__aiter__() if hasattr(request, 'stream') else None
+        })())
+        return JSONResponse(content=json.loads(response_data), status_code=status_code)
+    except Exception as e:
+        return JSONResponse(content={
+            "error": "Internal server error",
+            "message": str(e)
+        }, status_code=500)
+
+@app.get("/api/debug/cloud-function-status")
+async def cloud_function_status_endpoint():
+    """Get Cloud Function and GCP configuration status."""
+    response_data, status_code = get_cloud_function_status()
+    return JSONResponse(content=json.loads(response_data), status_code=status_code)
 
 if __name__ == "__main__":
     import uvicorn
