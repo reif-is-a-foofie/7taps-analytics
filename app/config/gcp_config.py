@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 from google.auth import default
 from google.oauth2 import service_account
-from google.cloud import pubsub_v1, storage
+from google.cloud import pubsub_v1, storage, bigquery
 from google.api_core import exceptions
 
 
@@ -21,11 +21,13 @@ class GCPConfig:
         self.service_account_key_path = os.getenv("GCP_SERVICE_ACCOUNT_KEY_PATH", "google-cloud-key.json")
         self.pubsub_topic = os.getenv("GCP_PUBSUB_TOPIC", "xapi-ingestion-topic")
         self.storage_bucket = os.getenv("GCP_STORAGE_BUCKET", "xapi-raw-data")
+        self.bigquery_dataset = os.getenv("GCP_BIGQUERY_DATASET", "xapi_analytics")
         self.location = os.getenv("GCP_LOCATION", "us-central1")
 
         self._credentials = None
         self._pubsub_publisher = None
         self._storage_client = None
+        self._bigquery_client = None
 
     @property
     def credentials(self):
@@ -60,6 +62,13 @@ class GCPConfig:
             self._storage_client = storage.Client(credentials=self.credentials, project=self.project_id)
         return self._storage_client
 
+    @property
+    def bigquery_client(self) -> bigquery.Client:
+        """Get BigQuery client."""
+        if self._bigquery_client is None:
+            self._bigquery_client = bigquery.Client(credentials=self.credentials, project=self.project_id)
+        return self._bigquery_client
+
     def get_topic_path(self) -> str:
         """Get the full Pub/Sub topic path."""
         return self.pubsub_publisher.topic_path(self.project_id, self.pubsub_topic)
@@ -70,10 +79,12 @@ class GCPConfig:
             "project_id": self.project_id,
             "pubsub_topic": self.pubsub_topic,
             "storage_bucket": self.storage_bucket,
+            "bigquery_dataset": self.bigquery_dataset,
             "location": self.location,
             "service_account_loaded": False,
             "pubsub_topic_exists": False,
             "storage_bucket_exists": False,
+            "bigquery_dataset_exists": False,
             "credentials_valid": False,
             "errors": []
         }
@@ -107,6 +118,16 @@ class GCPConfig:
                     status["errors"].append(f"Cloud Storage bucket '{self.storage_bucket}' does not exist")
             except Exception as e:
                 status["errors"].append(f"Cloud Storage access error: {str(e)}")
+
+            # Test BigQuery dataset access
+            try:
+                dataset_ref = self.bigquery_client.dataset(self.bigquery_dataset)
+                dataset = self.bigquery_client.get_dataset(dataset_ref)
+                status["bigquery_dataset_exists"] = True
+            except exceptions.NotFound:
+                status["errors"].append(f"BigQuery dataset '{self.bigquery_dataset}' does not exist")
+            except Exception as e:
+                status["errors"].append(f"BigQuery access error: {str(e)}")
 
         except Exception as e:
             status["errors"].append(f"Configuration validation error: {str(e)}")
