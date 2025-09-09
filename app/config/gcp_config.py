@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 from google.auth import default
 from google.oauth2 import service_account
-from google.cloud import pubsub_v1
+from google.cloud import pubsub_v1, storage
 from google.api_core import exceptions
 
 
@@ -20,10 +20,12 @@ class GCPConfig:
         self.project_id = os.getenv("GCP_PROJECT_ID", "taps-data")
         self.service_account_key_path = os.getenv("GCP_SERVICE_ACCOUNT_KEY_PATH", "google-cloud-key.json")
         self.pubsub_topic = os.getenv("GCP_PUBSUB_TOPIC", "xapi-ingestion-topic")
+        self.storage_bucket = os.getenv("GCP_STORAGE_BUCKET", "xapi-raw-data")
         self.location = os.getenv("GCP_LOCATION", "us-central1")
 
         self._credentials = None
         self._pubsub_publisher = None
+        self._storage_client = None
 
     @property
     def credentials(self):
@@ -51,6 +53,13 @@ class GCPConfig:
             self._pubsub_publisher = pubsub_v1.PublisherClient(credentials=self.credentials)
         return self._pubsub_publisher
 
+    @property
+    def storage_client(self) -> storage.Client:
+        """Get Cloud Storage client."""
+        if self._storage_client is None:
+            self._storage_client = storage.Client(credentials=self.credentials, project=self.project_id)
+        return self._storage_client
+
     def get_topic_path(self) -> str:
         """Get the full Pub/Sub topic path."""
         return self.pubsub_publisher.topic_path(self.project_id, self.pubsub_topic)
@@ -60,9 +69,11 @@ class GCPConfig:
         status = {
             "project_id": self.project_id,
             "pubsub_topic": self.pubsub_topic,
+            "storage_bucket": self.storage_bucket,
             "location": self.location,
             "service_account_loaded": False,
             "pubsub_topic_exists": False,
+            "storage_bucket_exists": False,
             "credentials_valid": False,
             "errors": []
         }
@@ -86,6 +97,16 @@ class GCPConfig:
                 status["errors"].append(f"Pub/Sub topic '{self.pubsub_topic}' does not exist")
             except Exception as e:
                 status["errors"].append(f"Pub/Sub access error: {str(e)}")
+
+            # Test Cloud Storage bucket access
+            try:
+                bucket = self.storage_client.bucket(self.storage_bucket)
+                if bucket.exists():
+                    status["storage_bucket_exists"] = True
+                else:
+                    status["errors"].append(f"Cloud Storage bucket '{self.storage_bucket}' does not exist")
+            except Exception as e:
+                status["errors"].append(f"Cloud Storage access error: {str(e)}")
 
         except Exception as e:
             status["errors"].append(f"Configuration validation error: {str(e)}")
