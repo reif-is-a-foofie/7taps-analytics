@@ -1,0 +1,265 @@
+{
+  "gcp_project": {
+    "name": "taps-data",
+    "region": "us-central1",
+    "zone": "us-central1-a",
+    "billing_account": null
+  },
+  "enabled_apis": [
+    "cloudfunctions.googleapis.com",
+    "pubsub.googleapis.com",
+    "storage.googleapis.com",
+    "bigquery.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "iam.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com"
+  ],
+  "service_account": {
+    "name": "taps-analytics-sa",
+    "display_name": "7taps Analytics Service Account",
+    "description": "Service account for 7taps Analytics GCP resources",
+    "roles": [
+      "roles/cloudfunctions.invoker",
+      "roles/pubsub.publisher",
+      "roles/pubsub.subscriber",
+      "roles/storage.objectAdmin",
+      "roles/bigquery.dataEditor",
+      "roles/bigquery.jobUser",
+      "roles/logging.logWriter",
+      "roles/monitoring.metricWriter"
+    ]
+  },
+  "cloud_functions": {
+    "cloud_ingest_xapi": {
+      "name": "cloud-ingest-xapi",
+      "description": "HTTP-triggered Cloud Function for xAPI statement ingestion",
+      "runtime": "python39",
+      "entry_point": "cloud_ingest_xapi",
+      "source_directory": "app/api",
+      "memory_mb": 512,
+      "timeout": 60,
+      "max_instances": 100,
+      "environment_variables": {
+        "GCP_PROJECT_ID": "taps-data",
+        "PUBSUB_TOPIC": "xapi-ingestion-topic",
+        "STORAGE_BUCKET": "taps-data-raw-xapi"
+      }
+    }
+  },
+  "pubsub": {
+    "topics": [
+      {
+        "name": "xapi-ingestion-topic",
+        "labels": {
+          "purpose": "xapi-ingestion",
+          "environment": "production"
+        }
+      }
+    ],
+    "subscriptions": [
+      {
+        "name": "xapi-storage-subscriber",
+        "topic": "xapi-ingestion-topic",
+        "ack_deadline_seconds": 60,
+        "message_retention_duration": "86400s",
+        "retain_acked_messages": false,
+        "labels": {
+          "purpose": "storage-archival",
+          "environment": "production"
+        }
+      },
+      {
+        "name": "xapi-bigquery-subscriber",
+        "topic": "xapi-ingestion-topic",
+        "ack_deadline_seconds": 300,
+        "message_retention_duration": "86400s",
+        "retain_acked_messages": false,
+        "labels": {
+          "purpose": "bigquery-migration",
+          "environment": "production"
+        }
+      }
+    ]
+  },
+  "cloud_storage": {
+    "buckets": [
+      {
+        "name": "taps-data-raw-xapi",
+        "location": "us-central1",
+        "storage_class": "STANDARD",
+        "versioning": {
+          "enabled": true
+        },
+        "lifecycle": {
+          "rule": [
+            {
+              "action": {
+                "type": "Delete"
+              },
+              "condition": {
+                "age": 365
+              }
+            }
+          ]
+        },
+        "labels": {
+          "purpose": "raw-xapi-storage",
+          "environment": "production"
+        }
+      }
+    ]
+  },
+  "bigquery": {
+    "datasets": [
+      {
+        "dataset_id": "taps_data",
+        "friendly_name": "7taps Analytics Data",
+        "description": "Main dataset for 7taps learning analytics",
+        "location": "us-central1",
+        "labels": {
+          "purpose": "analytics",
+          "environment": "production"
+        }
+      }
+    ],
+    "tables": [
+      {
+        "table_id": "users",
+        "dataset_id": "taps_data",
+        "description": "User information and profiles",
+        "schema": [
+          {"name": "id", "type": "INTEGER", "mode": "REQUIRED", "description": "User ID"},
+          {"name": "email", "type": "STRING", "mode": "NULLABLE", "description": "User email"},
+          {"name": "created_at", "type": "TIMESTAMP", "mode": "NULLABLE", "description": "Account creation timestamp"},
+          {"name": "last_activity", "type": "TIMESTAMP", "mode": "NULLABLE", "description": "Last activity timestamp"}
+        ],
+        "time_partitioning": {
+          "type": "DAY",
+          "field": "created_at"
+        }
+      },
+      {
+        "table_id": "lessons",
+        "dataset_id": "taps_data",
+        "description": "Lesson definitions and metadata",
+        "schema": [
+          {"name": "id", "type": "INTEGER", "mode": "REQUIRED", "description": "Lesson ID"},
+          {"name": "lesson_name", "type": "STRING", "mode": "REQUIRED", "description": "Lesson name"},
+          {"name": "lesson_number", "type": "INTEGER", "mode": "REQUIRED", "description": "Lesson number"},
+          {"name": "created_at", "type": "TIMESTAMP", "mode": "NULLABLE", "description": "Creation timestamp"}
+        ]
+      },
+      {
+        "table_id": "questions",
+        "dataset_id": "taps_data",
+        "description": "Question definitions",
+        "schema": [
+          {"name": "id", "type": "INTEGER", "mode": "REQUIRED", "description": "Question ID"},
+          {"name": "lesson_id", "type": "INTEGER", "mode": "REQUIRED", "description": "Associated lesson ID"},
+          {"name": "question_text", "type": "STRING", "mode": "REQUIRED", "description": "Question text"},
+          {"name": "question_type", "type": "STRING", "mode": "REQUIRED", "description": "Question type"},
+          {"name": "created_at", "type": "TIMESTAMP", "mode": "NULLABLE", "description": "Creation timestamp"}
+        ]
+      },
+      {
+        "table_id": "user_responses",
+        "dataset_id": "taps_data",
+        "description": "User responses to questions",
+        "schema": [
+          {"name": "id", "type": "INTEGER", "mode": "REQUIRED", "description": "Response ID"},
+          {"name": "user_id", "type": "INTEGER", "mode": "REQUIRED", "description": "User ID"},
+          {"name": "question_id", "type": "INTEGER", "mode": "REQUIRED", "description": "Question ID"},
+          {"name": "response_text", "type": "STRING", "mode": "NULLABLE", "description": "Response text"},
+          {"name": "response_value", "type": "FLOAT", "mode": "NULLABLE", "description": "Numeric response value"},
+          {"name": "created_at", "type": "TIMESTAMP", "mode": "NULLABLE", "description": "Response timestamp"}
+        ],
+        "time_partitioning": {
+          "type": "DAY",
+          "field": "created_at"
+        }
+      },
+      {
+        "table_id": "user_activities",
+        "dataset_id": "taps_data",
+        "description": "User learning activities and progress",
+        "schema": [
+          {"name": "id", "type": "INTEGER", "mode": "REQUIRED", "description": "Activity ID"},
+          {"name": "user_id", "type": "INTEGER", "mode": "REQUIRED", "description": "User ID"},
+          {"name": "lesson_id", "type": "INTEGER", "mode": "REQUIRED", "description": "Lesson ID"},
+          {"name": "activity_type", "type": "STRING", "mode": "REQUIRED", "description": "Activity type (verb)"},
+          {"name": "activity_name", "type": "STRING", "mode": "NULLABLE", "description": "Activity name"},
+          {"name": "created_at", "type": "TIMESTAMP", "mode": "NULLABLE", "description": "Activity timestamp"}
+        ],
+        "time_partitioning": {
+          "type": "DAY",
+          "field": "created_at"
+        }
+      },
+      {
+        "table_id": "xapi_events",
+        "dataset_id": "taps_data",
+        "description": "Raw xAPI statements for advanced analytics",
+        "schema": [
+          {"name": "id", "type": "STRING", "mode": "REQUIRED", "description": "xAPI statement ID"},
+          {"name": "actor", "type": "JSON", "mode": "REQUIRED", "description": "xAPI actor information"},
+          {"name": "verb", "type": "JSON", "mode": "REQUIRED", "description": "xAPI verb information"},
+          {"name": "object", "type": "JSON", "mode": "REQUIRED", "description": "xAPI object information"},
+          {"name": "result", "type": "JSON", "mode": "NULLABLE", "description": "xAPI result information"},
+          {"name": "context", "type": "JSON", "mode": "NULLABLE", "description": "xAPI context information"},
+          {"name": "timestamp", "type": "TIMESTAMP", "mode": "REQUIRED", "description": "Statement timestamp"},
+          {"name": "stored", "type": "TIMESTAMP", "mode": "REQUIRED", "description": "Storage timestamp"},
+          {"name": "raw_statement", "type": "STRING", "mode": "REQUIRED", "description": "Full raw xAPI statement"}
+        ],
+        "time_partitioning": {
+          "type": "DAY",
+          "field": "timestamp"
+        }
+      }
+    ]
+  },
+  "monitoring": {
+    "dashboards": [
+      {
+        "name": "7taps-Analytics-Overview",
+        "display_name": "7taps Analytics Overview",
+        "description": "Main dashboard for monitoring 7taps Analytics infrastructure"
+      }
+    ],
+    "alerts": [
+      {
+        "name": "cloud-function-errors",
+        "display_name": "Cloud Function Error Rate",
+        "description": "Alert when Cloud Function error rate exceeds 5%",
+        "condition": {
+          "filter": "resource.type=\"cloud_function\" AND metric.type=\"cloudfunctions.googleapis.com/function/execution_count\"",
+          "comparison": "COMPARISON_GT",
+          "threshold": 0.05,
+          "duration": "300s"
+        }
+      },
+      {
+        "name": "pubsub-backlog",
+        "display_name": "Pub/Sub Message Backlog",
+        "description": "Alert when Pub/Sub subscription has backlog > 1000 messages",
+        "condition": {
+          "filter": "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/num_undelivered_messages\"",
+          "comparison": "COMPARISON_GT",
+          "threshold": 1000,
+          "duration": "300s"
+        }
+      }
+    ]
+  },
+  "deployment_metadata": {
+    "version": "1.0.0",
+    "created_at": "2025-09-10T00:00:00Z",
+    "description": "Complete GCP infrastructure configuration for 7taps Analytics",
+    "environment": "production",
+    "cost_optimization": {
+      "auto_shutdown": false,
+      "budget_alerts": true,
+      "resource_limits": true
+    }
+  }
+}

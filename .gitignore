@@ -47,6 +47,11 @@ Thumbs.db
 .env.local
 .env.production
 
+# Google Cloud Service Account Keys
+google-cloud-key.json
+*.json.key
+gcp-key*.json
+
 # Cache
 .pytest_cache/
 .coverage

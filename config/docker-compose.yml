@@ -31,7 +31,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # Direct Database Access (No MCP needed)
+  # Direct Database Access
   # PostgreSQL and Redis are accessed directly via psycopg2 and redis-py
 
   # SQLPad for DB Terminal

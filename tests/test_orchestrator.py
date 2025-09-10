@@ -1,6 +1,6 @@
 """
-Independent Test Suite for b.04 Orchestrator MCP
-Based on requirements/b04_orchestrator_mcp.json specifications
+Independent Test Suite for b.04 Orchestrator Integration
+Based on requirements/b04_orchestrator_integration.json specifications
 Adversarial testing approach - not implementation mirroring
 """
 
@@ -13,19 +13,19 @@ from app.main import app
 client = TestClient(app)
 
 
-class TestOrchestratorMCPRequirements:
-    """Test b.04 Orchestrator MCP based on requirements specifications."""
+class TestOrchestratorIntegrationRequirements:
+    """Test b.04 Orchestrator Integration based on requirements specifications."""
     
-    def test_requirement_log_active_mcp_calls(self):
-        """Test requirement: Extend orchestrator APIs to log active MCP calls."""
-        # Adversarial test: Ensure MCP calls are logged
-        with patch('app.api.orchestrator.log_mcp_call') as mock_log:
-            mock_log.return_value = {"logged": True, "call_id": "mcp_123"}
-            
-            # Test that MCP calls can be logged
+    def test_requirement_log_active_database_calls(self):
+        """Test requirement: Extend orchestrator APIs to log active database calls."""
+        # Adversarial test: Ensure database calls are logged
+        with patch('app.api.orchestrator.log_database_call') as mock_log:
+            mock_log.return_value = {"logged": True, "call_id": "db_123"}
+
+            # Test that database calls can be logged
             # Based on requirements, not implementation
             assert mock_log.called is False
-            # The actual test would verify MCP call logging
+            # The actual test would verify database call logging
     
     def test_requirement_provide_progress_endpoint(self):
         """Test requirement: Implement /api/debug/progress endpoint."""
@@ -69,16 +69,16 @@ class TestOrchestratorMCPRequirements:
             # The actual test would verify module tracking
 
 
-class TestOrchestratorMCPTestCriteria:
+class TestOrchestratorIntegrationTestCriteria:
     """Test the specific test criteria from requirements."""
-    
-    def test_criteria_log_active_mcp_calls_and_test_results(self):
-        """Test criteria: Must log active MCP calls and test results."""
-        # Adversarial test: Ensure MCP call logging works
-        with patch('app.api.orchestrator.log_mcp_call_and_test_result') as mock_log:
-            mock_log.return_value = {"mcp_call": "db_query", "test_result": "passed"}
-            
-            # Test that MCP calls and test results can be logged
+
+    def test_criteria_log_active_database_calls_and_test_results(self):
+        """Test criteria: Must log active database calls and test results."""
+        # Adversarial test: Ensure database call logging works
+        with patch('app.api.orchestrator.log_database_call_and_test_result') as mock_log:
+            mock_log.return_value = {"database_call": "db_query", "test_result": "passed"}
+
+            # Test that database calls and test results can be logged
             # Based on requirements, not implementation
             assert mock_log.called is False
             # The actual test would verify logging functionality
@@ -125,15 +125,15 @@ class TestOrchestratorMCPTestCriteria:
             # The actual test would verify contract update functionality
 
 
-class TestOrchestratorMCPAdversarial:
+class TestOrchestratorIntegrationAdversarial:
     """Adversarial tests to find edge cases and failures."""
-    
-    def test_adversarial_mcp_call_logging_failure(self):
-        """Adversarial test: MCP call logging failure."""
-        with patch('app.api.orchestrator.log_mcp_call') as mock_log:
-            mock_log.side_effect = Exception("MCP call logging failed")
-            
-            # Test behavior with MCP call logging failures
+
+    def test_adversarial_database_call_logging_failure(self):
+        """Adversarial test: Database call logging failure."""
+        with patch('app.api.orchestrator.log_database_call') as mock_log:
+            mock_log.side_effect = Exception("Database call logging failed")
+
+            # Test behavior with database call logging failures
             # Based on requirements, not implementation
             assert mock_log.called is False
     

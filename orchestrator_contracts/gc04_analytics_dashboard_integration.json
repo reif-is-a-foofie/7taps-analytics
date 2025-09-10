@@ -1,0 +1,72 @@
+{
+  "module": "gc04_analytics_dashboard_integration",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "app/ui/bigquery_dashboard.py",
+    "app/api/bigquery_analytics.py",
+    "templates/bigquery_dashboard.html",
+    "tests/test_bigquery_analytics.py"
+  ],
+  "required_endpoints": [
+    "GET /ui/bigquery-dashboard",
+    "GET /api/analytics/bigquery/query",
+    "GET /api/debug/bigquery-connection-status"
+  ],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2024-01-20T00:00:00Z",
+    "estimated_duration": "4h",
+    "dependencies": ["gc03"],
+    "subtasks": [
+      {
+        "id": "gc04.1",
+        "description": "Create BigQuery connection and query interface",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["app/api/bigquery_analytics.py"]
+      },
+      {
+        "id": "gc04.2",
+        "description": "Build analytics dashboard UI for BigQuery data",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["app/ui/bigquery_dashboard.py", "templates/bigquery_dashboard.html"]
+      },
+      {
+        "id": "gc04.3",
+        "description": "Implement pre-built analytics queries for common metrics",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["app/api/bigquery_analytics.py"]
+      },
+      {
+        "id": "gc04.4",
+        "description": "Add connection status monitoring endpoint",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["app/api/bigquery_analytics.py"]
+      }
+    ],
+    "completion_criteria": [
+      "BigQuery connection established and tested",
+      "Analytics dashboard displays structured xAPI data",
+      "Pre-built queries for completion rates, learner progress, etc.",
+      "Connection status endpoint shows BigQuery health",
+      "pytest tests/test_bigquery_analytics.py passes"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Requires BigQuery data populated from schema migration",
+      "docker_compose_required": false,
+      "test_environment": "BigQuery with populated structured data"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": "backend_etl_agent",
+    "to_agent": "ui_agent",
+    "handoff_notes": "Create analytics dashboard for BigQuery structured data",
+    "required_approval": false
+  }
+}

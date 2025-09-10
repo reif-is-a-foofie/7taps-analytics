@@ -275,7 +275,7 @@
       "compute_time_preservation": "All insights captured to avoid recomputation",
       "validation_insights": "Testing Agent findings preserved for future reference",
       "performance_metrics": "Baseline metrics established for comparison",
-      "architecture_decisions": "MCP removal insights documented for future reference"
+      "architecture_decisions": "Direct database connection insights documented for future reference"
     },
     "success_metrics": {
       "performance_improvements": [
