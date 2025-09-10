@@ -64,11 +64,18 @@ async def get_dashboard_data():
             )
             timeline_data = timeline_response.json() if timeline_response.status_code == 200 else {"success": False}
 
+            # Get cost monitoring data
+            cost_response = await client.get(
+                f"{dashboard_config.api_base_url}/api/cost/current-usage"
+            )
+            cost_data = cost_response.json() if cost_response.status_code == 200 else {"current_usage": 0, "optimization_score": 0}
+
             return {
                 "connection_status": connection_status,
                 "learner_summary": learner_data,
                 "verb_distribution": verb_data,
                 "activity_timeline": timeline_data,
+                "cost_metrics": cost_data,
                 "dashboard_ready": connection_status.get("status") == "connected"
             }
 
