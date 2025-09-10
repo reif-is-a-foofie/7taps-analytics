@@ -38,7 +38,7 @@
 ## 📊 **Numbered Contracts (b01-b21)**
 
 ### **Core Infrastructure (b01-b05)**
-- `b01_attach_mcp_servers.json` - MCP server attachment
+- `b01_attach_mcp_servers.json` - Direct database connections
 - `b02_streaming_etl.json` - Streaming ETL implementation
 - `b03_incremental_etl.json` - Incremental ETL
 - `b05_nlp_query.json` - NLP query processing

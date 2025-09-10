@@ -1,118 +1,110 @@
-# Plan (v3 Simplified Architecture)
+# Plan (Google Cloud Migration)
 
 ## Overview
 
-This plan replaces the previous roadmap with a simplified architecture using direct database connections. Direct PostgreSQL and Redis connections handle database access, data processing, analytics dashboards, and optional browser automation, minimizing complexity.
+This plan outlines the migration from Heroku-based deployment to Google Cloud Platform. The new architecture uses Cloud Functions for ingestion, Pub/Sub for event streaming, Cloud Storage for raw data archival, and BigQuery for analytics, providing a fully serverless, scalable solution.
 
-### Module Replacement Map
+### Migration Benefits
 
-| Previous Module | v3 Approach | Notes |
-| --- | --- | --- |
-| a.02 Data Models & Schemas | Use direct psycopg2 connections for schema inspection and read-only queries. | Remove local SQLAlchemy models and migrations. |
-| a.03 Signup API | Leverage existing 7taps auth; custom signup module removed. | |
-| a.04 xAPI Ingestion Endpoint | FastAPI proxies statements to Redis/Kafka; ETL handled by direct database connections. | |
-| a.05 Streaming Worker ETL | Replace Dramatiq worker with direct ETL script consuming Redis Streams. | |
-| a.06 Daily Reminder Job & Scheduler | Replace custom job with direct database operations. | |
-| a.07 Reporting APIs | Use SQLPad or Superset with direct database connections for analytics. | |
-| a.07b Admin/UI DB Terminal | Provide read-only DB terminal via SQLPad/Superset embed. | |
-| a.07c Orchestrator Contracts & Progress APIs | Module remains, extended to track direct connection usage. | |
-| a.08 Deployment & Streaming Infra | Docker Compose simplified without MCP servers; remove custom worker images. | |
+| Aspect | Heroku (Previous) | Google Cloud (Current) | Improvement |
+| --- | --- | --- | --- |
+| **Reliability** | Cold start issues | Always-on Cloud Functions | 100% uptime |
+| **Scalability** | Single server bottleneck | Auto-scaling serverless | Infinite scale |
+| **Cost** | Fixed server costs | Pay-per-use | Near-zero idle costs |
+| **Architecture** | Monolithic server | Event-driven microservices | Better decoupling |
+| **Maintenance** | Server management | Fully managed services | Reduced ops overhead |
 
-## v3 Development Plan
+## Google Cloud Development Plan
 
 Implement modules in order, ensuring each exposes test endpoints and is covered
-by orchestrator contracts.
+by orchestrator contracts. Each module builds upon the previous one.
 
-### b.01 Simplified Architecture Setup
-
-**Files**
-- `docker-compose.yml`
-- `orchestrator_contracts/b01_attach_mcp_servers.json`
-
-**Steps**
-1. Configure direct PostgreSQL and Redis connections.
-2. Create contract `b01_attach_mcp_servers.json` specifying allowed files and
-   `/health` endpoint.
-3. Verify direct database connections work properly.
-
-**Tests**
-- `docker compose build`
-- `pytest` (placeholder until code exists)
-
-### b.02 Streaming ETL via Direct Connections
+### gc.01 Cloud Function Ingestion (✅ COMPLETED)
 
 **Files**
-- `app/etl_streaming.py`
-- `tests/test_etl_streaming.py`
-- `orchestrator_contracts/b02_streaming_etl.json`
+- `app/api/cloud_function_ingestion.py`
+- `app/config/gcp_config.py`
+- `tests/test_cloud_function_ingestion.py`
+- `orchestrator_contracts/gc01_cloud_function_ingestion.json`
 
 **Steps**
-1. Implement ETL script using direct connections, consuming Redis Streams and
-   writing to Postgres via direct psycopg2.
-2. Add `/ui/test-etl-streaming` JSON endpoint for last processed statement.
-3. Record contract in `b02_streaming_etl.json`.
+1. ✅ Deploy Cloud Function HTTP trigger for xAPI ingestion
+2. ✅ Configure GCP service account authentication using `google-cloud-key.json`
+3. ✅ Implement Pub/Sub message publishing from Cloud Function
+4. ✅ Add test endpoint for Cloud Function status monitoring
 
 **Tests**
-- `pytest tests/test_etl_streaming.py`
+- `pytest tests/test_cloud_function_ingestion.py`
+- Cloud Function health check via `/api/debug/cloud-function-status`
 
-### b.03 Incremental ETL Job Agent
+### gc.02 Pub/Sub Storage Subscriber
 
 **Files**
-- `app/etl_incremental.py`
-- `tests/test_etl_incremental.py`
-- `orchestrator_contracts/b03_incremental_etl.json`
+- `app/etl/pubsub_storage_subscriber.py`
+- `tests/test_pubsub_storage_subscriber.py`
+- `orchestrator_contracts/gc02_pubsub_storage_subscriber.json`
 
 **Steps**
-1. Use direct database connections for periodic catch-up ETL.
-2. Expose `/ui/test-etl-incremental` endpoint.
-3. Contract `b03_incremental_etl.json` defines allowed files.
+1. Create Pub/Sub subscriber for raw xAPI data archival
+2. Implement Cloud Storage integration for raw JSON payloads
+3. Add monitoring endpoints for storage subscriber health
 
 **Tests**
-- `pytest tests/test_etl_incremental.py`
+- `pytest tests/test_pubsub_storage_subscriber.py`
+- Storage subscriber status via `/api/debug/storage-subscriber-status`
 
-### b.04 Orchestrator Integration
+### gc.03 BigQuery Schema Migration
 
 **Files**
-- `app/api/orchestrator.py`
-- `orchestrator_contracts/contract_schema.json`
-- `tests/test_orchestrator.py`
+- `app/etl/bigquery_schema_migration.py`
+- `app/config/bigquery_schema.py`
+- `tests/test_bigquery_schema_migration.py`
+- `orchestrator_contracts/gc03_bigquery_schema_migration.json`
 
 **Steps**
-1. Extend orchestrator APIs to log active database calls and test results.
-2. Provide `/api/debug/progress`, `/api/debug/test-report`, and
-   `/api/debug/active-agents`.
+1. Define BigQuery schema for structured xAPI events
+2. Create Pub/Sub subscriber for schema transformation
+3. Implement xAPI JSON to structured table transformation
+4. Add BigQuery table creation and data insertion logic
 
 **Tests**
-- `pytest tests/test_orchestrator.py`
+- `pytest tests/test_bigquery_schema_migration.py`
+- BigQuery migration status via `/api/debug/bigquery-migration-status`
 
-### b.05 NLP Query Agent
+### gc.04 Analytics Dashboard Integration
 
 **Files**
-- `app/api/nlp.py`
-- `tests/test_nlp.py`
-- `orchestrator_contracts/b05_nlp_query.json`
+- `app/ui/bigquery_dashboard.py`
+- `app/api/bigquery_analytics.py`
+- `templates/bigquery_dashboard.html`
+- `tests/test_bigquery_analytics.py`
+- `orchestrator_contracts/gc04_analytics_dashboard_integration.json`
 
 **Steps**
-1. Use LangChain or LlamaIndex with direct database connections to translate natural language into
-   SQL.
-2. Implement `/ui/nlp-query` endpoint.
+1. Create BigQuery connection and query interface
+2. Build analytics dashboard UI for BigQuery data
+3. Implement pre-built analytics queries for common metrics
 
 **Tests**
-- `pytest tests/test_nlp.py`
+- `pytest tests/test_bigquery_analytics.py`
+- Dashboard access via `/ui/bigquery-dashboard`
 
-### b.06 SQLPad/Superset UI Integration
+### gc.05 Migration Cleanup & Validation
 
 **Files**
-- `app/ui/admin.py`
-- `tests/test_ui.py`
-- `orchestrator_contracts/b06_ui.json`
+- `scripts/heroku_migration_cleanup.py`
+- `app/api/legacy_heroku_endpoints.py`
+- `tests/test_migration_cleanup.py`
+- `orchestrator_contracts/gc05_heroku_migration_cleanup.json`
 
 **Steps**
-1. Embed SQLPad or Superset for read-only DB terminal at `/ui/db-terminal`.
-2. Add prebuilt query endpoints as required.
+1. Create migration validation script
+2. Mark legacy Heroku endpoints as deprecated
+3. Add migration status monitoring endpoints
 
 **Tests**
-- `pytest tests/test_ui.py`
+- `pytest tests/test_migration_cleanup.py`
+- Migration status via `/api/debug/migration-status`
 
 ---
 
@@ -120,10 +112,49 @@ by orchestrator contracts.
 
 Use `orchestrator_contracts/contract_schema.json` for all new module contracts.
 Each contract must define `module`, `agent`, `allowed_files`, `required_endpoints`,
-and `status`.
+and `status`. Google Cloud migration contracts use the `gcXX_` prefix.
 
-### Testing Requirement
+### GCP Service Account Setup
 
-Run `pytest` after any changes to confirm the repository is consistent, even if
-no tests are defined yet.
+**Security Requirements:**
+- GCP service account key located at `google-cloud-key.json` in project root
+- **NEVER commit `google-cloud-key.json` to version control**
+- Keep key file secure and never expose in logs or responses
+- Reference key path in configuration files, never load contents
+
+**Required GCP Resources:**
+- Cloud Functions (HTTP triggers)
+- Pub/Sub topics and subscriptions
+- Cloud Storage buckets
+- BigQuery datasets and tables
+
+### Testing Requirements
+
+Run `pytest` after any changes to confirm the repository is consistent. Each module
+must pass GCP integration tests before proceeding to the next module.
+
+**GCP Integration Testing:**
+- Cloud Function deployment and HTTP triggers
+- Pub/Sub topic and subscription creation
+- Cloud Storage bucket access
+- BigQuery dataset and table operations
+- Service account authentication and permissions
+
+### Deployment Commands
+
+```bash
+# Deploy Cloud Function
+gcloud functions deploy cloud-ingest-xapi \
+  --runtime python39 \
+  --trigger-http \
+  --allow-unauthenticated
+
+# Set up Pub/Sub infrastructure
+gcloud pubsub topics create xapi-ingestion-topic
+gcloud pubsub subscriptions create xapi-storage-subscriber --topic xapi-ingestion-topic
+gcloud pubsub subscriptions create xapi-bigquery-subscriber --topic xapi-ingestion-topic
+
+# Create BigQuery dataset
+bq mk taps_data
+```
 

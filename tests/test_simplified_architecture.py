@@ -1,5 +1,5 @@
 """
-Test simplified architecture without MCP dependencies.
+Test simplified architecture with direct database connections.
 """
 
 import pytest
@@ -23,7 +23,7 @@ with mock.patch('psycopg2.connect'), mock.patch('redis.from_url'):
 
 
 class TestSimplifiedArchitecture:
-    """Test simplified architecture without MCP dependencies."""
+    """Test simplified architecture with direct database connections."""
     
     @patch('psycopg2.connect')
     @patch('redis.from_url')
@@ -35,9 +35,9 @@ class TestSimplifiedArchitecture:
         assert hasattr(processor, 'redis_client')
         assert hasattr(processor, 'db_pool')
         
-        # Verify no MCP dependencies
-        assert not hasattr(processor, 'mcp_postgres_client')
-        assert not hasattr(processor, 'mcp_python_client')
+        # Verify no external dependencies
+        assert not hasattr(processor, 'external_client')
+        assert not hasattr(processor, 'proxy_client')
         
     @patch('psycopg2.connect')
     @patch('redis.from_url')
@@ -91,15 +91,15 @@ class TestSimplifiedArchitecture:
         assert result.get('statement_id') == "test-statement-123"
         assert result.get('actor_id') == "test-user"
         
-    def test_no_mcp_imports(self):
-        """Test that no MCP-related imports are used."""
-        # Check that MCP-related modules are not imported
+    def test_no_external_imports(self):
+        """Test that no external proxy imports are used."""
+        # Check that external proxy modules are not imported
         with open('app/etl_streaming.py', 'r') as f:
             content = f.read()
-            # Check for MCP imports specifically, not just the word 'mcp' in comments
-            assert 'import mcp' not in content.lower()
-            assert 'from mcp' not in content.lower()
-            assert 'httpx' in content  # Only for HTTP requests if needed
+            # Check for external proxy imports
+            assert 'import httpx' not in content.lower()
+            assert 'from httpx' not in content.lower()
+            assert 'requests' not in content.lower()
             
     @patch('psycopg2.connect')
     @patch('redis.from_url')
@@ -111,15 +111,15 @@ class TestSimplifiedArchitecture:
         assert 'postgresql://' in processor.database_url
         assert 'redis://' in processor.redis_url
         
-        # Verify no MCP URLs
+        # Verify no external proxy URLs
         assert 'http://' not in processor.database_url
-        assert 'mcp' not in processor.database_url
+        assert 'proxy' not in processor.database_url
         
     def test_environment_variables(self):
         """Test that environment variables are configured correctly."""
-        # Check that MCP environment variables are not used
-        assert 'MCP_POSTGRES_URL' not in os.environ
-        assert 'MCP_PYTHON_URL' not in os.environ
+        # Check that external proxy environment variables are not used
+        assert 'EXTERNAL_PROXY_URL' not in os.environ
+        assert 'PROXY_SERVICE_URL' not in os.environ
         
         # Check that direct connection variables are available (may not be set in test env)
         # These are optional in test environment
@@ -128,16 +128,16 @@ class TestSimplifiedArchitecture:
 
 class TestAPISimplification:
     """Test API endpoints use direct connections."""
-    
+
     def test_xapi_lrs_endpoints(self):
-        """Test xAPI LRS endpoints work without MCP."""
+        """Test xAPI LRS endpoints work with direct connections."""
         # Verify endpoints exist
         routes = [route.path for route in xapi_lrs_router.routes]
         assert "/statements" in routes
         assert "/about" in routes
-        
+
     def test_etl_endpoints(self):
-        """Test ETL endpoints work without MCP."""
+        """Test ETL endpoints work with direct connections."""
         # Verify endpoints exist
         routes = [route.path for route in etl_router.routes]
         assert "/test-etl-streaming" in routes

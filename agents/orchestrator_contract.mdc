@@ -1,8 +1,8 @@
 # Orchestrator Agent Contract
 
 ## Role
-You are the Orchestrator Agent for the 7taps MCP analytics project.  
-Your job is to assign tasks to other agents, track progress, and verify results using MCP servers and JSON test reports.
+You are the Orchestrator Agent for the 7taps analytics project.
+Your job is to assign tasks to other agents, track progress, and verify results using JSON test reports.
 
 ## Core Responsibilities
 1. Load current module list from `plan.md` and `orchestrator_contracts/*.json`.
@@ -35,4 +35,16 @@ Your job is to assign tasks to other agents, track progress, and verify results 
 - Never create files outside allowed_files.
 - Confirm each module passes tests before progressing.
 - **ENFORCE** anti-spec-gaming policy - only mark modules completed after independent validation
+
+## Google Cloud Configuration
+- **Service Account Key**: Located at `google-cloud-key.json` in project root
+- **Security Requirements**:
+  - Never commit `google-cloud-key.json` to version control
+  - Keep key file secure and never expose in logs or responses
+  - Only reference key path in configuration files, never load contents
+- **GCP Resources Required**:
+  - Cloud Functions (HTTP triggers)
+  - Pub/Sub topics and subscriptions
+  - Cloud Storage buckets
+  - BigQuery datasets and tables
 

@@ -3,52 +3,59 @@
 **Turn raw xAPI firehoses into human-readable insights.**
 This project is an experimental integration with [7taps](https://7taps.com), designed to show how learning data can be ingested, normalized, and explored across different levels of technical expertise.
 
-Built with a mix of SQL, Redis workers, and AI-driven query generation, this repo demonstrates how to take 7taps lesson data → split it into usable tables → and surface it through dashboards, APIs, and conversational agents.
+Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps lesson data → Cloud Functions → Pub/Sub → BigQuery → Analytics dashboards with AI-driven query generation.
 
 ---
 
 ## 🚀 What It Does
 
-1. **Ingest xAPI statements**
-   * Listens for raw xAPI `PUT` statements from 7taps
-   * Stores them in PostgreSQL with JSONB handling
-   * Uses Redis Streams for reliable ingestion queueing
+1. **Ingest xAPI statements via Cloud Functions**
+   * Receives raw xAPI `POST` statements from 7taps via Google Cloud Function
+   * Publishes statements to Pub/Sub for reliable event streaming
+   * Always-on architecture with zero cold start issues
 
-2. **Normalize & Split**
-   * Redis workers parse statements into structured tables:
+2. **Archive Raw Data to Cloud Storage**
+   * Pub/Sub subscriber archives raw JSON payloads to Cloud Storage
+   * Provides permanent backup and replay capabilities
+   * Decouples ingestion from downstream processing
+
+3. **Transform & Load to BigQuery**
+   * Pub/Sub subscriber transforms raw xAPI into structured BigQuery tables:
      * `users` - learner profiles and metadata
      * `lessons` - course content and progression
      * `questions` - individual prompts and assessments
      * `user_responses` - freeform text and poll answers
      * `user_activities` - completion events and engagement
-   * Cleans up lesson URLs, user identifiers, and metadata for readability
+   * Serverless ETL with automatic scaling
 
-3. **Serve Analytics APIs**
-   * Provides endpoints for common queries:
+4. **Serve Analytics from BigQuery**
+   * Provides endpoints for common queries against BigQuery:
      * Who completed which lessons?
      * Which users are dropping off?
      * What themes show up in freeform responses?
      * Engagement patterns and sentiment analysis
 
-4. **Explore the Data**
+5. **Explore the Data**
    Multiple "tiers" of access depending on technical comfort level:
    * **API-first:** raw curl requests to `/api/` endpoints
-   * **SQL terminal:** run queries directly against PostgreSQL
-   * **SQLPad:** preloaded queries for common use cases
+   * **BigQuery Console:** run queries directly against structured data
    * **Data Explorer UI:** filter responses without writing SQL
-   * **Dashboards:** Plotly visualizations with real-time data
+   * **Analytics Dashboards:** BigQuery-powered visualizations
    * **AI Agent (Seven):** ask natural language questions, generate SQL automatically, and visualize results
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Backend:** Python, FastAPI, Redis workers, Dramatiq
-* **Database:** PostgreSQL (with JSONB handling for xAPI)
-* **Analytics:** SQLPad, Plotly, embedded admin UI
+* **Ingestion:** Google Cloud Functions (Python runtime)
+* **Event Streaming:** Google Cloud Pub/Sub
+* **Data Storage:** Google Cloud Storage (raw data archive)
+* **Analytics Database:** Google BigQuery (structured data warehouse)
+* **Backend:** Python, FastAPI for API endpoints
+* **Analytics UI:** BigQuery-powered dashboards and visualizations
 * **AI Layer:** OpenAI API (GPT-3.5), natural language query processing
-* **Integration:** xAPI → PostgreSQL schema with real-time ETL
-* **Deployment:** Railway with Docker Compose
+* **Integration:** xAPI → Cloud Functions → Pub/Sub → BigQuery ETL
+* **Deployment:** Google Cloud Platform (serverless)
 
 ---
 
@@ -85,22 +92,36 @@ Built with a mix of SQL, Redis workers, and AI-driven query generation, this rep
 
 ## 🚀 Quick Start
 
-### Local Development
+### Google Cloud Deployment
 ```bash
 # Clone and setup
 git clone <repository>
 cd 7taps-analytics
-pip install -r requirements.txt
 
-# Start the application
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Deploy Cloud Function for xAPI ingestion
+gcloud functions deploy cloud-ingest-xapi \
+  --runtime python39 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --source . \
+  --entry-point cloud_ingest_xapi
+
+# Set up Pub/Sub topic and subscriptions
+gcloud pubsub topics create xapi-ingestion-topic
+gcloud pubsub subscriptions create xapi-storage-subscriber \
+  --topic xapi-ingestion-topic
+gcloud pubsub subscriptions create xapi-bigquery-subscriber \
+  --topic xapi-ingestion-topic
+
+# Create BigQuery dataset
+bq mk taps_data
 ```
 
 ### Access Points
-* **Main Dashboard:** http://localhost:8000/
-* **Chat Interface:** http://localhost:8000/chat
-* **API Documentation:** http://localhost:8000/docs
-* **Data Explorer:** http://localhost:8000/explorer
+* **Cloud Function:** https://us-central1-taps-data.cloudfunctions.net/cloud-ingest-xapi
+* **BigQuery Console:** https://console.cloud.google.com/bigquery
+* **Cloud Storage:** https://console.cloud.google.com/storage
+* **Pub/Sub Monitoring:** https://console.cloud.google.com/cloudpubsub
 
 ### Natural Language Queries
 Try asking Seven (the AI agent) questions like:
@@ -133,19 +154,21 @@ Seven has access to the complete database context and can answer questions about
 ## ⚠️ Notes
 
 * **Experimental project** - This repo is exploratory and designed for learning/demo purposes
-* **Authentication:** current API endpoints are unsecured for demo purposes
+* **Authentication:** Cloud Function endpoints are configured for demo purposes
 * **Data scope:** focused on 7taps course completion and user engagement data
 * **Development:** coordinated through JSON contracts in `orchestrator_contracts/`
+* **Security:** GCP service account key located at `google-cloud-key.json` (never commit to version control)
 
 ---
 
 ## 🌱 Future Directions
 
-* Full MCP (Model Context Protocol) agent for PostgreSQL
-* Multi-tenant, secure deployment
+* Enhanced BigQuery ML models for predictive analytics
+* Multi-tenant, secure deployment with Cloud IAM
 * Automated lesson metadata sync via 7taps API
 * RAG (Retrieval-Augmented Generation) for true self-learning agents
-* Cleaner developer onboarding and documentation
+* Real-time streaming analytics with Dataflow
+* Auto-scaling Cloud Functions based on ingestion volume
 
 ---
 

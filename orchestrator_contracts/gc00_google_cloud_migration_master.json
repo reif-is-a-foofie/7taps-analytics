@@ -1,0 +1,86 @@
+{
+  "module": "gc00_google_cloud_migration_master",
+  "agent": "orchestrator",
+  "allowed_files": [
+    "orchestrator_contracts/gc01_cloud_function_ingestion.json",
+    "orchestrator_contracts/gc02_pubsub_storage_subscriber.json",
+    "orchestrator_contracts/gc03_bigquery_schema_migration.json",
+    "orchestrator_contracts/gc04_analytics_dashboard_integration.json",
+    "orchestrator_contracts/gc05_heroku_migration_cleanup.json"
+  ],
+  "required_endpoints": [
+    "GET /api/debug/migration-overview",
+    "GET /api/debug/gcp-health-check"
+  ],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2024-01-20T00:00:00Z",
+    "estimated_duration": "19h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "gc00.1",
+        "description": "Deploy Cloud Function for xAPI ingestion (replaces Heroku server)",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["gc01_cloud_function_ingestion.json"]
+      },
+      {
+        "id": "gc00.2",
+        "description": "Implement Pub/Sub → Cloud Storage archival subscriber",
+        "status": "pending",
+        "agent": "backend_etl_agent",
+        "files": ["gc02_pubsub_storage_subscriber.json"]
+      },
+      {
+        "id": "gc00.3",
+        "description": "Create BigQuery schema migration from raw xAPI to structured tables",
+        "status": "pending",
+        "agent": "backend_etl_agent",
+        "files": ["gc03_bigquery_schema_migration.json"]
+      },
+      {
+        "id": "gc00.4",
+        "description": "Build analytics dashboard for BigQuery structured data",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["gc04_analytics_dashboard_integration.json"]
+      },
+      {
+        "id": "gc00.5",
+        "description": "Validate migration and deprecate Heroku components",
+        "status": "pending",
+        "agent": "cleanup_agent",
+        "files": ["gc05_heroku_migration_cleanup.json"]
+      }
+    ],
+    "completion_criteria": [
+      "Cloud Function receives xAPI from 7taps and publishes to Pub/Sub",
+      "Raw xAPI data archived in Cloud Storage",
+      "Structured data available in BigQuery for analytics",
+      "Analytics dashboard operational with BigQuery data",
+      "Heroku components deprecated and migration validated",
+      "All modules pass pytest and real-world testing"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Full end-to-end testing: 7taps → Cloud Function → Pub/Sub → Storage + BigQuery → Dashboard",
+      "docker_compose_required": false,
+      "test_environment": "Google Cloud Platform with complete pipeline"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "backend_agent",
+    "handoff_notes": "Start with Cloud Function ingestion to replace Heroku server",
+    "required_approval": false
+  },
+  "migration_benefits": {
+    "reliability": "Always-on Cloud Functions vs Heroku cold starts",
+    "cost": "Near-zero costs until high scale (generous free tiers)",
+    "scalability": "Pub/Sub decouples ingestion from processing",
+    "architecture": "Clean separation: ingest → queue → storage → analytics"
+  }
+}

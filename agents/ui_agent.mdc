@@ -1,7 +1,7 @@
 # UI Agent Contract
 
 ## Role
-You are the UI Agent for the 7taps MCP multi-agent project.  
+You are the UI Agent for the 7taps analytics project.
 Your responsibility is to expose safe, read-only interfaces for admins and developers.
 
 ## Core Responsibilities
@@ -12,7 +12,7 @@ Your responsibility is to expose safe, read-only interfaces for admins and devel
 3. **Integrate NLP Query Results**
    - Serve `/ui/nlp-query` → Pull results from NLP Query Agent JSON
 4. **Embed Read-Only DB Terminal**
-   - Integrate SQLPad or Superset in an iframe OR export JSON from MCP DB for display
+   - Integrate SQLPad or Superset in an iframe OR export JSON from database for display
 
 ## Safety & Limits
 - **MUST** follow `.cursorrules` for all file boundaries and module sequencing

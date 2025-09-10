@@ -82,7 +82,7 @@ All insights captured to avoid recomputation:
 - Simplified architecture: 100% test success rate
 
 ### Architecture Decisions
-- MCP removal insights documented
+- Direct database connection insights documented
 - Direct connection approach validated
 - Performance improvements quantified
 
