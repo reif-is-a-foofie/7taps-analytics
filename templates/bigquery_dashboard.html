@@ -358,6 +358,109 @@
         color: var(--primary-color);
     }
 
+    /* Cost Monitoring Styles */
+    .cost-monitoring-section {
+        margin-bottom: 2rem;
+    }
+
+    .cost-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .cost-metric {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: var(--card-shadow);
+    }
+
+    .cost-metric .metric-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .cost-metric .metric-label {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .cost-metric.alert {
+        border-color: var(--danger-color);
+        background: var(--error-bg);
+    }
+
+    .cost-metric.alert .metric-value {
+        color: var(--danger-color);
+    }
+
+    .cost-metric.warning {
+        border-color: var(--accent-color);
+        background: var(--warning-bg);
+    }
+
+    .cost-metric.warning .metric-value {
+        color: var(--accent-color);
+    }
+
+    .optimization-score {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .score-bar {
+        flex: 1;
+        height: 8px;
+        background: var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .score-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--danger-color) 0%, var(--accent-color) 50%, var(--secondary-color) 100%);
+        transition: width 0.3s ease;
+    }
+
+    .recommendations {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .recommendations h4 {
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .recommendations ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    .recommendations li {
+        padding: 0.25rem 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .recommendations li:before {
+        content: "💡 ";
+        margin-right: 0.5rem;
+    }
+
     /* Responsive design */
     @media (max-width: 1024px) {
         .chart-grid {
@@ -445,6 +548,14 @@
         <span id="status-text">Checking connection...</span>
     </div>
 
+    <!-- Cost Monitoring Section -->
+    <div class="cost-monitoring-section">
+        <h2 class="section-title">💰 Cost Monitoring</h2>
+        <div id="cost-metrics" class="cost-grid">
+            <div class="loading">Loading cost metrics...</div>
+        </div>
+    </div>
+
     <!-- Statistics Overview -->
     <div id="stats-container" class="stats-grid">
         <div class="loading">Loading dashboard statistics...</div>
@@ -523,10 +634,79 @@ ORDER BY date;"></textarea>
             updateConnectionStatus(data.connection_status);
             displayStats(data);
             displayCharts(data);
+            await loadCostMetrics();
 
         } catch (error) {
             console.error('Error loading dashboard:', error);
             showError('Failed to load dashboard data: ' + error.message);
+        }
+    }
+
+    async function loadCostMetrics() {
+        try {
+            const response = await fetch('/api/cost/current-usage');
+            const costData = await response.json();
+            displayCostMetrics(costData);
+        } catch (error) {
+            console.error('Error loading cost metrics:', error);
+            document.getElementById('cost-metrics').innerHTML = 
+                '<div class="error">Failed to load cost metrics</div>';
+        }
+    }
+
+    function displayCostMetrics(costData) {
+        const container = document.getElementById('cost-metrics');
+        
+        const currentUsageClass = costData.current_usage > 10 ? 'alert' : 
+                                 costData.current_usage > 5 ? 'warning' : '';
+        
+        const optimizationClass = costData.optimization_score < 60 ? 'alert' : 
+                                 costData.optimization_score < 80 ? 'warning' : '';
+
+        container.innerHTML = `
+            <div class="cost-metric ${currentUsageClass}">
+                <div class="metric-value">$${costData.current_usage.toFixed(4)}</div>
+                <div class="metric-label">Current Usage</div>
+            </div>
+            <div class="cost-metric">
+                <div class="metric-value">$${costData.daily_usage.toFixed(2)}</div>
+                <div class="metric-label">Daily Usage</div>
+            </div>
+            <div class="cost-metric">
+                <div class="metric-value">$${costData.monthly_usage.toFixed(2)}</div>
+                <div class="metric-label">Monthly Usage</div>
+            </div>
+            <div class="cost-metric">
+                <div class="metric-value">${costData.cache_hit_rate.toFixed(1)}%</div>
+                <div class="metric-label">Cache Hit Rate</div>
+            </div>
+            <div class="cost-metric ${optimizationClass}">
+                <div class="metric-value">${costData.optimization_score.toFixed(0)}</div>
+                <div class="metric-label">Optimization Score</div>
+                <div class="optimization-score">
+                    <span>Score:</span>
+                    <div class="score-bar">
+                        <div class="score-fill" style="width: ${costData.optimization_score}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="cost-metric">
+                <div class="metric-value">${(costData.bytes_processed / 1024 / 1024).toFixed(1)} MB</div>
+                <div class="metric-label">Data Processed</div>
+            </div>
+        `;
+
+        // Add recommendations if available
+        if (costData.recommendations && costData.recommendations.length > 0) {
+            const recommendationsHtml = `
+                <div class="recommendations">
+                    <h4>💡 Optimization Recommendations</h4>
+                    <ul>
+                        ${costData.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', recommendationsHtml);
         }
     }
 

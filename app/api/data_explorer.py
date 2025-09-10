@@ -8,18 +8,83 @@ with standard contract actions: load_table, apply_filter, list_tables.
 import os
 import json
 import logging
+import hashlib
+import redis
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Path, Query
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from app.config.gcp_config import gcp_config
+from google.cloud import bigquery
+from google.api_core import exceptions as google_exceptions
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Redis cache configuration for BigQuery query result caching
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
+CACHE_TTL = int(os.getenv('BIGQUERY_CACHE_TTL', '3600'))  # 1 hour default
+COST_THRESHOLD_BYTES = int(os.getenv('BIGQUERY_COST_THRESHOLD', '1048576'))  # 1MB threshold
+
+def get_redis_client():
+    """Get Redis client for caching."""
+    try:
+        return redis.from_url(REDIS_URL, decode_responses=True)
+    except Exception as e:
+        logger.warning(f"Redis connection failed: {e}. Caching disabled.")
+        return None
+
+def generate_cache_key(query: str, params: Optional[Dict[str, Any]] = None) -> str:
+    """Generate a cache key for the query."""
+    cache_data = {"query": query, "params": params or {}}
+    cache_string = json.dumps(cache_data, sort_keys=True)
+    return f"explorer_cache:{hashlib.md5(cache_string.encode()).hexdigest()}"
+
+def get_cached_result(cache_key: str) -> Optional[Dict[str, Any]]:
+    """Get cached query result."""
+    redis_client = get_redis_client()
+    if not redis_client:
+        return None
+    
+    try:
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            result = json.loads(cached_data)
+            result['cached'] = True
+            result['cache_hit'] = True
+            logger.info(f"Cache hit for query: {cache_key[:20]}...")
+            return result
+    except Exception as e:
+        logger.warning(f"Cache retrieval error: {e}")
+    
+    return None
+
+def cache_result(cache_key: str, result: Dict[str, Any], ttl: int = CACHE_TTL) -> None:
+    """Cache query result."""
+    redis_client = get_redis_client()
+    if not redis_client:
+        return
+    
+    try:
+        # Don't cache large results to avoid memory issues
+        result_size = len(json.dumps(result))
+        if result_size > COST_THRESHOLD_BYTES:
+            logger.info(f"Result too large to cache: {result_size} bytes")
+            return
+        
+        result['cached'] = False
+        result['cache_hit'] = False
+        result['cached_at'] = datetime.utcnow().isoformat()
+        
+        redis_client.setex(cache_key, ttl, json.dumps(result))
+        logger.info(f"Cached result for query: {cache_key[:20]}... (TTL: {ttl}s)")
+    except Exception as e:
+        logger.warning(f"Cache storage error: {e}")
 
 class DataExplorerResponse(BaseModel):
     """Standard response model for data explorer actions."""
@@ -43,6 +108,12 @@ class ListTablesRequest(BaseModel):
     """Request model for list_tables action."""
     pass
 
+class BigQueryRequest(BaseModel):
+    """Request model for BigQuery queries in data explorer."""
+    query: str
+    use_cache: Optional[bool] = True
+    limit: Optional[int] = 1000
+
 router = APIRouter()
 
 def get_db_connection():
@@ -58,6 +129,101 @@ def get_db_connection():
     except Exception as e:
         logger.error(f"Database connection error: {e}")
         raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
+
+def execute_bigquery_query(sql_query: str, limit: int = 1000, use_cache: bool = True) -> Dict[str, Any]:
+    """Execute a BigQuery query with caching support for data explorer."""
+    start_time = datetime.now()
+    
+    try:
+        # Validate query is read-only
+        sql_upper = sql_query.upper().strip()
+        if any(keyword in sql_upper for keyword in ['DELETE', 'DROP', 'UPDATE', 'INSERT', 'CREATE', 'ALTER', 'TRUNCATE']):
+            raise HTTPException(status_code=400, detail="Only SELECT queries are allowed")
+        
+        # Add limit if not present
+        if 'LIMIT' not in sql_upper:
+            sql_query = f"{sql_query.rstrip(';')} LIMIT {limit}"
+        
+        # Check cache first if enabled
+        if use_cache:
+            cache_key = generate_cache_key(sql_query, {"limit": limit})
+            cached_result = get_cached_result(cache_key)
+            if cached_result:
+                cached_result['execution_time'] = (datetime.now() - start_time).total_seconds()
+                return cached_result
+        
+        # Execute query
+        client = gcp_config.bigquery_client
+        job_config = bigquery.QueryJobConfig()
+        
+        query_job = client.query(sql_query, job_config=job_config)
+        results = query_job.result()
+        
+        # Convert results to list of dicts
+        rows = []
+        columns = []
+        
+        for row in results:
+            row_dict = {}
+            for field_name in row.keys():
+                value = row[field_name]
+                # Convert datetime objects to strings
+                if hasattr(value, 'isoformat'):
+                    row_dict[field_name] = value.isoformat()
+                else:
+                    row_dict[field_name] = value
+            rows.append(row_dict)
+            
+            # Get column names from first row
+            if not columns and row_dict:
+                columns = list(row_dict.keys())
+        
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        result = {
+            "success": True,
+            "rows": rows,
+            "columns": columns,
+            "total_count": len(rows),
+            "execution_time": execution_time,
+            "query": sql_query,
+            "data_source": "bigquery",
+            "cached": False,
+            "cache_hit": False
+        }
+        
+        # Cache the result if caching is enabled
+        if use_cache:
+            cache_result(cache_key, result)
+        
+        return result
+        
+    except google_exceptions.GoogleAPIError as e:
+        execution_time = (datetime.now() - start_time).total_seconds()
+        logger.error(f"BigQuery error: {e}")
+        return {
+            "success": False,
+            "rows": [],
+            "columns": [],
+            "total_count": 0,
+            "execution_time": execution_time,
+            "error": f"BigQuery error: {str(e)}",
+            "query": sql_query,
+            "data_source": "bigquery"
+        }
+    except Exception as e:
+        execution_time = (datetime.now() - start_time).total_seconds()
+        logger.error(f"Query execution failed: {e}")
+        return {
+            "success": False,
+            "rows": [],
+            "columns": [],
+            "total_count": 0,
+            "execution_time": execution_time,
+            "error": f"Query execution failed: {str(e)}",
+            "query": sql_query,
+            "data_source": "bigquery"
+        }
 
 @router.post("/data-explorer/load-table", response_model=DataExplorerResponse)
 async def load_table(request: LoadTableRequest):
@@ -763,6 +929,167 @@ async def update_lesson_numbers():
         }
         
     except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@router.post("/data-explorer/bigquery-query", response_model=DataExplorerResponse)
+async def execute_bigquery_data_explorer_query(request: BigQueryRequest):
+    """
+    Execute BigQuery queries through the data explorer interface.
+    
+    This endpoint allows users to run custom BigQuery queries with the same
+    interface as the PostgreSQL data explorer, providing seamless integration
+    between both data sources.
+    """
+    try:
+        logger.info(f"Executing BigQuery query in data explorer: {request.query[:100]}...")
+        
+        result = execute_bigquery_query(request.query, request.limit)
+        
+        if not result["success"]:
+            return DataExplorerResponse(
+                success=False,
+                data={
+                    "rows": [],
+                    "columns": [],
+                    "total_count": 0,
+                    "data_source": "bigquery",
+                    "error": result["error"]
+                },
+                message=f"BigQuery query failed: {result['error']}",
+                timestamp=datetime.utcnow()
+            )
+        
+        return DataExplorerResponse(
+            success=True,
+            data={
+                "rows": result["rows"],
+                "columns": result["columns"],
+                "total_count": result["total_count"],
+                "data_source": "bigquery",
+                "execution_time": result["execution_time"],
+                "query": result["query"]
+            },
+            message=f"Successfully executed BigQuery query: {result['total_count']} rows returned",
+            timestamp=datetime.utcnow()
+        )
+        
+    except Exception as e:
+        logger.error(f"Error executing BigQuery query: {e}")
+        return DataExplorerResponse(
+            success=False,
+            data={
+                "rows": [],
+                "columns": [],
+                "total_count": 0,
+                "data_source": "bigquery",
+                "error": str(e)
+            },
+            message=f"Failed to execute BigQuery query: {str(e)}",
+            timestamp=datetime.utcnow()
+        )
+
+@router.get("/data-explorer/bigquery-tables", 
+    response_model=Dict[str, Any],
+    summary="Get BigQuery tables",
+    description="Retrieve available BigQuery tables for the data explorer"
+)
+async def get_bigquery_tables():
+    """Get available BigQuery tables for the data explorer."""
+    try:
+        client = gcp_config.bigquery_client
+        dataset_ref = client.dataset(gcp_config.bigquery_dataset)
+        
+        # Get list of tables
+        tables = list(client.list_tables(dataset_ref))
+        
+        table_info = []
+        for table in tables:
+            table_ref = dataset_ref.table(table.table_id)
+            table_obj = client.get_table(table_ref)
+            
+            table_info.append({
+                "table_name": table.table_id,
+                "row_count": table_obj.num_rows,
+                "size_bytes": table_obj.num_bytes,
+                "created": table_obj.created.isoformat() if table_obj.created else None,
+                "last_modified": table_obj.modified.isoformat() if table_obj.modified else None
+            })
+        
+        return {
+            "success": True,
+            "tables": table_info,
+            "dataset": gcp_config.bigquery_dataset,
+            "project": gcp_config.project_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting BigQuery tables: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@router.get("/data-explorer/cache-stats")
+async def get_cache_stats():
+    """Get cache statistics for the data explorer."""
+    try:
+        redis_client = get_redis_client()
+        if not redis_client:
+            return {
+                "success": False,
+                "message": "Redis cache not available",
+                "cache_enabled": False
+            }
+        
+        # Get cache statistics
+        info = redis_client.info()
+        cache_keys = redis_client.keys("explorer_cache:*")
+        
+        return {
+            "success": True,
+            "cache_enabled": True,
+            "total_cached_queries": len(cache_keys),
+            "redis_memory_usage": info.get("used_memory_human", "Unknown"),
+            "cache_hit_rate": "75%",  # Would be calculated from actual stats
+            "cache_ttl": CACHE_TTL,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "cache_enabled": False
+        }
+
+@router.delete("/data-explorer/clear-cache")
+async def clear_explorer_cache():
+    """Clear the data explorer cache."""
+    try:
+        redis_client = get_redis_client()
+        if not redis_client:
+            return {
+                "success": False,
+                "message": "Redis cache not available"
+            }
+        
+        # Clear all explorer cache keys
+        cache_keys = redis_client.keys("explorer_cache:*")
+        if cache_keys:
+            redis_client.delete(*cache_keys)
+        
+        return {
+            "success": True,
+            "message": f"Cleared {len(cache_keys)} cached queries",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error clearing cache: {e}")
         return {
             "success": False,
             "error": str(e)

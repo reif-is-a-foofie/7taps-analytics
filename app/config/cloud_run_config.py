@@ -1,0 +1,182 @@
+"""
+Cloud Run Deployment Configuration for 7taps Analytics UI
+Optimized for cost and performance with Google Cloud Run.
+"""
+
+import os
+from typing import Dict, Any, Optional
+from pydantic import BaseModel, Field
+
+class CloudRunConfig(BaseModel):
+    """Cloud Run deployment configuration."""
+    
+    # Service configuration
+    service_name: str = Field(default="7taps-analytics-ui", description="Cloud Run service name")
+    region: str = Field(default="us-central1", description="Deployment region")
+    project_id: str = Field(default_factory=lambda: os.getenv("GOOGLE_CLOUD_PROJECT", ""), description="GCP project ID")
+    
+    # Resource allocation
+    cpu: str = Field(default="1", description="CPU allocation (1, 2, 4, 6, 8)")
+    memory: str = Field(default="2Gi", description="Memory allocation")
+    min_instances: int = Field(default=0, description="Minimum number of instances")
+    max_instances: int = Field(default=10, description="Maximum number of instances")
+    concurrency: int = Field(default=80, description="Concurrent requests per instance")
+    
+    # Cost optimization settings
+    cpu_throttling: bool = Field(default=True, description="Enable CPU throttling when idle")
+    request_timeout: int = Field(default=300, description="Request timeout in seconds")
+    execution_timeout: int = Field(default=3600, description="Execution timeout in seconds")
+    
+    # Environment variables
+    environment_vars: Dict[str, str] = Field(default_factory=dict, description="Environment variables")
+    
+    # Health check configuration
+    health_check_path: str = Field(default="/api/health", description="Health check endpoint")
+    health_check_interval: int = Field(default=30, description="Health check interval in seconds")
+    health_check_timeout: int = Field(default=5, description="Health check timeout in seconds")
+    
+    # Security settings
+    allow_unauthenticated: bool = Field(default=True, description="Allow unauthenticated access")
+    service_account: Optional[str] = Field(default=None, description="Service account email")
+    
+    # BigQuery optimization
+    bigquery_cache_ttl: int = Field(default=3600, description="BigQuery cache TTL in seconds")
+    bigquery_cost_threshold: int = Field(default=1048576, description="BigQuery cost threshold in bytes")
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._set_default_environment_vars()
+    
+    def _set_default_environment_vars(self):
+        """Set default environment variables for Cloud Run deployment."""
+        default_vars = {
+            "PORT": "8080",
+            "ENVIRONMENT": "production",
+            "LOG_LEVEL": "INFO",
+            "BIGQUERY_CACHE_TTL": str(self.bigquery_cache_ttl),
+            "BIGQUERY_COST_THRESHOLD": str(self.bigquery_cost_threshold),
+            "REDIS_URL": os.getenv("REDIS_URL", "redis://localhost:6379"),
+            "DATABASE_URL": os.getenv("DATABASE_URL", ""),
+            "GOOGLE_APPLICATION_CREDENTIALS": "/app/google-cloud-key.json"
+        }
+        
+        # Merge with provided environment variables
+        self.environment_vars = {**default_vars, **self.environment_vars}
+    
+    def get_deployment_config(self) -> Dict[str, Any]:
+        """Get Cloud Run deployment configuration."""
+        return {
+            "apiVersion": "serving.knative.dev/v1",
+            "kind": "Service",
+            "metadata": {
+                "name": self.service_name,
+                "namespace": self.project_id,
+                "annotations": {
+                    "run.googleapis.com/ingress": "all",
+                    "run.googleapis.com/execution-environment": "gen2"
+                }
+            },
+            "spec": {
+                "template": {
+                    "metadata": {
+                        "annotations": {
+                            "autoscaling.knative.dev/minScale": str(self.min_instances),
+                            "autoscaling.knative.dev/maxScale": str(self.max_instances),
+                            "run.googleapis.com/cpu-throttling": str(self.cpu_throttling).lower(),
+                            "run.googleapis.com/execution-environment": "gen2"
+                        }
+                    },
+                    "spec": {
+                        "containerConcurrency": self.concurrency,
+                        "timeoutSeconds": self.request_timeout,
+                        "containers": [
+                            {
+                                "image": f"gcr.io/{self.project_id}/{self.service_name}:latest",
+                                "ports": [
+                                    {
+                                        "containerPort": 8080,
+                                        "name": "http1"
+                                    }
+                                ],
+                                "env": [
+                                    {"name": key, "value": value}
+                                    for key, value in self.environment_vars.items()
+                                ],
+                                "resources": {
+                                    "limits": {
+                                        "cpu": self.cpu,
+                                        "memory": self.memory
+                                    }
+                                },
+                                "livenessProbe": {
+                                    "httpGet": {
+                                        "path": self.health_check_path,
+                                        "port": 8080
+                                    },
+                                    "initialDelaySeconds": 30,
+                                    "periodSeconds": self.health_check_interval,
+                                    "timeoutSeconds": self.health_check_timeout
+                                },
+                                "readinessProbe": {
+                                    "httpGet": {
+                                        "path": self.health_check_path,
+                                        "port": 8080
+                                    },
+                                    "initialDelaySeconds": 5,
+                                    "periodSeconds": 10,
+                                    "timeoutSeconds": 5
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    
+    def get_gcloud_deploy_command(self) -> str:
+        """Get gcloud command for deploying to Cloud Run."""
+        env_vars = " ".join([f"--set-env-vars {key}={value}" for key, value in self.environment_vars.items()])
+        
+        return f"""gcloud run deploy {self.service_name} \\
+    --source . \\
+    --platform managed \\
+    --region {self.region} \\
+    --allow-unauthenticated \\
+    --cpu {self.cpu} \\
+    --memory {self.memory} \\
+    --min-instances {self.min_instances} \\
+    --max-instances {self.max_instances} \\
+    --concurrency {self.concurrency} \\
+    --timeout {self.request_timeout} \\
+    --set-cloudsql-instances {self.project_id}:{self.region}:your-instance \\
+    {env_vars}"""
+
+def get_cloud_run_config() -> CloudRunConfig:
+    """Get Cloud Run configuration instance."""
+    return CloudRunConfig()
+
+def get_cost_optimized_config() -> CloudRunConfig:
+    """Get cost-optimized Cloud Run configuration."""
+    return CloudRunConfig(
+        cpu="0.5",
+        memory="1Gi",
+        min_instances=0,
+        max_instances=5,
+        concurrency=100,
+        cpu_throttling=True,
+        bigquery_cache_ttl=7200,  # 2 hours
+        bigquery_cost_threshold=2097152  # 2MB
+    )
+
+def get_performance_optimized_config() -> CloudRunConfig:
+    """Get performance-optimized Cloud Run configuration."""
+    return CloudRunConfig(
+        cpu="2",
+        memory="4Gi",
+        min_instances=1,
+        max_instances=20,
+        concurrency=50,
+        cpu_throttling=False,
+        bigquery_cache_ttl=1800,  # 30 minutes
+        bigquery_cost_threshold=524288  # 512KB
+    )
