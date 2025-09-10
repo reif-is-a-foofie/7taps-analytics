@@ -46,11 +46,20 @@ Thumbs.db
 .env
 .env.local
 .env.production
+.env.*
+*.env
 
-# Google Cloud Service Account Keys
+# Google Cloud Service Account Keys - NEVER COMMIT THESE!
 google-cloud-key.json
 *.json.key
 gcp-key*.json
+service-account*.json
+gcp-*.json
+*-service-account*.json
+sa-*.json
+key-*.json
+credentials*.json
+auth*.json
 
 # Cache
 .pytest_cache/
