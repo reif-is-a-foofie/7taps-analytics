@@ -11,6 +11,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
+    build-essential \
+    libpq-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -30,12 +33,12 @@ RUN mkdir -p /app/logs && chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Expose port
+# Expose port (Cloud Run sets PORT=8000)
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1
+# Health check (use PORT env var for Cloud Run - defaults to 8000)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD sh -c 'curl -f http://localhost:${PORT:-8000}/api/health || exit 1'
 
-# Run the application with production settings
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"] 
+# Run the application with production settings (bind to PORT env var for Cloud Run)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"] 
