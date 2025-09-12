@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
 import json
+from datetime import datetime
 # Import settings directly from the config module
 import importlib.util
 import os
@@ -34,41 +35,50 @@ app.add_middleware(
 # Templates
 templates = Jinja2Templates(directory="templates")
 
+def get_template_context(request: Request, **kwargs):
+    """Get common template context with environment-based URLs"""
+    return {
+        "request": request,
+        "database_terminal_url": os.getenv("DATABASE_TERMINAL_URL", "http://localhost:3000"),
+        "api_base_url": os.getenv("API_BASE_URL", ""),
+        **kwargs
+    }
+
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_interface(request: Request):
     """Chat interface endpoint"""
-    return templates.TemplateResponse("chat_interface.html", {
-        "request": request,
-        "active_page": "chat",
-        "title": "AI Chat"
-    })
+    return templates.TemplateResponse("chat_interface.html", get_template_context(
+        request, 
+        active_page="chat",
+        title="AI Chat"
+    ))
 
 @app.get("/docs", response_class=HTMLResponse)
 async def api_docs(request: Request):
     """API documentation endpoint"""
-    return templates.TemplateResponse("docs.html", {
-        "request": request,
-        "active_page": "docs",
-        "title": "API Documentation"
-    })
+    return templates.TemplateResponse("docs.html", get_template_context(
+        request,
+        active_page="docs",
+        title="API Documentation"
+    ))
 
 @app.get("/api-docs", response_class=HTMLResponse)
 async def clean_api_docs(request: Request):
     """Clean API documentation endpoint"""
-    return templates.TemplateResponse("api_docs_clean.html", {
-        "request": request,
-        "active_page": "api-docs",
-        "title": "API Documentation"
-    })
+    return templates.TemplateResponse("api_docs_clean.html", get_template_context(
+        request,
+        active_page="api-docs",
+        title="API Documentation"
+    ))
 
 @app.get("/explorer", response_class=HTMLResponse)
 async def data_explorer(request: Request):
     """Serve the data explorer interface with template"""
-    return templates.TemplateResponse("explorer.html", {
-        "request": request,
-        "active_page": "explorer",
-        "title": "Data Explorer"
-    })
+    return templates.TemplateResponse("explorer.html", get_template_context(
+        request,
+        active_page="explorer",
+        title="Data Explorer"
+    ))
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
@@ -180,33 +190,33 @@ async def dashboard(request: Request):
         # Import json for proper JavaScript data encoding
         import json
         
-        context = {
-            "request": request,
-            "active_page": "dashboard",
-            "title": "Analytics Dashboard",
-            "total_users": total_users,
-            "total_activities": total_activities,
-            "total_responses": total_responses,
-            "total_questions": total_questions,
-            "lesson_names": json.dumps(lesson_names),
-            "completion_rates": json.dumps(completion_rates),
-            "users_started": json.dumps(users_started),
-            "users_completed": json.dumps(users_completed),
-            "activity_dates": json.dumps(activity_dates),
-            "activity_counts": json.dumps(activity_counts),
-            "active_users": json.dumps(active_users),
-            "response_type_labels": json.dumps(response_type_labels),
-            "response_type_counts": json.dumps(response_type_counts)
-        }
+        context = get_template_context(
+            request,
+            active_page="dashboard",
+            title="Analytics Dashboard",
+            total_users=total_users,
+            total_activities=total_activities,
+            total_responses=total_responses,
+            total_questions=total_questions,
+            lesson_names=json.dumps(lesson_names),
+            completion_rates=json.dumps(completion_rates),
+            users_started=json.dumps(users_started),
+            users_completed=json.dumps(users_completed),
+            activity_dates=json.dumps(activity_dates),
+            activity_counts=json.dumps(activity_counts),
+            active_users=json.dumps(active_users),
+            response_type_labels=json.dumps(response_type_labels),
+            response_type_counts=json.dumps(response_type_counts)
+        )
         
         return templates.TemplateResponse("dashboard.html", context)
         
     except Exception as e:
         # Return error page if database connection fails
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": str(e)
-        })
+        return templates.TemplateResponse("error.html", get_template_context(
+            request,
+            error=str(e)
+        ))
 
 # Import only the essential public API routers
 from app.api.health import router as health_router
@@ -215,23 +225,64 @@ from app.api.data_explorer import router as data_explorer_router
 from app.api.xapi import router as xapi_router
 from app.api.seventaps import router as seventaps_router
 from app.api.chat import router as chat_router
-from app.api.dashboard import router as dashboard_router
+from app.api.public import router as public_router
+from app.api.dashboard import router as api_dashboard_router
 from app.api.bigquery_analytics import router as bigquery_analytics_router
+from app.api.cost_monitoring import router as cost_monitoring_router
 from app.api.legacy_heroku_endpoints import router as legacy_router
+from app.api.gcp_monitoring import router as gcp_monitoring_router
+from app.api.debug import router as debug_router
+from app.api.etl import router as etl_router
 
 # BigQuery Analytics Dashboard UI for gc04
 from app.ui.bigquery_dashboard import router as bigquery_dashboard_router
+
+# Analytics Dashboard UI for b09
+from app.ui.dashboard import router as ui_dashboard_router
+
+# LearningLocker Admin UI for b14
+from app.ui.learninglocker_admin import router as learninglocker_admin_router
+from app.ui.statement_browser import router as statement_browser_router
+
+# UI Routes for Cloud Run deployment - REMOVED DUPLICATE DEFINITIONS
+# These routes are already defined above with proper request context
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": "7taps-analytics-ui",
+        "version": "1.0.0"
+    }
+
+# API Docs redirect to proper FastAPI docs
+@app.get("/api/docs", response_class=HTMLResponse)
+async def api_docs_redirect():
+    """Redirect to FastAPI automatic docs."""
+    return RedirectResponse(url="/docs")
 
 # Public API endpoints - only essential data extraction and ingestion
 app.include_router(health_router, prefix="/api", tags=["Health Check"])
 app.include_router(public_data_router, tags=["Data Extraction"])
 app.include_router(data_explorer_router, tags=["Data Explorer"])
+app.include_router(public_router, prefix="/api", tags=["Public API"])
 app.include_router(xapi_router, tags=["xAPI Ingestion"])
 app.include_router(seventaps_router, tags=["7taps Integration"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
-app.include_router(dashboard_router, prefix="/api", tags=["Dashboard"])
 app.include_router(bigquery_analytics_router, prefix="/api/analytics", tags=["BigQuery Analytics"])
+app.include_router(cost_monitoring_router, prefix="/api", tags=["Cost Monitoring"])
+app.include_router(debug_router, prefix="/api/debug", tags=["Debug & Audit"])
+app.include_router(etl_router, prefix="/ui", tags=["ETL Testing"])
+app.include_router(api_dashboard_router, prefix="/api", tags=["Dashboard API"])
+app.include_router(ui_dashboard_router, tags=["Analytics Dashboard"])
+app.include_router(learninglocker_admin_router, prefix="/ui", tags=["LearningLocker Admin"])
+app.include_router(statement_browser_router, prefix="/ui", tags=["Statement Browser"])
 app.include_router(bigquery_dashboard_router, prefix="/ui", tags=["BigQuery Dashboard"])
+
+# GCP Monitoring endpoints for gc06
+app.include_router(gcp_monitoring_router, tags=["GCP Monitoring"])
 
 # Legacy Heroku endpoints - DEPRECATED (gc05 Migration Cleanup)
 app.include_router(legacy_router, tags=["Legacy/Deprecated"])
