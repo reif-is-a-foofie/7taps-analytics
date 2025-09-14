@@ -1,0 +1,62 @@
+{
+  "module": "gc02_pubsub_storage_subscriber",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/etl/pubsub_storage_subscriber.py",
+    "app/config/gcp_config.py",
+    "tests/test_pubsub_storage_subscriber.py"
+  ],
+  "required_endpoints": [
+    "GET /api/debug/storage-subscriber-status",
+    "GET /api/debug/storage-metrics"
+  ],
+  "status": "awaiting_verification",
+  "task_tracking": {
+    "assigned_at": "2024-01-20T00:00:00Z",
+    "estimated_duration": "3h",
+    "dependencies": ["gc01"],
+    "subtasks": [
+      {
+        "id": "gc02.1",
+        "description": "Create Pub/Sub subscriber for raw xAPI data archival",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/etl/pubsub_storage_subscriber.py"]
+      },
+      {
+        "id": "gc02.2",
+        "description": "Implement Cloud Storage integration for raw JSON payloads",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/etl/pubsub_storage_subscriber.py"]
+      },
+      {
+        "id": "gc02.3",
+        "description": "Add monitoring endpoints for storage subscriber health",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/etl/pubsub_storage_subscriber.py"]
+      }
+    ],
+    "completion_criteria": [
+      "Pub/Sub subscriber receives messages from Cloud Function",
+      "Raw xAPI JSON payloads stored in Cloud Storage with proper naming",
+      "Monitoring endpoints show subscriber health and storage metrics",
+      "pytest tests/test_pubsub_storage_subscriber.py passes"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Requires Pub/Sub topic and Cloud Storage bucket setup",
+      "docker_compose_required": false,
+      "test_environment": "Google Cloud Pub/Sub + Cloud Storage integration"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": "backend_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "Pub/Sub storage subscriber implemented and ready for testing",
+    "required_approval": false
+  }
+}

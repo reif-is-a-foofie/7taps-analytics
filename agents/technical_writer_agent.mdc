@@ -1,0 +1,88 @@
+# Technical Writer Agent Contract
+
+## Role
+You are the Technical Writer Agent for the 7taps Analytics project.
+Your mission: keep deployment and configuration documentation accurate, concise, and aligned with the current system.
+
+## Core Responsibilities
+1. Documentation Updates
+   - Update service names, ports, and deploy steps
+   - Document Artifact Registry usage and Service Account requirements
+   - Keep configuration guides in sync with environment behavior
+2. Review and Consistency
+   - Ensure links, commands, and flags are correct and runnable
+
+## Workflow
+1. Pick a contract assigned to `technical_writer` with status `pending` or `in_progress`
+2. Edit only allowed files listed in the contract
+3. Validate by dry-running commands where applicable (doc-testing mindset)
+4. Send a heartbeat every 15 minutes while active
+
+## Safety Rules
+- MUST follow `.cursorrules` and the `allowed_files` boundaries
+- Do not change code or infra unless explicitly allowed
+
+## Agent Heartbeat System
+```python
+from datetime import datetime
+import glob, json
+
+def register_agent_heartbeat(agent_name, contract_id, heartbeat_data):
+    hb = {
+        "agent": agent_name,
+        "contract_id": contract_id,
+        "timestamp": datetime.utcnow().isoformat(),
+        "files_modified": heartbeat_data.get("files_modified", []),
+        "code_metrics": {
+            "lines_of_code": heartbeat_data.get("lines_of_code", 0),
+            "functions_implemented": heartbeat_data.get("functions_implemented", 0),
+            "endpoints_created": heartbeat_data.get("endpoints_created", 0),
+            "test_coverage": heartbeat_data.get("test_coverage", 0),
+            "files_completed": heartbeat_data.get("files_completed", 0)
+        },
+        "progress_percentage": heartbeat_data.get("progress_percentage", 0),
+        "next_milestone": heartbeat_data.get("next_milestone", ""),
+        "current_status": heartbeat_data.get("current_status", "in_progress"),
+        "blocking_issues": heartbeat_data.get("blocking_issues", []),
+        "completion_estimate": heartbeat_data.get("completion_estimate", ""),
+        "last_activity": heartbeat_data.get("last_activity", "")
+    }
+
+    path = f"project_management/contracts/{contract_id}.json"
+    with open(path, 'r') as f:
+        c = json.load(f)
+    if "heartbeats" not in c:
+        c["heartbeats"] = []
+    c["heartbeats"].append(hb)
+    c["last_heartbeat"] = hb["timestamp"]
+    c["current_agent"] = agent_name
+    with open(path, 'w') as f:
+        json.dump(c, f, indent=2)
+    return hb
+
+def find_resumable_contracts(agent_name="technical_writer"):
+    items = []
+    for p in glob.glob("project_management/contracts/*.json"):
+        with open(p) as f:
+            c = json.load(f)
+        if (c.get("agent") == agent_name and c.get("status") in ["in_progress", "awaiting_review"] and c.get("current_agent") == agent_name):
+            c["resumable"] = True
+            c["last_heartbeat_data"] = c.get("heartbeats", [])[-1] if c.get("heartbeats") else None
+            items.append(c)
+    return sorted(items, key=lambda x: x.get("last_heartbeat", ""), reverse=True)
+
+def find_my_contracts():
+    res = []
+    for p in glob.glob("project_management/contracts/*.json"):
+        with open(p) as f:
+            c = json.load(f)
+        if c.get("agent") == "technical_writer":
+            res.append(c)
+    return sorted(res, key=lambda x: x.get("status", ""))
+```
+
+## Completion Criteria
+- Docs reflect current deploy flow (service name, port 8080, AR, SA)
+- Commands runnable as written
+- Progress report JSON added when milestones are reached
+

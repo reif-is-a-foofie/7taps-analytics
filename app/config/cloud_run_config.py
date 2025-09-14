@@ -11,7 +11,7 @@ class CloudRunConfig(BaseModel):
     """Cloud Run deployment configuration."""
     
     # Service configuration
-    service_name: str = Field(default="7taps-analytics-ui", description="Cloud Run service name")
+    service_name: str = Field(default="taps-analytics-ui", description="Cloud Run service name")
     region: str = Field(default="us-central1", description="Deployment region")
     project_id: str = Field(default_factory=lambda: os.getenv("GOOGLE_CLOUD_PROJECT", ""), description="GCP project ID")
     
@@ -64,7 +64,7 @@ class CloudRunConfig(BaseModel):
         self.environment_vars = {**default_vars, **self.environment_vars}
     
     def get_deployment_config(self) -> Dict[str, Any]:
-        """Get Cloud Run deployment configuration."""
+        """Get Cloud Run deployment configuration (Cloud Run compliant)."""
         return {
             "apiVersion": "serving.knative.dev/v1",
             "kind": "Service",
@@ -73,58 +73,27 @@ class CloudRunConfig(BaseModel):
                 "namespace": self.project_id,
                 "annotations": {
                     "run.googleapis.com/ingress": "all",
-                    "run.googleapis.com/execution-environment": "gen2"
+                    "run.googleapis.com/execution-environment": "gen2",
+                    "autoscaling.knative.dev/minScale": str(self.min_instances),
+                    "autoscaling.knative.dev/maxScale": str(self.max_instances),
+                    "run.googleapis.com/cpu-throttling": str(self.cpu_throttling).lower()
                 }
             },
             "spec": {
                 "template": {
-                    "metadata": {
-                        "annotations": {
-                            "autoscaling.knative.dev/minScale": str(self.min_instances),
-                            "autoscaling.knative.dev/maxScale": str(self.max_instances),
-                            "run.googleapis.com/cpu-throttling": str(self.cpu_throttling).lower(),
-                            "run.googleapis.com/execution-environment": "gen2"
-                        }
-                    },
                     "spec": {
                         "containerConcurrency": self.concurrency,
                         "timeoutSeconds": self.request_timeout,
                         "containers": [
                             {
                                 "image": f"gcr.io/{self.project_id}/{self.service_name}:latest",
-                                "ports": [
-                                    {
-                                        "containerPort": 8080,
-                                        "name": "http1"
-                                    }
-                                ],
+                                "ports": [{"containerPort": 8080}],
                                 "env": [
                                     {"name": key, "value": value}
                                     for key, value in self.environment_vars.items()
                                 ],
                                 "resources": {
-                                    "limits": {
-                                        "cpu": self.cpu,
-                                        "memory": self.memory
-                                    }
-                                },
-                                "livenessProbe": {
-                                    "httpGet": {
-                                        "path": self.health_check_path,
-                                        "port": 8080
-                                    },
-                                    "initialDelaySeconds": 30,
-                                    "periodSeconds": self.health_check_interval,
-                                    "timeoutSeconds": self.health_check_timeout
-                                },
-                                "readinessProbe": {
-                                    "httpGet": {
-                                        "path": self.health_check_path,
-                                        "port": 8080
-                                    },
-                                    "initialDelaySeconds": 5,
-                                    "periodSeconds": 10,
-                                    "timeoutSeconds": 5
+                                    "limits": {"cpu": self.cpu, "memory": self.memory}
                                 }
                             }
                         ]
@@ -136,9 +105,10 @@ class CloudRunConfig(BaseModel):
     def get_gcloud_deploy_command(self) -> str:
         """Get gcloud command for deploying to Cloud Run."""
         env_vars = " ".join([f"--set-env-vars {key}={value}" for key, value in self.environment_vars.items()])
-        
+
+        # Use image deploy and port 8080 for Cloud Run alignment
         return f"""gcloud run deploy {self.service_name} \\
-    --source . \\
+    --image gcr.io/{self.project_id}/{self.service_name}:latest \\
     --platform managed \\
     --region {self.region} \\
     --allow-unauthenticated \\
@@ -148,7 +118,7 @@ class CloudRunConfig(BaseModel):
     --max-instances {self.max_instances} \\
     --concurrency {self.concurrency} \\
     --timeout {self.request_timeout} \\
-    --set-cloudsql-instances {self.project_id}:{self.region}:your-instance \\
+    --port 8080 \\
     {env_vars}"""
 
 def get_cloud_run_config() -> CloudRunConfig:

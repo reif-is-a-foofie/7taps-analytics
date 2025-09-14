@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statement Browser - Learning Locker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .filters-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .filter-group input, .filter-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        
+        .search-box {
+            grid-column: 1 / -1;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            font-size: 1.1em;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+        
+        .statements-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .statements-table th {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .statements-table td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .statements-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .statement-id {
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .actor-name {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .verb-badge {
+            background: #3498db;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .object-name {
+            color: #27ae60;
+            font-weight: 500;
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .score {
+            font-weight: bold;
+            color: #f39c12;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        .pagination button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .pagination button:hover {
+            background: #2980b9;
+        }
+        
+        .pagination button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .pagination-info {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .view-detail {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .view-detail:hover {
+            text-decoration: underline;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .statements-table {
+                font-size: 0.9em;
+            }
+            
+            .statements-table th,
+            .statements-table td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Statement Browser</h1>
+            <p>Browse and filter xAPI statements from Learning Locker</p>
+        </div>
+        
+        <div class="content">
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-statements">{{ stats.total_statements }}</div>
+                    <div class="stat-label">Total Statements</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="today-statements">{{ stats.statements_today }}</div>
+                    <div class="stat-label">Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="unique-actors">{{ stats.unique_actors }}</div>
+                    <div class="stat-label">Unique Actors</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completion-rate">{{ stats.completion_rate }}%</div>
+                    <div class="stat-label">Completion Rate</div>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="filters-section">
+                <form id="filters-form">
+                    <div class="filters-grid">
+                        <div class="filter-group search-box">
+                            <label for="search">Search Statements</label>
+                            <input type="text" id="search" name="search" placeholder="Search in all fields..." value="{{ data.filters.search or '' }}">
+                        </div>
+                        <div class="filter-group">
+                            <label for="actor">Actor Filter</label>
+                            <input type="text" id="actor" name="actor" placeholder="Filter by actor..." value="{{ data.filters.actor or '' }}">
+                        </div>
+                        <div class="filter-group">
+                            <label for="verb">Verb Filter</label>
+                            <input type="text" id="verb" name="verb" placeholder="Filter by verb..." value="{{ data.filters.verb or '' }}">
+                        </div>
+                        <div class="filter-group">
+                            <label for="object">Object Filter</label>
+                            <input type="text" id="object" name="object" placeholder="Filter by object..." value="{{ data.filters.object or '' }}">
+                        </div>
+                    </div>
+                    <div class="filter-buttons">
+                        <button type="submit" class="btn btn-success">🔍 Apply Filters</button>
+                        <button type="button" class="btn btn-secondary" onclick="clearFilters()">🗑️ Clear Filters</button>
+                        <button type="button" class="btn" onclick="refreshData()">🔄 Refresh</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Statements Table -->
+            <div id="statements-container">
+                <table class="statements-table">
+                    <thead>
+                        <tr>
+                            <th>Statement ID</th>
+                            <th>Actor</th>
+                            <th>Verb</th>
+                            <th>Object</th>
+                            <th>Timestamp</th>
+                            <th>Score</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statements-tbody">
+                        {% for statement in data.statements %}
+                        <tr>
+                            <td class="statement-id">{{ statement.id }}</td>
+                            <td class="actor-name">{{ statement.actor.account.name }}</td>
+                            <td>
+                                <span class="verb-badge">{{ statement.verb.id.split('/')[-1] }}</span>
+                            </td>
+                            <td class="object-name">{{ statement.object.id.split('/')[-1] }}</td>
+                            <td class="timestamp">{{ statement.timestamp[:10] }}</td>
+                            <td class="score">
+                                {% if statement.result and statement.result.score %}
+                                    {{ statement.result.score.raw }}/{{ statement.result.score.max }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="/statement-detail/{{ statement.id }}" class="view-detail">View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                {% if not data.statements %}
+                <div class="no-results">
+                    <p>No statements found matching the current filters.</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if data.pagination.total_pages > 1 %}
+            <div class="pagination">
+                <button onclick="changePage({{ data.pagination.page - 1 }})" 
+                        {% if not data.pagination.has_prev %}disabled{% endif %}>
+                    ← Previous
+                </button>
+                
+                <span class="pagination-info">
+                    Page {{ data.pagination.page }} of {{ data.pagination.total_pages }}
+                    ({{ data.pagination.total_count }} total statements)
+                </span>
+                
+                <button onclick="changePage({{ data.pagination.page + 1 }})"
+                        {% if not data.pagination.has_next %}disabled{% endif %}>
+                    Next →
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        // Handle form submission
+        document.getElementById('filters-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            applyFilters();
+        });
+        
+        function applyFilters() {
+            const search = document.getElementById('search').value;
+            const actor = document.getElementById('actor').value;
+            const verb = document.getElementById('verb').value;
+            const object = document.getElementById('object').value;
+            
+            const params = new URLSearchParams();
+            if (search) params.append('search', search);
+            if (actor) params.append('actor', actor);
+            if (verb) params.append('verb', verb);
+            if (object) params.append('object', object);
+            
+            window.location.href = '/statement-browser?' + params.toString();
+        }
+        
+        function clearFilters() {
+            document.getElementById('search').value = '';
+            document.getElementById('actor').value = '';
+            document.getElementById('verb').value = '';
+            document.getElementById('object').value = '';
+            window.location.href = '/statement-browser';
+        }
+        
+        function changePage(page) {
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('page', page);
+            window.location.href = currentUrl.toString();
+        }
+        
+        function refreshData() {
+            window.location.reload();
+        }
+        
+        // Auto-refresh stats every 60 seconds
+        setInterval(async function() {
+            try {
+                const response = await fetch('/api/statements/stats');
+                const stats = await response.json();
+                
+                document.getElementById('total-statements').textContent = stats.total_statements;
+                document.getElementById('today-statements').textContent = stats.statements_today;
+                document.getElementById('unique-actors').textContent = stats.unique_actors;
+                document.getElementById('completion-rate').textContent = stats.completion_rate + '%';
+            } catch (error) {
+                console.error('Failed to refresh stats:', error);
+            }
+        }, 60000);
+    </script>
+</body>
+</html> 

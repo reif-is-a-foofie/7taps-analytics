@@ -70,8 +70,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
     
-    # Port Configuration
-    APP_PORT: int = 8000
+    # Port Configuration (use PORT env var for Cloud Run)
+    APP_PORT: int = int(os.getenv("PORT", "8000"))
     POSTGRES_PORT: int = 5432
     REDIS_PORT: int = 6379
     

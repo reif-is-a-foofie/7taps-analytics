@@ -1,0 +1,88 @@
+{
+  "module": "gc11_cloud_run_data_connectors",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "app/main_cloud_run.py",
+    "app/api/bigquery_analytics.py",
+    "app/api/data_explorer.py",
+    "app/api/cost_monitoring.py",
+    "app/api/gcp_monitoring.py",
+    "Dockerfile",
+    "requirements.txt"
+  ],
+  "required_endpoints": [
+    "GET /api/bigquery/test",
+    "GET /api/explorer",
+    "GET /api/cost",
+    "GET /api/monitoring",
+    "GET /api/bigquery/analytics"
+  ],
+  "status": "pending",
+  "task_tracking": {
+    "assigned_at": "2025-01-21T21:05:00Z",
+    "estimated_duration": "3h",
+    "dependencies": ["gc06"],
+    "subtasks": [
+      {
+        "id": "gc11.1",
+        "description": "Fix Cloud Run deployment with proper GCP credentials handling",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/main_cloud_run.py", "Dockerfile"]
+      },
+      {
+        "id": "gc11.2",
+        "description": "Implement BigQuery data connector endpoints",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/main_cloud_run.py"]
+      },
+      {
+        "id": "gc11.3",
+        "description": "Add cost monitoring endpoints to Cloud Run",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/main_cloud_run.py"]
+      },
+      {
+        "id": "gc11.4",
+        "description": "Deploy updated Cloud Run service with data connectors",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/main_cloud_run.py", "Dockerfile", "requirements.txt"]
+      }
+    ],
+    "completion_criteria": [
+      "Cloud Run service deploys successfully without credential errors",
+      "BigQuery test endpoint returns successful connection",
+      "Data explorer endpoint lists available tables",
+      "Cost monitoring endpoint is accessible",
+      "GCP monitoring endpoint is functional",
+      "All endpoints return proper JSON responses"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Requires GCP default credentials in Cloud Run environment",
+      "docker_compose_required": false,
+      "test_environment": "Google Cloud Run with BigQuery access"
+    },
+    "blocking_issues": [
+      "GCP credentials configuration in Cloud Run container",
+      "Import dependencies causing startup failures"
+    ],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": "orchestrator",
+    "to_agent": "ui_agent",
+    "handoff_notes": "Fix Cloud Run deployment and implement data connectors for BigQuery, cost monitoring, and GCP monitoring",
+    "required_approval": false
+  },
+  "technical_requirements": {
+    "cloud_run_url": "https://taps-analytics-ui-245712978112.us-central1.run.app",
+    "gcp_credentials": "Use default credentials (no service account key file)",
+    "bigquery_access": "Read access to taps_data dataset",
+    "response_format": "JSON with proper error handling"
+  }
+}
+

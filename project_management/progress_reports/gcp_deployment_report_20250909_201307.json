@@ -1,0 +1,29 @@
+{
+  "timestamp": "2025-09-09T20:13:07.065205",
+  "duration_seconds": 9.144251,
+  "deployment_complete": false,
+  "steps_completed": 3,
+  "total_steps": 6,
+  "results": {
+    "apis_enabled": 7,
+    "pubsub_topics": 1,
+    "pubsub_subscriptions": 2,
+    "storage_buckets": 0,
+    "bigquery_datasets": 1,
+    "bigquery_tables": 2
+  },
+  "validation": {
+    "pubsub_topics": 1,
+    "storage_buckets": 0,
+    "bigquery_datasets": 1
+  },
+  "errors": [
+    "Failed to enable cloudbuild.googleapis.com: <HttpError 400 when requesting https://serviceusage.googleapis.com/v1/projects/taps-data/services/cloudbuild.googleapis.com:enable?alt=json returned \"Billing account for project '245712978112' is not found. Billing must be enabled for activation of service(s) 'cloudbuild.googleapis.com,artifactregistry.googleapis.com,containerregistry.googleapis.com' to proceed.\nHelp Token: AeNz4PgdvcDeJ8jYTAdVCWk0ubHk5XTXp_UUPwWa8n82HjiRpjdhu_KE1QSqF5ZLLEvLTnLKTh9yRYu6dKdXnpNMJGOplTOAz_PjQBztxyAu1-IQ\". Details: \"[{'@type': 'type.googleapis.com/google.rpc.PreconditionFailure', 'violations': [{'type': 'googleapis.com/billing-enabled', 'subject': '?error_code=390001&project=245712978112&services=cloudbuild.googleapis.com&services=artifactregistry.googleapis.com&services=containerregistry.googleapis.com'}]}, {'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'UREQ_PROJECT_BILLING_NOT_FOUND', 'domain': 'serviceusage.googleapis.com/billing-enabled', 'metadata': {'project': '245712978112', 'services': 'cloudbuild.googleapis.com,artifactregistry.googleapis.com,containerregistry.googleapis.com'}}]\">",
+    "Failed to create bucket taps-data-raw-xapi: Client.create_bucket() got an unexpected keyword argument 'storage_class'",
+    "Failed to create table taps_data.users: TimePartitioning.__init__() got an unexpected keyword argument 'type'. Did you mean 'type_'?",
+    "Failed to create table taps_data.user_responses: TimePartitioning.__init__() got an unexpected keyword argument 'type'. Did you mean 'type_'?",
+    "Failed to create table taps_data.user_activities: TimePartitioning.__init__() got an unexpected keyword argument 'type'. Did you mean 'type_'?",
+    "Failed to create table taps_data.xapi_events: TimePartitioning.__init__() got an unexpected keyword argument 'type'. Did you mean 'type_'?"
+  ],
+  "dry_run": false
+}

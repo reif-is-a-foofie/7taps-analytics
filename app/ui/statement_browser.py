@@ -24,7 +24,7 @@ class StatementBrowser:
     """Statement browser interface."""
     
     def __init__(self):
-        self.api_base = "https://seventaps-analytics-5135b3a0701a.herokuapp.com/api"
+        self.api_base = os.getenv("API_BASE_URL", "") + "/api"
         
     async def get_statements(self, 
                            page: int = 1, 

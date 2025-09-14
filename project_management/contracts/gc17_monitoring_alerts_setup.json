@@ -1,0 +1,72 @@
+{
+  "module": "gc17_monitoring_alerts_setup",
+  "agent": "devops_agent",
+  "allowed_files": [
+    "scripts/setup_monitoring_alerts.sh",
+    "docs/",
+    "project_management/progress_reports/gc17_monitoring_alerts_setup.json"
+  ],
+  "required_endpoints": ["GET /api/health"],
+  "status": "planning",
+  "task_tracking": {
+    "assigned_at": "2025-09-14T00:00:00Z",
+    "estimated_duration": "2h",
+    "dependencies": ["gc07", "gc12"],
+    "subtasks": [
+      {
+        "id": "gc17.1",
+        "description": "Create alert for Cloud Run 5xx rate",
+        "status": "pending",
+        "agent": "devops_agent",
+        "files": ["scripts/setup_monitoring_alerts.sh"]
+      },
+      {
+        "id": "gc17.2",
+        "description": "Create alert for p95 latency over threshold",
+        "status": "pending",
+        "agent": "devops_agent",
+        "files": ["scripts/setup_monitoring_alerts.sh"]
+      },
+      {
+        "id": "gc17.3",
+        "description": "Create Pub/Sub backlog alert",
+        "status": "pending",
+        "agent": "devops_agent",
+        "files": ["scripts/setup_monitoring_alerts.sh"]
+      },
+      {
+        "id": "gc17.4",
+        "description": "Create BigQuery job error ratio alert",
+        "status": "pending",
+        "agent": "devops_agent",
+        "files": ["scripts/setup_monitoring_alerts.sh"]
+      },
+      {
+        "id": "gc17.5",
+        "description": "Document alert policies and owners",
+        "status": "pending",
+        "agent": "devops_agent",
+        "files": ["docs/"]
+      }
+    ],
+    "completion_criteria": [
+      "Alert policies exist and target the service",
+      "Thresholds and notification channels documented"
+    ],
+    "real_world_testing": {
+      "required": false,
+      "notes": "Validate via Monitoring UI or gcloud list",
+      "docker_compose_required": false,
+      "test_environment": "GCP Monitoring"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "devops_agent",
+    "handoff_notes": "Needs monitoring.writer perms",
+    "required_approval": false
+  }
+}
+

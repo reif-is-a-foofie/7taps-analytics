@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-09-10T01:22:39.459288+00:00",
+  "project_id": "taps-data",
+  "overall_status": "healthy",
+  "deployment_complete": true,
+  "components_status": {
+    "pubsub": "healthy",
+    "storage": "healthy",
+    "bigquery": "healthy"
+  },
+  "next_steps": [
+    "Deploy Cloud Function for xAPI ingestion",
+    "Test end-to-end data flow"
+  ]
+}

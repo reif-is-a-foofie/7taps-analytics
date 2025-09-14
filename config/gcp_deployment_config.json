@@ -10,7 +10,9 @@
     "pubsub.googleapis.com",
     "storage.googleapis.com",
     "bigquery.googleapis.com",
+    "run.googleapis.com",
     "cloudbuild.googleapis.com",
+    "containerregistry.googleapis.com",
     "iam.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com"
@@ -26,6 +28,10 @@
       "roles/storage.objectAdmin",
       "roles/bigquery.dataEditor",
       "roles/bigquery.jobUser",
+      "roles/run.invoker",
+      "roles/run.developer",
+      "roles/cloudbuild.builds.builder",
+      "roles/storage.objectViewer",
       "roles/logging.logWriter",
       "roles/monitoring.metricWriter"
     ]
@@ -44,6 +50,27 @@
         "GCP_PROJECT_ID": "taps-data",
         "PUBSUB_TOPIC": "xapi-ingestion-topic",
         "STORAGE_BUCKET": "taps-data-raw-xapi"
+      }
+    }
+  },
+  "cloud_run": {
+    "7taps_analytics_ui": {
+      "name": "7taps-analytics-ui",
+      "description": "FastAPI application serving the 7taps Analytics UI",
+      "image": "gcr.io/taps-data/7taps-analytics-ui",
+      "region": "us-central1",
+      "cpu": "1",
+      "memory": "2Gi",
+      "min_instances": 0,
+      "max_instances": 10,
+      "concurrency": 80,
+      "timeout": 300,
+      "allow_unauthenticated": true,
+      "environment_variables": {
+        "API_BASE_URL": "",
+        "DATABASE_TERMINAL_URL": "https://your-sqlpad-instance.run.app",
+        "GOOGLE_CLOUD_PROJECT": "taps-data",
+        "GCP_REGION": "us-central1"
       }
     }
   },

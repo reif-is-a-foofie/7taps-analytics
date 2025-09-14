@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException, Path, Query
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from app.config.gcp_config import gcp_config
+from app.config.gcp_config import get_gcp_config
 from google.cloud import bigquery
 from google.api_core import exceptions as google_exceptions
 
@@ -118,17 +118,8 @@ router = APIRouter()
 
 def get_db_connection():
     """Get database connection with proper error handling."""
-    try:
-        DATABASE_URL = os.getenv('DATABASE_URL')
-        if not DATABASE_URL:
-            raise ValueError("DATABASE_URL environment variable is not set")
-        if DATABASE_URL.startswith('postgres://'):
-            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-        
-        return psycopg2.connect(DATABASE_URL, sslmode=os.getenv('PGSSLMODE', 'require'))
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
+    # Disabled - using BigQuery instead of PostgreSQL
+    raise HTTPException(status_code=501, detail="PostgreSQL routes disabled - using BigQuery instead")
 
 def execute_bigquery_query(sql_query: str, limit: int = 1000, use_cache: bool = True) -> Dict[str, Any]:
     """Execute a BigQuery query with caching support for data explorer."""
@@ -153,6 +144,7 @@ def execute_bigquery_query(sql_query: str, limit: int = 1000, use_cache: bool = 
                 return cached_result
         
         # Execute query
+        gcp_config = get_gcp_config()
         client = gcp_config.bigquery_client
         job_config = bigquery.QueryJobConfig()
         
@@ -426,32 +418,36 @@ async def list_tables(request: ListTablesRequest):
     }
 )
 async def get_lessons():
-    """Get all lessons for the dropdown."""
+    """Get all lessons for the dropdown from BigQuery."""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT id, lesson_name, lesson_number 
-            FROM lessons 
+        # Query the proper lessons table instead of user_activities
+        query = """
+            SELECT id, lesson_name, lesson_number
+            FROM `taps-data.taps_data.lessons`
+            WHERE lesson_name IS NOT NULL
             ORDER BY lesson_number
-        """)
+        """
         
-        lessons = []
-        for row in cursor.fetchall():
-            lessons.append({
-                "id": row[0],
-                "name": f"{row[2]}. {row[1]}" if row[2] else row[1],
-                "lesson_number": row[2]
-            })
+        result = execute_bigquery_query(query, limit=1000)
         
-        cursor.close()
-        conn.close()
-        
-        return {
-            "success": True,
-            "lessons": lessons
-        }
+        if result["success"]:
+            lessons = []
+            for row in result["rows"]:
+                lesson_id = row.get("id")
+                lesson_name = row.get("lesson_name")
+                lesson_number = row.get("lesson_number")
+                
+                if lesson_id is not None and lesson_name is not None:
+                    lessons.append({
+                        "id": lesson_id,
+                        "name": lesson_name,
+                        "lesson_number": lesson_number or lesson_id
+                    })
+            
+            return {"lessons": lessons}  # Return wrapped in dictionary to match response model
+        else:
+            # Return empty array wrapped in dictionary to match expected format
+            return {"lessons": []}
         
     except Exception as e:
         return {
@@ -482,33 +478,39 @@ async def get_lessons():
     }
 )
 async def get_users():
-    """Get all users for the dropdown."""
+    """Get all users for the dropdown from BigQuery."""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT id, user_id, COALESCE(cohort, 'Unknown') as cohort
-            FROM users 
+        # Query the proper users table instead of user_activities
+        query = """
+            SELECT id, user_id, cohort
+            FROM `taps-data.taps_data.users`
+            WHERE user_id IS NOT NULL
             ORDER BY user_id
-        """)
+        """
         
-        users = []
-        for row in cursor.fetchall():
-            users.append({
-                "id": row[0],
-                "email": row[1] or f"User {row[0]}",
-                "user_id": row[1],
-                "display_name": f"{row[1]} ({row[2]})" if row[1] else f"User {row[0]} ({row[2]})"
-            })
+        result = execute_bigquery_query(query, limit=1000)
         
-        cursor.close()
-        conn.close()
-        
-        return {
-            "success": True,
-            "users": users
-        }
+        if result["success"]:
+            users = []
+            for row in result["rows"]:
+                user_id = row.get("user_id")
+                user_db_id = row.get("id")
+                cohort = row.get("cohort")
+                
+                if user_id is not None:
+                    # Use email as display name, fallback to user_id
+                    display_name = user_id if "@" in str(user_id) else f"User {user_id}"
+                    users.append({
+                        "id": user_db_id,
+                        "email": user_id,
+                        "user_id": user_id,
+                        "display_name": display_name
+                    })
+            
+            return {"users": users}  # Return wrapped in dictionary to match response model
+        else:
+            # Return empty array wrapped in dictionary to match expected format
+            return {"users": []}
         
     except Exception as e:
         return {
@@ -569,48 +571,102 @@ async def get_table_data(
         # Validate table name to prevent SQL injection
         valid_tables = ['lessons', 'questions', 'users', 'user_activities', 'user_responses']
         if table_name not in valid_tables:
-            return {
-                "success": False,
-                "error": f"Invalid table name. Must be one of: {', '.join(valid_tables)}"
-            }
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid table name. Must be one of: {', '.join(valid_tables)}"
+            )
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # Use BigQuery instead of PostgreSQL
+        gcp_config = get_gcp_config()
+        client = gcp_config.bigquery_client
         
-        # Get table data with limit
-        cursor.execute(f"""
-            SELECT * FROM {table_name} 
-            ORDER BY id 
-            LIMIT %s
-        """, (limit,))
+        # Map table names to BigQuery table names
+        table_mapping = {
+            'user_responses': 'user_activities',
+            'user_activities': 'user_activities',
+            'lessons': 'user_activities',  # Get lessons from user_activities
+            'users': 'user_activities',    # Get users from user_activities
+            'questions': 'user_activities' # Get questions from user_activities
+        }
         
-        # Get column names
-        columns = [desc[0] for desc in cursor.description]
+        bigquery_table = table_mapping.get(table_name, 'user_activities')
+        
+        # Build BigQuery query based on table name
+        if table_name == 'user_responses' or table_name == 'user_activities':
+            query = f"""
+                SELECT 
+                    user_id,
+                    activity_type,
+                    lesson_id,
+                    timestamp
+                FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.{bigquery_table}`
+                ORDER BY timestamp DESC
+                LIMIT {limit}
+            """
+        elif table_name == 'lessons':
+            query = f"""
+                SELECT 
+                    id,
+                    lesson_name,
+                    lesson_number,
+                    lesson_url,
+                    created_at
+                FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.lessons`
+                WHERE lesson_name IS NOT NULL
+                ORDER BY lesson_number
+                LIMIT {limit}
+            """
+        elif table_name == 'users':
+            query = f"""
+                SELECT 
+                    id,
+                    user_id,
+                    cohort,
+                    first_seen,
+                    last_seen,
+                    created_at
+                FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.users`
+                WHERE user_id IS NOT NULL
+                ORDER BY user_id
+                LIMIT {limit}
+            """
+        else:
+            query = f"""
+                SELECT 
+                    user_id,
+                    activity_type,
+                    lesson_id,
+                    timestamp
+                FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.{bigquery_table}`
+                ORDER BY timestamp DESC
+                LIMIT {limit}
+            """
+        
+        # Execute BigQuery query
+        query_job = client.query(query)
+        results = query_job.result()
+        
+        # Get column names from schema
+        columns = [field.name for field in results.schema]
         
         # Get data
-        rows = cursor.fetchall()
         data = []
-        
-        for row in rows:
+        for row in results:
             row_dict = {}
             for i, value in enumerate(row):
                 # Convert datetime objects to strings
-                if isinstance(value, datetime):
+                if hasattr(value, 'isoformat'):
                     row_dict[columns[i]] = value.isoformat()
                 else:
                     row_dict[columns[i]] = value
             data.append(row_dict)
         
-        cursor.close()
-        conn.close()
+        # Return just the data array to match expected format
+        return data
         
-        return {
-            "success": True,
-            "data": data,
-            "columns": columns,
-            "total_rows": len(data)
-        }
-        
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 400 for invalid table names)
+        raise
     except Exception as e:
         return {
             "success": False,
@@ -662,68 +718,72 @@ async def get_filtered_table_data(
                 "error": f"Invalid table name. Must be one of: {', '.join(valid_tables)}"
             }
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # Use BigQuery instead of PostgreSQL
+        gcp_config = get_gcp_config()
+        client = gcp_config.bigquery_client
         
-        # Build query with filters
-        query = f"SELECT * FROM {table_name}"
-        params = []
+        # Map table names to BigQuery table names
+        table_mapping = {
+            'user_responses': 'user_activities',
+            'user_activities': 'user_activities',
+            'lessons': 'user_activities',
+            'users': 'user_activities',
+            'questions': 'user_activities'
+        }
+        
+        bigquery_table = table_mapping.get(table_name, 'user_activities')
+        
+        # Build BigQuery query with filters
+        query = f"""
+            SELECT 
+                user_id,
+                activity_type,
+                lesson_id,
+                timestamp
+            FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.{bigquery_table}`
+        """
+        
         conditions = []
         
         # Parse lesson_ids and user_ids from comma-separated strings
         lesson_id_list = []
         if lesson_ids:
-            lesson_id_list = [int(x.strip()) for x in lesson_ids.split(',') if x.strip().isdigit()]
+            lesson_id_list = [x.strip() for x in lesson_ids.split(',') if x.strip()]
         
         user_id_list = []
         if user_ids:
-            user_id_list = [int(x.strip()) for x in user_ids.split(',') if x.strip().isdigit()]
+            user_id_list = [x.strip() for x in user_ids.split(',') if x.strip()]
         
         if lesson_id_list:
-            placeholders = ','.join(['%s'] * len(lesson_id_list))
-            if table_name == 'user_responses':
-                conditions.append(f"lesson_number IN ({placeholders})")
-            elif table_name in ['questions', 'user_activities']:
-                conditions.append(f"lesson_id IN ({placeholders})")
-            elif table_name == 'lessons':
-                conditions.append(f"lesson_number IN ({placeholders})")
-            params.extend(lesson_id_list)
+            lesson_ids_str = ", ".join(lesson_id_list)
+            conditions.append(f"lesson_id IN ({lesson_ids_str})")
         
         if user_id_list:
-            placeholders = ','.join(['%s'] * len(user_id_list))
-            if table_name in ['user_activities', 'user_responses']:
-                conditions.append(f"user_id IN ({placeholders})")
-                params.extend(user_id_list)
-            elif table_name == 'users':
-                conditions.append(f"id IN ({placeholders})")
-                params.extend(user_id_list)
+            user_ids_str = ", ".join(user_id_list)
+            conditions.append(f"user_id IN ({user_ids_str})")
         
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
         
-        query += " ORDER BY id LIMIT %s"
-        params.append(limit)
+        query += f" ORDER BY timestamp DESC LIMIT {limit}"
         
-        cursor.execute(query, params)
+        # Execute BigQuery query
+        query_job = client.query(query)
+        results = query_job.result()
         
-        # Get column names
-        columns = [desc[0] for desc in cursor.description]
+        # Get column names from schema
+        columns = [field.name for field in results.schema]
         
         # Get data
-        rows = cursor.fetchall()
         data = []
-        
-        for row in rows:
+        for row in results:
             row_dict = {}
             for i, value in enumerate(row):
-                if isinstance(value, datetime):
+                if hasattr(value, 'isoformat'):
                     row_dict[columns[i]] = value.isoformat()
                 else:
                     row_dict[columns[i]] = value
             data.append(row_dict)
-        
-        cursor.close()
-        conn.close()
         
         return {
             "success": True,

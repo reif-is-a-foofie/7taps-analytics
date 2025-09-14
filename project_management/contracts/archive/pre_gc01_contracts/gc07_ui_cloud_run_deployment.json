@@ -1,0 +1,147 @@
+{
+  "module": "gc07_ui_cloud_run_deployment",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "scripts/deploy_cloud_run_ui.py",
+    "config/Dockerfile",
+    "app/main.py",
+    "templates/",
+    "app/ui/",
+    "requirements.txt",
+    "orchestrator_contracts/gc07_ui_cloud_run_deployment.json"
+  ],
+  "required_endpoints": [
+    "GET /",
+    "GET /chat",
+    "GET /explorer", 
+    "GET /api/docs",
+    "GET /api/health",
+    "GET /ui/bigquery-dashboard"
+  ],
+  "status": "awaiting_verification",
+  "task_tracking": {
+    "assigned_at": "2025-01-21T00:00:00Z",
+    "estimated_duration": "2h",
+    "dependencies": ["gc06"],
+    "subtasks": [
+      {
+        "id": "gc07.1",
+        "description": "Create Cloud Run deployment script for UI",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["scripts/deploy_cloud_run_ui.py"],
+        "completion_notes": "Cloud Run deployment script created with proper configuration"
+      },
+      {
+        "id": "gc07.2", 
+        "description": "Deploy FastAPI application to Cloud Run",
+        "status": "pending",
+        "agent": "backend_agent",
+        "files": ["scripts/deploy_cloud_run_ui.py"],
+        "completion_notes": "Deploy the UI service to Google Cloud Run"
+      },
+      {
+        "id": "gc07.3",
+        "description": "Configure environment variables for GCP",
+        "status": "pending", 
+        "agent": "backend_agent",
+        "files": ["scripts/deploy_cloud_run_ui.py"],
+        "completion_notes": "Set up proper environment variables for cloud deployment"
+      },
+      {
+        "id": "gc07.4",
+        "description": "Verify UI endpoints are accessible",
+        "status": "pending",
+        "agent": "testing_agent", 
+        "files": ["scripts/deploy_cloud_run_ui.py"],
+        "completion_notes": "Test all UI endpoints and functionality"
+      }
+    ],
+    "completion_criteria": [
+      "✅ Cloud Run service deployed successfully",
+      "✅ All UI endpoints accessible (dashboard, chat, explorer, API docs)",
+      "✅ Environment variables properly configured",
+      "✅ Health checks passing",
+      "✅ Static files served correctly",
+      "✅ Database connections working",
+      "✅ BigQuery integration functional"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Deploy to Google Cloud Run and test all UI functionality",
+      "docker_compose_required": false,
+      "test_environment": "Google Cloud Run production environment"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 25,
+    "completion_notes": "Cloud Run deployment script created. Ready for deployment and testing.",
+    "deployment_summary": {
+      "service_name": "7taps-analytics-ui",
+      "platform": "Google Cloud Run",
+      "region": "us-central1",
+      "resources": {
+        "cpu": "1",
+        "memory": "2Gi",
+        "min_instances": 0,
+        "max_instances": 10,
+        "concurrency": 80
+      },
+      "endpoints": [
+        "Dashboard: /",
+        "Chat Interface: /chat", 
+        "Data Explorer: /explorer",
+        "API Documentation: /api/docs",
+        "BigQuery Dashboard: /ui/bigquery-dashboard",
+        "Health Check: /api/health"
+      ]
+    }
+  },
+  "agent_handoff": {
+    "from_agent": "ui_agent",
+    "to_agent": "backend_agent",
+    "handoff_notes": "Cloud Run deployment script created. Ready for deployment to Google Cloud Run to serve the UI components.",
+    "required_approval": false,
+    "next_steps": [
+      "Deploy the FastAPI application to Cloud Run",
+      "Configure environment variables for GCP deployment",
+      "Test all UI endpoints and functionality",
+      "Verify database connections and BigQuery integration",
+      "Set up monitoring and health checks"
+    ],
+    "testing_instructions": [
+      "Run: python scripts/deploy_cloud_run_ui.py",
+      "Test dashboard: GET /",
+      "Test chat interface: GET /chat",
+      "Test data explorer: GET /explorer",
+      "Test API docs: GET /api/docs",
+      "Test health check: GET /api/health",
+      "Test BigQuery dashboard: GET /ui/bigquery-dashboard"
+    ]
+  },
+  "gcp_resources_required": {
+    "cloud_run": {
+      "service_name": "7taps-analytics-ui",
+      "region": "us-central1",
+      "cpu": "1",
+      "memory": "2Gi",
+      "min_instances": 0,
+      "max_instances": 10,
+      "concurrency": 80,
+      "timeout": 300,
+      "allow_unauthenticated": true
+    },
+    "container_registry": {
+      "image_name": "gcr.io/taps-data/7taps-analytics-ui",
+      "build_source": ".",
+      "dockerfile": "config/Dockerfile"
+    },
+    "environment_variables": {
+      "API_BASE_URL": "",
+      "DATABASE_TERMINAL_URL": "https://your-sqlpad-instance.run.app",
+      "GOOGLE_CLOUD_PROJECT": "taps-data",
+      "GCP_REGION": "us-central1",
+      "DATABASE_URL": "from_secret",
+      "REDIS_URL": "from_secret"
+    }
+  }
+}

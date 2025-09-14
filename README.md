@@ -74,18 +74,22 @@ Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps l
 
 ```
 7taps-analytics/
-├── app/
+├── app/                   # Application code
 │   ├── api/              # FastAPI endpoints for data access
 │   ├── etl/              # Redis workers and ETL processes
 │   ├── ui/               # Admin interfaces and dashboards
 │   └── main.py           # Application entry point
+├── project_management/    # Contracts, reports, and project tracking
+│   ├── contracts/        # Orchestrator contracts for all modules
+│   └── progress_reports/ # Deployment and testing reports
 ├── workers/              # Dramatiq workers for background jobs
 ├── templates/            # HTML templates for web interfaces
 ├── scripts/              # Utility scripts and database tools
 ├── tests/                # Test suites and validation
-├── orchestrator_contracts/ # JSON contracts for module development
 ├── config/               # Docker and deployment configuration
-└── docs/                 # Documentation and guides
+├── docs/                 # Documentation and guides
+├── plan.md               # Development plan and deployment process
+└── README.md             # This file
 ```
 
 ---
@@ -93,35 +97,27 @@ Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps l
 ## 🚀 Quick Start
 
 ### Google Cloud Deployment
+See `plan.md` for complete deployment instructions. Quick setup:
+
 ```bash
-# Clone and setup
-git clone <repository>
-cd 7taps-analytics
+# 1. Install dependencies
+pip3 install google-cloud-pubsub google-cloud-storage google-cloud-bigquery
 
-# Deploy Cloud Function for xAPI ingestion
-gcloud functions deploy cloud-ingest-xapi \
-  --runtime python39 \
-  --trigger-http \
-  --allow-unauthenticated \
-  --source . \
-  --entry-point cloud_ingest_xapi
+# 2. Authenticate with GCP
+gcloud auth activate-service-account --key-file=google-cloud-key.json
+gcloud config set project taps-data
 
-# Set up Pub/Sub topic and subscriptions
-gcloud pubsub topics create xapi-ingestion-topic
-gcloud pubsub subscriptions create xapi-storage-subscriber \
-  --topic xapi-ingestion-topic
-gcloud pubsub subscriptions create xapi-bigquery-subscriber \
-  --topic xapi-ingestion-topic
+# 3. Deploy infrastructure
+python3 scripts/deploy_gcp_python_only.py
 
-# Create BigQuery dataset
-bq mk taps_data
+# 4. Deploy Cloud Function
+gcloud functions deploy cloud-ingest-xapi --runtime python39 --trigger-http --allow-unauthenticated --source app/api --entry-point cloud_ingest_xapi --no-gen2
 ```
 
 ### Access Points
 * **Cloud Function:** https://us-central1-taps-data.cloudfunctions.net/cloud-ingest-xapi
-* **BigQuery Console:** https://console.cloud.google.com/bigquery
-* **Cloud Storage:** https://console.cloud.google.com/storage
-* **Pub/Sub Monitoring:** https://console.cloud.google.com/cloudpubsub
+* **GCP Console:** https://console.cloud.google.com/functions/list?project=taps-data
+* **BigQuery:** https://console.cloud.google.com/bigquery?project=taps-data
 
 ### Natural Language Queries
 Try asking Seven (the AI agent) questions like:
@@ -156,7 +152,7 @@ Seven has access to the complete database context and can answer questions about
 * **Experimental project** - This repo is exploratory and designed for learning/demo purposes
 * **Authentication:** Cloud Function endpoints are configured for demo purposes
 * **Data scope:** focused on 7taps course completion and user engagement data
-* **Development:** coordinated through JSON contracts in `orchestrator_contracts/`
+* **Development:** coordinated through JSON contracts in `project_management/contracts/`
 * **Security:** GCP service account key located at `google-cloud-key.json` (never commit to version control)
 
 ---

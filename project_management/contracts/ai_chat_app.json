@@ -1,0 +1,107 @@
+{
+  "module": "ai_chat_app",
+  "agent": "backend_agent",
+  "allowed_files": [
+    "app/api/chat.py",
+    "chat_interface.html"
+  ],
+  "required_endpoints": ["GET /chat", "POST /api/chat/query", "POST /api/chat/analyze"],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T21:45:00Z",
+    "estimated_duration": "2h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "chat_app.1",
+        "description": "Create AI chat API endpoints for orchestrator calls",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/chat.py"]
+      },
+      {
+        "id": "chat_app.2",
+        "description": "Implement ask_question action with standard response format",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/chat.py"]
+      },
+      {
+        "id": "chat_app.3",
+        "description": "Create analyze_data and generate_chart actions",
+        "status": "complete",
+        "agent": "backend_agent",
+        "files": ["app/api/chat.py"]
+      },
+      {
+        "id": "chat_app.4",
+        "description": "Test AI chat app contract functionality",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "AIChat.ask_question action returns standard format",
+      "AIChat.analyze_data action provides insights",
+      "AIChat.generate_chart action creates visualizations",
+      "All actions return consistent JSON response structure",
+      "AI chat app can be called by orchestrator reliably"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test AI chat app actions via orchestrator calls",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "app_contract": {
+    "name": "AIChat",
+    "description": "Natural language analytics assistant",
+    "actions": [
+      {
+        "name": "ask_question",
+        "input": {
+          "query": "string"
+        },
+        "output": {
+          "text": "string",
+          "chart": "object",
+          "table": "object",
+          "confidence": "float"
+        }
+      },
+      {
+        "name": "analyze_data",
+        "input": {
+          "data": "object",
+          "analysis_type": "string"
+        },
+        "output": {
+          "insights": "list",
+          "summary": "string",
+          "recommendations": "list"
+        }
+      },
+      {
+        "name": "generate_chart",
+        "input": {
+          "data": "object",
+          "chart_type": "string"
+        },
+        "output": {
+          "chart": "object",
+          "config": "object"
+        }
+      }
+    ]
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "backend_agent",
+    "handoff_notes": "Create AI Chat as a composable sub-app with standard contract actions",
+    "required_approval": false
+  }
+}

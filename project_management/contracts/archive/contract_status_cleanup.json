@@ -1,0 +1,141 @@
+{
+  "module": "contract_status_cleanup",
+  "agent": "orchestrator_agent",
+  "allowed_files": [
+    "project_management/contracts/*.json",
+    "project_management/contracts/CONTRACTS.md"
+  ],
+  "required_endpoints": [
+    "GET /api/debug/contract-status",
+    "GET /api/debug/cleanup-report"
+  ],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2025-01-21T00:00:00Z",
+    "estimated_duration": "2h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "cleanup.1",
+        "description": "Audit all 67 contracts and verify actual implementation status",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["project_management/contracts/*.json"]
+      },
+      {
+        "id": "cleanup.2",
+        "description": "Check file existence and implementation completeness",
+        "status": "completed",
+        "agent": "backend_agent",
+        "files": ["app/", "tests/", "scripts/"]
+      },
+      {
+        "id": "cleanup.3",
+        "description": "Verify UI components and templates exist",
+        "status": "completed",
+        "agent": "ui_agent",
+        "files": ["templates/", "app/ui/", "static/"]
+      },
+      {
+        "id": "cleanup.4",
+        "description": "Update contract statuses based on actual implementation",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["project_management/contracts/*.json"]
+      },
+      {
+        "id": "cleanup.5",
+        "description": "Archive completed contracts and update CONTRACTS.md",
+        "status": "completed",
+        "agent": "orchestrator_agent",
+        "files": ["project_management/contracts/CONTRACTS.md"]
+      }
+    ],
+    "completion_criteria": [
+      "All 67 contracts audited for actual implementation status",
+      "Contract statuses updated to reflect reality",
+      "Completed contracts archived to archive/ folder",
+      "CONTRACTS.md updated with accurate status",
+      "Clean project state with only active contracts remaining",
+      "No false 'pending' statuses for completed work"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Audit actual file existence and implementation completeness",
+      "docker_compose_required": false,
+      "test_environment": "Local file system audit"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "app_contract": {
+    "name": "ContractStatusCleanup",
+    "description": "Audit and clean up all contract statuses to reflect actual implementation",
+    "actions": [
+      {
+        "name": "audit_contracts",
+        "input": {},
+        "output": {
+          "total_contracts": "number",
+          "completed_contracts": "number",
+          "pending_contracts": "number",
+          "in_progress_contracts": "number",
+          "status_discrepancies": "list"
+        }
+      },
+      {
+        "name": "verify_implementation",
+        "input": {
+          "contract_id": "string"
+        },
+        "output": {
+          "files_exist": "boolean",
+          "implementation_complete": "boolean",
+          "actual_status": "string",
+          "missing_files": "list"
+        }
+      },
+      {
+        "name": "update_status",
+        "input": {
+          "contract_id": "string",
+          "new_status": "string"
+        },
+        "output": {
+          "updated": "boolean",
+          "previous_status": "string"
+        }
+      }
+    ]
+  },
+  "audit_criteria": {
+    "completed": {
+      "criteria": [
+        "All required files exist",
+        "All required endpoints functional",
+        "Tests pass (if applicable)",
+        "Implementation matches contract requirements"
+      ]
+    },
+    "in_progress": {
+      "criteria": [
+        "Some files exist but incomplete",
+        "Partial implementation",
+        "Active development ongoing"
+      ]
+    },
+    "pending": {
+      "criteria": [
+        "No files exist",
+        "No implementation started",
+        "Ready to begin"
+      ]
+    }
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "orchestrator_agent",
+    "handoff_notes": "CRITICAL: Clean up contract statuses to reflect actual implementation state. Many contracts marked as 'pending' are actually completed.",
+    "required_approval": false
+  }
+}
