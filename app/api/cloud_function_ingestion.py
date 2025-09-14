@@ -5,19 +5,41 @@ Receives xAPI statements via HTTP POST and publishes them to Pub/Sub for process
 
 import json
 import logging
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime
 
 # Google Cloud imports
-from google.cloud import functions_v1
+from google.cloud import pubsub_v1
 from google.api_core import exceptions as gcp_exceptions
-
-# Local imports
-from app.config.gcp_config import gcp_config
+from google.auth import default
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# GCP Configuration
+PROJECT_ID = os.environ.get('GCP_PROJECT_ID', 'taps-data')
+PUBSUB_TOPIC = os.environ.get('PUBSUB_TOPIC', 'xapi-ingestion-topic')
+STORAGE_BUCKET = os.environ.get('STORAGE_BUCKET', 'taps-data-raw-xapi')
+
+# Initialize Pub/Sub client lazily
+publisher = None
+topic_path = None
+
+def get_pubsub_client():
+    """Get or initialize Pub/Sub client."""
+    global publisher, topic_path
+    if publisher is None:
+        try:
+            credentials, project = default()
+            publisher = pubsub_v1.PublisherClient(credentials=credentials)
+            topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC)
+            logger.info(f"Initialized Pub/Sub client for topic: {topic_path}")
+        except Exception as e:
+            logger.error(f"Failed to initialize Pub/Sub client: {e}")
+            raise
+    return publisher, topic_path
 
 
 def validate_xapi_statement(statement: Dict[str, Any]) -> bool:
@@ -29,7 +51,9 @@ def validate_xapi_statement(statement: Dict[str, Any]) -> bool:
 def publish_to_pubsub(statement: Dict[str, Any]) -> Dict[str, Any]:
     """Publish xAPI statement to Pub/Sub topic."""
     try:
-        topic_path = gcp_config.get_topic_path()
+        # Get Pub/Sub client (lazy initialization)
+        publisher, topic_path = get_pubsub_client()
+            
         message_data = json.dumps(statement).encode('utf-8')
 
         # Add metadata
@@ -39,7 +63,7 @@ def publish_to_pubsub(statement: Dict[str, Any]) -> Dict[str, Any]:
             "statement_count": "1"
         }
 
-        future = gcp_config.pubsub_publisher.publish(
+        future = publisher.publish(
             topic_path,
             message_data,
             **attributes
@@ -56,13 +80,13 @@ def publish_to_pubsub(statement: Dict[str, Any]) -> Dict[str, Any]:
 
     except gcp_exceptions.NotFound:
         logger.error(f"Pub/Sub topic {topic_path} not found")
-        raise Exception(f"Pub/Sub topic not found: {gcp_config.pubsub_topic}")
+        raise Exception(f"Pub/Sub topic not found: {PUBSUB_TOPIC}")
     except Exception as e:
         logger.error(f"Failed to publish to Pub/Sub: {str(e)}")
         raise Exception(f"Pub/Sub publishing failed: {str(e)}")
 
 
-def cloud_ingest_xapi(request: functions_v1.types.HttpRequest) -> tuple[str, int]:
+def cloud_ingest_xapi(request) -> tuple[str, int]:
     """
     Cloud Function HTTP endpoint for xAPI statement ingestion.
 
@@ -76,7 +100,7 @@ def cloud_ingest_xapi(request: functions_v1.types.HttpRequest) -> tuple[str, int
         # Set CORS headers
         headers = {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Methods': 'POST, PUT, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
             'Content-Type': 'application/json'
         }
@@ -85,11 +109,12 @@ def cloud_ingest_xapi(request: functions_v1.types.HttpRequest) -> tuple[str, int
         if request.method == 'OPTIONS':
             return json.dumps({'status': 'ok'}), 200
 
-        # Only accept POST requests
-        if request.method != 'POST':
+        # Accept both POST and PUT requests
+        if request.method not in ['POST', 'PUT']:
             return json.dumps({
                 'error': 'Method not allowed',
-                'message': 'Only POST requests are accepted'
+                'message': 'Only POST and PUT requests are accepted',
+                'supported_methods': ['POST', 'PUT']
             }), 405
 
         # Get request data
@@ -132,7 +157,8 @@ def cloud_ingest_xapi(request: functions_v1.types.HttpRequest) -> tuple[str, int
         # Prepare response
         response_data = {
             'status': 'success',
-            'message': f'Successfully ingested {len(statements)} xAPI statement(s)',
+            'message': f'Successfully ingested {len(statements)} xAPI statement(s) via {request.method}',
+            'method': request.method,
             'results': results,
             'timestamp': datetime.utcnow().isoformat()
         }
@@ -156,23 +182,24 @@ def get_cloud_function_status() -> tuple[str, int]:
         Tuple of (response_json, status_code)
     """
     try:
-        # Get GCP configuration status
-        config_status = gcp_config.validate_config()
+        # Check if Pub/Sub client is initialized
+        pubsub_status = {
+            "publisher_initialized": publisher is not None,
+            "topic_path": topic_path,
+            "project_id": PROJECT_ID,
+            "topic_name": PUBSUB_TOPIC
+        }
 
         # Additional Cloud Function specific checks
         function_status = {
             "function_name": "cloud_ingest_xapi",
             "runtime": "python39",
-            "region": gcp_config.location,
             "last_check": datetime.utcnow().isoformat(),
-            "config_status": config_status
+            "pubsub_status": pubsub_status
         }
 
         # Determine overall health
-        is_healthy = (
-            config_status.get("credentials_valid", False) and
-            len(config_status.get("errors", [])) == 0
-        )
+        is_healthy = publisher is not None and topic_path is not None
 
         response_data = {
             "status": "healthy" if is_healthy else "unhealthy",
@@ -196,5 +223,8 @@ def get_cloud_function_status() -> tuple[str, int]:
 if __name__ == "__main__":
     # Test the configuration
     print("Testing GCP configuration...")
-    status = gcp_config.validate_config()
-    print(json.dumps(status, indent=2))
+    print(f"Project ID: {PROJECT_ID}")
+    print(f"Topic: {PUBSUB_TOPIC}")
+    print(f"Bucket: {STORAGE_BUCKET}")
+    print(f"Publisher initialized: {publisher is not None}")
+    print(f"Topic path: {topic_path}")

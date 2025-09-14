@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Analytics Dashboard - Learning Locker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e1e8ed;
+        }
+        
+        .card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-healthy { background-color: #27ae60; }
+        .status-warning { background-color: #f39c12; }
+        .status-error { background-color: #e74c3c; }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .timeline {
+            margin-top: 20px;
+        }
+        
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+        }
+        
+        .timeline-item.success {
+            border-left-color: #27ae60;
+        }
+        
+        .timeline-item.warning {
+            border-left-color: #f39c12;
+        }
+        
+        .timeline-item.error {
+            border-left-color: #e74c3c;
+        }
+        
+        .timeline-icon {
+            margin-right: 15px;
+            font-size: 1.2em;
+        }
+        
+        .timeline-content {
+            flex: 1;
+        }
+        
+        .timeline-time {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .timeline-message {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .timeline-stats {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .performance-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .performance-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .performance-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .activity-chart {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-top: 30px;
+        }
+        
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            transform: rotate(180deg);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .performance-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Enhanced Analytics Dashboard</h1>
+            <p>Learning Locker integration with real-time metrics and visualizations</p>
+        </div>
+        
+        <div class="content">
+            <!-- Learning Locker Status -->
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>
+                        <span class="status-indicator status-healthy"></span>
+                        Learning Locker Sync
+                    </h3>
+                    <div class="metric">
+                        <span class="metric-label">Total Synced:</span>
+                        <span class="metric-value" id="total-synced">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Last Sync:</span>
+                        <span class="metric-value" id="last-sync">Never</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Success Rate:</span>
+                        <span class="metric-value" id="sync-success-rate">0%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Avg Duration:</span>
+                        <span class="metric-value" id="avg-sync-duration">0ms</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>
+                        <span class="status-indicator status-healthy"></span>
+                        Statement Activity
+                    </h3>
+                    <div class="metric">
+                        <span class="metric-label">Total Statements:</span>
+                        <span class="metric-value" id="total-statements">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Today:</span>
+                        <span class="metric-value" id="today-statements">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Unique Users:</span>
+                        <span class="metric-value" id="unique-users">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Completion Rate:</span>
+                        <span class="metric-value" id="completion-rate">0%</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>
+                        <span class="status-indicator status-healthy"></span>
+                        System Performance
+                    </h3>
+                    <div class="metric">
+                        <span class="metric-label">CPU Usage:</span>
+                        <span class="metric-value" id="cpu-usage">0%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Memory Usage:</span>
+                        <span class="metric-value" id="memory-usage">0%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Response Time:</span>
+                        <span class="metric-value" id="response-time">0ms</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Active Sessions:</span>
+                        <span class="metric-value" id="active-sessions">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Performance Metrics -->
+            <div class="performance-grid">
+                <div class="performance-card">
+                    <div class="performance-number" id="sync-performance">95.5%</div>
+                    <div class="performance-label">Sync Success Rate</div>
+                </div>
+                <div class="performance-card">
+                    <div class="performance-number" id="statements-per-minute">45</div>
+                    <div class="performance-label">Statements/Minute</div>
+                </div>
+                <div class="performance-card">
+                    <div class="performance-number" id="data-quality">98.2%</div>
+                    <div class="performance-label">Data Quality</div>
+                </div>
+                <div class="performance-card">
+                    <div class="performance-number" id="avg-score">82.3</div>
+                    <div class="performance-label">Average Score</div>
+                </div>
+            </div>
+            
+            <!-- Activity Chart -->
+            <div class="activity-chart">
+                <h3>📈 Statement Activity (Last 30 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Sync Timeline -->
+            <div class="card">
+                <h3>🕒 Recent Sync Timeline</h3>
+                <div class="timeline" id="sync-timeline">
+                    <div class="loading">Loading sync timeline...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="refresh-btn" onclick="refreshDashboard()" title="Refresh Dashboard">
+        🔄
+    </button>
+    
+    <script>
+        let activityChart;
+        
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            loadActivityChart();
+            loadSyncTimeline();
+        });
+        
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/dashboard/real-time');
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+            }
+        }
+        
+        function updateDashboard(data) {
+            // Update Learning Locker sync data
+            const syncStatus = data.learninglocker_data?.sync_status?.learninglocker_sync || {};
+            document.getElementById('total-synced').textContent = syncStatus.total_synced || 0;
+            document.getElementById('last-sync').textContent = syncStatus.last_sync_time || 'Never';
+            
+            // Update statement stats
+            const statementStats = data.learninglocker_data?.statement_stats || {};
+            document.getElementById('total-statements').textContent = statementStats.total_statements || 0;
+            document.getElementById('today-statements').textContent = statementStats.statements_today || 0;
+            document.getElementById('unique-users').textContent = statementStats.unique_actors || 0;
+            document.getElementById('completion-rate').textContent = statementStats.completion_rate + '%' || '0%';
+            
+            // Update performance metrics
+            const performance = data.performance_metrics || {};
+            document.getElementById('cpu-usage').textContent = performance.system_performance?.cpu_usage + '%' || '0%';
+            document.getElementById('memory-usage').textContent = performance.system_performance?.memory_usage + '%' || '0%';
+            document.getElementById('response-time').textContent = performance.system_performance?.response_time_ms + 'ms' || '0ms';
+            document.getElementById('active-sessions').textContent = performance.user_activity?.total_sessions || 0;
+            
+            // Update performance cards
+            document.getElementById('sync-performance').textContent = performance.sync_performance?.sync_success_rate + '%' || '0%';
+            document.getElementById('statements-per-minute').textContent = performance.sync_performance?.statements_per_minute || 0;
+            document.getElementById('data-quality').textContent = performance.data_quality?.valid_statements + '%' || '0%';
+            document.getElementById('avg-score').textContent = performance.data_quality?.average_score || 0;
+        }
+        
+        async function loadActivityChart() {
+            try {
+                const response = await fetch('/api/dashboard/activity');
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Failed to load activity data:', data.error);
+                    return;
+                }
+                
+                const ctx = document.getElementById('activityChart').getContext('2d');
+                
+                if (activityChart) {
+                    activityChart.destroy();
+                }
+                
+                activityChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.activity_data.map(d => d.date),
+                        datasets: [
+                            {
+                                label: 'Total Statements',
+                                data: data.activity_data.map(d => d.statements),
+                                borderColor: '#3498db',
+                                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Completions',
+                                data: data.activity_data.map(d => d.completions),
+                                borderColor: '#27ae60',
+                                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Attempts',
+                                data: data.activity_data.map(d => d.attempts),
+                                borderColor: '#f39c12',
+                                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                                tension: 0.4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Statement Activity Over Time'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Failed to load activity chart:', error);
+            }
+        }
+        
+        async function loadSyncTimeline() {
+            try {
+                const response = await fetch('/api/dashboard/sync-timeline');
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Failed to load sync timeline:', data.error);
+                    return;
+                }
+                
+                const timelineContainer = document.getElementById('sync-timeline');
+                timelineContainer.innerHTML = '';
+                
+                data.timeline.forEach(item => {
+                    const timelineItem = document.createElement('div');
+                    timelineItem.className = `timeline-item ${item.status}`;
+                    
+                    const icon = item.status === 'success' ? 'OK' : 
+                                                               item.status === 'warning' ? 'WARN' : 'ERROR';
+                    
+                    timelineItem.innerHTML = `
+                        <div class="timeline-icon">${icon}</div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">${new Date(item.timestamp).toLocaleString()}</div>
+                            <div class="timeline-message">${item.message}</div>
+                            <div class="timeline-stats">
+                                ${item.statements_processed} statements processed in ${item.duration_ms}ms
+                                ${item.failed_count ? `(${item.failed_count} failed)` : ''}
+                            </div>
+                        </div>
+                    `;
+                    
+                    timelineContainer.appendChild(timelineItem);
+                });
+                
+            } catch (error) {
+                console.error('Failed to load sync timeline:', error);
+            }
+        }
+        
+        function refreshDashboard() {
+            loadDashboardData();
+            loadActivityChart();
+            loadSyncTimeline();
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(refreshDashboard, 30000);
+    </script>
+</body>
+</html> 

@@ -12,8 +12,8 @@ import os
 import redis
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
-from app.config.gcp_config import gcp_config
-from app.config.bigquery_schema import bigquery_schema
+from app.config.gcp_config import get_gcp_config
+from app.config.bigquery_schema import get_bigquery_schema
 from google.cloud import bigquery
 from google.api_core import exceptions as google_exceptions
 
@@ -167,6 +167,7 @@ def execute_bigquery_query(sql_query: str, params: Optional[Dict[str, Any]] = No
             raise HTTPException(status_code=400, detail="Only SELECT queries are allowed")
 
         # Execute query
+        gcp_config = get_gcp_config()
         client = gcp_config.bigquery_client
         job_config = bigquery.QueryJobConfig()
 
@@ -299,19 +300,19 @@ async def execute_custom_query(
 )
 async def get_learner_activity_summary():
     """Get learner activity summary from BigQuery."""
+    gcp_config = get_gcp_config()
     query = f"""
         SELECT
-            actor_id,
+            user_id,
             COUNT(*) as total_statements,
-            COUNT(DISTINCT verb_id) as unique_verbs,
-            COUNT(DISTINCT object_id) as unique_activities,
+            COUNT(DISTINCT activity_type) as unique_verbs,
+            COUNT(DISTINCT lesson_id) as unique_activities,
             MIN(timestamp) as first_activity,
             MAX(timestamp) as last_activity,
-            AVG(CASE WHEN result_score_scaled IS NOT NULL THEN result_score_scaled END) as avg_score_scaled,
-            COUNT(CASE WHEN result_success = true THEN 1 END) as successful_attempts,
-            COUNT(CASE WHEN result_completion = true THEN 1 END) as completed_activities
-        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.statements`
-        GROUP BY actor_id
+            COUNT(CASE WHEN activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN 1 END) as completed_activities,
+            COUNT(CASE WHEN activity_type = 'http://adlnet.gov/expapi/verbs/answered' THEN 1 END) as answered_questions
+        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.user_activities`
+        GROUP BY user_id
         ORDER BY total_statements DESC
         LIMIT 50
     """
@@ -331,15 +332,14 @@ async def get_learner_activity_summary():
 
     # Prepare table data for frontend
     columns = [
-        {"field": "actor_id", "headerName": "Learner ID", "width": 200},
+        {"field": "user_id", "headerName": "Learner ID", "width": 200},
         {"field": "total_statements", "headerName": "Total Activities", "width": 150},
         {"field": "unique_verbs", "headerName": "Unique Verbs", "width": 120},
         {"field": "unique_activities", "headerName": "Unique Activities", "width": 150},
         {"field": "first_activity", "headerName": "First Activity", "width": 180},
         {"field": "last_activity", "headerName": "Last Activity", "width": 180},
-        {"field": "avg_score_scaled", "headerName": "Avg Score", "width": 120},
-        {"field": "successful_attempts", "headerName": "Success Count", "width": 130},
-        {"field": "completed_activities", "headerName": "Completed", "width": 120}
+        {"field": "completed_activities", "headerName": "Completed", "width": 120},
+        {"field": "answered_questions", "headerName": "Questions Answered", "width": 150}
     ]
 
     return BigQueryAnalyticsResponse(
@@ -362,17 +362,17 @@ async def get_learner_activity_summary():
 )
 async def get_verb_distribution():
     """Get verb distribution from BigQuery."""
+    gcp_config = get_gcp_config()
     query = f"""
         SELECT
-            verb_display,
-            verb_id,
+            activity_type as verb_display,
+            activity_type as verb_id,
             COUNT(*) as frequency,
-            COUNT(DISTINCT actor_id) as unique_learners,
-            AVG(CASE WHEN result_score_scaled IS NOT NULL THEN result_score_scaled END) as avg_score,
-            COUNT(CASE WHEN result_success = true THEN 1 END) as success_count
-        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.statements`
-        WHERE verb_display IS NOT NULL
-        GROUP BY verb_display, verb_id
+            COUNT(DISTINCT user_id) as unique_learners,
+            COUNT(*) as success_count
+        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.user_activities`
+        WHERE activity_type IS NOT NULL
+        GROUP BY activity_type
         ORDER BY frequency DESC
         LIMIT 20
     """
@@ -437,17 +437,18 @@ async def get_verb_distribution():
 )
 async def get_activity_timeline(days: int = Query(30, description="Number of days to analyze")):
     """Get activity timeline from BigQuery."""
+    gcp_config = get_gcp_config()
     query = f"""
         SELECT
-            DATE(timestamp) as activity_date,
+            DATE(TIMESTAMP_MICROS(timestamp)) as activity_date,
             COUNT(*) as total_activities,
-            COUNT(DISTINCT actor_id) as unique_learners,
-            COUNT(DISTINCT verb_id) as unique_verbs,
-            COUNT(CASE WHEN result_success = true THEN 1 END) as successful_activities,
-            AVG(CASE WHEN result_score_scaled IS NOT NULL THEN result_score_scaled END) as avg_score
-        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.statements`
-        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {days} DAY)
-        GROUP BY DATE(timestamp)
+            COUNT(DISTINCT user_id) as unique_learners,
+            COUNT(DISTINCT activity_type) as unique_verbs,
+            COUNT(CASE WHEN activity_type = 'http://adlnet.gov/expapi/verbs/completed' THEN 1 END) as successful_activities,
+            0 as avg_score
+        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.user_activities`
+        WHERE TIMESTAMP_MICROS(timestamp) >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {days} DAY)
+        GROUP BY DATE(TIMESTAMP_MICROS(timestamp))
         ORDER BY activity_date
     """
 
@@ -513,6 +514,7 @@ async def get_bigquery_connection_status():
     """Check BigQuery connection status."""
     try:
         # Test BigQuery client connection
+        gcp_config = get_gcp_config()
         client = gcp_config.bigquery_client
 
         # Get dataset info
@@ -645,6 +647,7 @@ async def get_bigquery_integration_status():
 @router.get("/bigquery/health", summary="BigQuery analytics API health check")
 async def bigquery_analytics_health():
     """Health check for BigQuery analytics API."""
+    gcp_config = get_gcp_config()
     return {
         "status": "healthy",
         "service": "bigquery-analytics-api",

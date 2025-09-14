@@ -9,7 +9,7 @@ from psycopg2.extras import RealDictCursor
 from datetime import datetime
 import plotly.graph_objects as go
 import plotly.express as px
-from app.security import get_openai_client, secrets_manager, log_security_event
+from app.security import get_openai_client, get_secrets_manager, log_security_event
 
 router = APIRouter()
 
@@ -48,14 +48,8 @@ class ChatResponse(BaseModel):
 
 def get_db_connection():
     """Get database connection"""
-    try:
-        conn = psycopg2.connect(
-            os.getenv("DATABASE_URL"),
-            cursor_factory=RealDictCursor
-        )
-        return conn
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
+    # Disabled - using BigQuery instead of PostgreSQL
+    raise HTTPException(status_code=501, detail="PostgreSQL routes disabled - using BigQuery instead")
 
 def get_database_schema():
     """Get complete database schema for context"""

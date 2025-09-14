@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-09-13 11:33:07",
+  "total_tests": 20,
+  "passed_tests": 14,
+  "failed_tests": 6,
+  "pass_rate": 70.0,
+  "passed_test_details": [
+    "Analytics data validation",
+    "Data access controls",
+    "Input validation",
+    "Authentication requirements",
+    "Page load times",
+    "API response times",
+    "Data loading performance",
+    "Error handling performance",
+    "API endpoint integration",
+    "UI-API data flow",
+    "Cross-component communication",
+    "Navigation routing",
+    "Form interactions",
+    "UI error handling"
+  ],
+  "failed_test_details": [
+    "Dashboard metrics accuracy: ",
+    "Data Explorer consistency: Table data should be a list",
+    "User activity tracking: User activities should be a list",
+    "API endpoint access: Disabled endpoint /api/data-explorer/table/user_responses/filtered?lesson_ids=999999 should return 404 or 501",
+    "BigQuery connectivity: BigQuery endpoint /api/data-explorer/table/user_responses should return list",
+    "Data visualization: Dashboard should display metrics"
+  ],
+  "business_logic_status": "FAILED",
+  "security_status": "FAILED",
+  "performance_status": "FAILED",
+  "integration_status": "FAILED",
+  "ui_functionality_status": "FAILED"
+}

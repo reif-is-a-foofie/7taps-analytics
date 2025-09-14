@@ -1,0 +1,100 @@
+{
+  "timestamp": "2025-09-10T01:26:46.785640+00:00",
+  "dry_run": true,
+  "tables_migrated": [
+    {
+      "table_name": "LEGACY_activities",
+      "status": "failed",
+      "rows_migrated": 0,
+      "errors": [
+        "Execution failed on sql 'SELECT * FROM LEGACY_activities': relation \"legacy_activities\" does not exist\nLINE 1: SELECT * FROM LEGACY_activities\n                      ^\n"
+      ]
+    },
+    {
+      "table_name": "LEGACY_actors",
+      "status": "failed",
+      "rows_migrated": 0,
+      "errors": [
+        "Execution failed on sql 'SELECT * FROM LEGACY_actors': relation \"legacy_actors\" does not exist\nLINE 1: SELECT * FROM LEGACY_actors\n                      ^\n"
+      ]
+    },
+    {
+      "table_name": "LEGACY_context_extensions_new",
+      "status": "failed",
+      "rows_migrated": 0,
+      "errors": [
+        "Execution failed on sql 'SELECT * FROM LEGACY_context_extensions_new': relation \"legacy_context_extensions_new\" does not exist\nLINE 1: SELECT * FROM LEGACY_context_extensions_new\n                      ^\n"
+      ]
+    },
+    {
+      "table_name": "LEGACY_results_new",
+      "status": "failed",
+      "rows_migrated": 0,
+      "errors": [
+        "Execution failed on sql 'SELECT * FROM LEGACY_results_new': relation \"legacy_results_new\" does not exist\nLINE 1: SELECT * FROM LEGACY_results_new\n                      ^\n"
+      ]
+    },
+    {
+      "table_name": "LEGACY_statements_flat",
+      "status": "failed",
+      "rows_migrated": 0,
+      "errors": [
+        "Execution failed on sql 'SELECT * FROM LEGACY_statements_flat': relation \"legacy_statements_flat\" does not exist\nLINE 1: SELECT * FROM LEGACY_statements_flat\n                      ^\n"
+      ]
+    },
+    {
+      "table_name": "LEGACY_statements_new",
+      "status": "failed",
+      "rows_migrated": 0,
+      "errors": [
+        "Execution failed on sql 'SELECT * FROM LEGACY_statements_new': relation \"legacy_statements_new\" does not exist\nLINE 1: SELECT * FROM LEGACY_statements_new\n                      ^\n"
+      ]
+    },
+    {
+      "table_name": "LEGACY_statements_normalized",
+      "status": "failed",
+      "rows_migrated": 0,
+      "errors": [
+        "Execution failed on sql 'SELECT * FROM LEGACY_statements_normalized': relation \"legacy_statements_normalized\" does not exist\nLINE 1: SELECT * FROM LEGACY_statements_normalized\n                      ^\n"
+      ]
+    },
+    {
+      "table_name": "lessons",
+      "status": "dry_run",
+      "rows_migrated": 10,
+      "errors": []
+    },
+    {
+      "table_name": "questions",
+      "status": "dry_run",
+      "rows_migrated": 50,
+      "errors": []
+    },
+    {
+      "table_name": "user_activities",
+      "status": "dry_run",
+      "rows_migrated": 753,
+      "errors": []
+    },
+    {
+      "table_name": "user_responses",
+      "status": "dry_run",
+      "rows_migrated": 626,
+      "errors": []
+    },
+    {
+      "table_name": "users",
+      "status": "dry_run",
+      "rows_migrated": 21,
+      "errors": []
+    }
+  ],
+  "errors": [],
+  "summary": {
+    "total_tables": 12,
+    "successful_migrations": 5,
+    "failed_migrations": 7,
+    "total_rows_migrated": 1460,
+    "migration_complete": false
+  }
+}

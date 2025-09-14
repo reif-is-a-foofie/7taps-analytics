@@ -114,7 +114,7 @@ class TestCloudRunConfiguration:
         """Test default Cloud Run configuration."""
         config = CloudRunConfig()
         
-        assert config.service_name == "7taps-analytics-ui"
+        assert config.service_name == "taps-analytics-ui"
         assert config.region == "us-central1"
         assert config.cpu == "1"
         assert config.memory == "2Gi"

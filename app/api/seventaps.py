@@ -179,13 +179,23 @@ async def receive_7taps_webhook(request: Request):
                 import redis
                 import uuid
                 
-                # Get Redis client with SSL configuration
+                # Get Redis client with proper SSL configuration
                 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-                redis_client = redis.from_url(
-                    redis_url,
-                    ssl_cert_reqs=None,  # Disable SSL certificate verification for Heroku Redis
-                    decode_responses=True
-                )
+                
+                # Configure Redis client based on URL
+                if redis_url.startswith("rediss://"):
+                    # SSL Redis connection
+                    redis_client = redis.from_url(
+                        redis_url,
+                        ssl_cert_reqs=None,  # Disable SSL certificate verification
+                        decode_responses=True
+                    )
+                else:
+                    # Non-SSL Redis connection
+                    redis_client = redis.from_url(
+                        redis_url,
+                        decode_responses=True
+                    )
                 
                 # Prepare statement data for Redis
                 statement_id = statement_data.get("id", str(uuid.uuid4()))
@@ -289,13 +299,23 @@ async def receive_7taps_webhook_put(request: Request, statementId: str = None):
                 import redis
                 import uuid
                 
-                # Get Redis client with SSL configuration
+                # Get Redis client with proper SSL configuration
                 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-                redis_client = redis.from_url(
-                    redis_url,
-                    ssl_cert_reqs=None,  # Disable SSL certificate verification for Heroku Redis
-                    decode_responses=True
-                )
+                
+                # Configure Redis client based on URL
+                if redis_url.startswith("rediss://"):
+                    # SSL Redis connection
+                    redis_client = redis.from_url(
+                        redis_url,
+                        ssl_cert_reqs=None,  # Disable SSL certificate verification
+                        decode_responses=True
+                    )
+                else:
+                    # Non-SSL Redis connection
+                    redis_client = redis.from_url(
+                        redis_url,
+                        decode_responses=True
+                    )
                 
                 # Prepare statement data for Redis
                 statement_id = statement_data.get("id", str(uuid.uuid4()))

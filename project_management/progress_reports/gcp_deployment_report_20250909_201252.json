@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-09-09T20:12:52.765099",
+  "duration_seconds": 1.455851,
+  "deployment_complete": true,
+  "steps_completed": 6,
+  "total_steps": 6,
+  "results": {
+    "apis_enabled": 8,
+    "pubsub_topics": 1,
+    "pubsub_subscriptions": 2,
+    "storage_buckets": 1,
+    "bigquery_datasets": 1,
+    "bigquery_tables": 6
+  },
+  "validation": {
+    "pubsub_topics": 0,
+    "storage_buckets": 0,
+    "bigquery_datasets": 0
+  },
+  "errors": [],
+  "dry_run": true
+}

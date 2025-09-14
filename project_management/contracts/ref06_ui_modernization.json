@@ -1,0 +1,79 @@
+{
+  "module": "ref06_ui_modernization",
+  "agent": "ui_agent",
+  "status": "pending",
+  "priority": "medium",
+  "description": "Modernize UI components and fix frontend issues",
+  "allowed_files": [
+    "app/ui/",
+    "templates/",
+    "app/static/",
+    "app/api/dashboard.py",
+    "app/api/chat.py"
+  ],
+  "required_endpoints": [
+    "/ui/dashboard",
+    "/ui/chat",
+    "/ui/explorer",
+    "/api/debug/ui-status"
+  ],
+  "task_tracking": {
+    "assigned_at": "2025-01-21T00:00:00Z",
+    "estimated_duration": "6h",
+    "dependencies": ["ref02_code_organization"],
+    "subtasks": [
+      {
+        "id": "ref06.1",
+        "description": "Consolidate duplicate UI components and remove dead code",
+        "status": "pending",
+        "files": ["app/ui/", "templates/"]
+      },
+      {
+        "id": "ref06.2", 
+        "description": "Fix dashboard data loading and false data issues",
+        "status": "pending",
+        "files": ["app/api/dashboard.py", "templates/dashboard.html"]
+      },
+      {
+        "id": "ref06.3",
+        "description": "Optimize chat interface and fix query processing",
+        "status": "pending",
+        "files": ["app/api/chat.py", "templates/chat_interface.html"]
+      },
+      {
+        "id": "ref06.4",
+        "description": "Implement responsive design and modern UI patterns",
+        "status": "pending",
+        "files": ["templates/", "app/static/"]
+      },
+      {
+        "id": "ref06.5",
+        "description": "Add proper error handling and loading states",
+        "status": "pending",
+        "files": ["app/ui/", "templates/"]
+      }
+    ],
+    "completion_criteria": [
+      "No duplicate UI components",
+      "Dashboard loads real data correctly",
+      "Chat interface works without errors",
+      "Responsive design works on all devices",
+      "Proper error handling and loading states",
+      "Modern, clean UI design"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test all UI components and user interactions",
+      "test_environment": "Local development + Cloud Run deployment"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "ui_agent",
+    "handoff_notes": "UI modernization - create professional, modern interface",
+    "required_approval": false
+  }
+}
+

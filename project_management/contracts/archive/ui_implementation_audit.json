@@ -1,0 +1,127 @@
+{
+  "module": "ui_implementation_audit",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "templates/",
+    "app/ui/",
+    "static/",
+    "project_management/contracts/*.json"
+  ],
+  "required_endpoints": [
+    "GET /api/debug/ui-status",
+    "GET /api/debug/ui-audit-report"
+  ],
+  "status": "pending",
+  "task_tracking": {
+    "assigned_at": "2025-01-21T00:00:00Z",
+    "estimated_duration": "1h",
+    "dependencies": ["contract_status_cleanup"],
+    "subtasks": [
+      {
+        "id": "audit.1",
+        "description": "Audit all UI contracts for template and component existence",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/", "app/ui/", "static/"]
+      },
+      {
+        "id": "audit.2",
+        "description": "Check UI endpoints and routes functionality",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/ui/"]
+      },
+      {
+        "id": "audit.3",
+        "description": "Verify dashboard and analytics UI implementations",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/dashboard.html", "templates/bigquery_dashboard.html"]
+      },
+      {
+        "id": "audit.4",
+        "description": "Check LearningLocker UI components",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["templates/learninglocker_admin.html", "templates/statement_browser.html"]
+      },
+      {
+        "id": "audit.5",
+        "description": "Update UI contract statuses based on findings",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["project_management/contracts/*.json"]
+      }
+    ],
+    "completion_criteria": [
+      "All UI contracts audited for template existence",
+      "UI endpoints verified for functionality",
+      "Dashboard implementations checked",
+      "LearningLocker UI components verified",
+      "UI contract statuses updated accurately",
+      "Missing UI components identified and reported"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Audit actual UI template files and component functionality",
+      "docker_compose_required": false,
+      "test_environment": "Local file system and UI endpoint testing"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "app_contract": {
+    "name": "UIImplementationAudit",
+    "description": "Audit UI contracts for actual implementation status",
+    "actions": [
+      {
+        "name": "audit_ui_files",
+        "input": {},
+        "output": {
+          "templates_found": "list",
+          "missing_templates": "list",
+          "ui_implementation_status": "object"
+        }
+      },
+      {
+        "name": "test_ui_endpoints",
+        "input": {
+          "endpoint_list": "list"
+        },
+        "output": {
+          "working_ui_endpoints": "list",
+          "broken_ui_endpoints": "list",
+          "ui_test_results": "object"
+        }
+      },
+      {
+        "name": "verify_dashboard_implementation",
+        "input": {},
+        "output": {
+          "dashboard_files_exist": "boolean",
+          "dashboard_functionality": "object",
+          "analytics_ui_status": "string"
+        }
+      }
+    ]
+  },
+  "ui_contracts_to_audit": [
+    "gc04_analytics_dashboard_integration.json",
+    "gc07_ui_cloud_run_deployment.json",
+    "b06_ui.json",
+    "b09_analytics_dashboard.json",
+    "b14_learninglocker_ui.json",
+    "b15_analytics_enhancement.json",
+    "analytics_dashboard_app.json",
+    "data_explorer_app.json",
+    "unified_dashboard.json",
+    "dashboard_analytics_integration.json",
+    "chat_analytics_integration.json"
+  ],
+  "agent_handoff": {
+    "from_agent": "orchestrator_agent",
+    "to_agent": "ui_agent",
+    "handoff_notes": "Audit all UI contracts to verify actual template and component implementation status.",
+    "required_approval": false
+  }
+}

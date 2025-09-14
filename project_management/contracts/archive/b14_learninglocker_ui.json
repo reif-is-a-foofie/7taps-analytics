@@ -1,0 +1,113 @@
+{
+  "contract_id": "b14_learninglocker_ui",
+  "title": "Learning Locker UI Integration",
+  "description": "Create admin interface and dashboard integration for Learning Locker data exploration",
+  "agent": "ui_agent",
+  "status": "completed",
+  "priority": "medium",
+  "progress_percentage": 100,
+  "estimated_hours": 6,
+  "actual_hours": 0,
+  "dependencies": ["b13_learninglocker_integration"],
+  "created_at": "2025-01-05T20:30:00Z",
+  "updated_at": "2025-01-05T20:30:00Z",
+  "task_tracking": {
+    "assigned_at": "2025-01-05T21:30:00Z",
+    "assigned_to": "ui_agent",
+    "deadline": "2025-01-08T20:30:00Z",
+    "notes": "UI agent will create admin interface for Learning Locker management"
+  },
+  "subtasks": [
+    {
+      "id": "b14.01",
+      "title": "Learning Locker Admin Dashboard",
+      "description": "Create admin dashboard for Learning Locker sync management and status monitoring",
+      "status": "awaiting_verification",
+      "files": ["app/ui/learninglocker_admin.py", "templates/learninglocker_admin.html"],
+      "acceptance_criteria": [
+        "Dashboard shows sync status and statistics",
+        "Manual sync trigger button functional",
+        "Real-time status updates",
+        "Error reporting and logs display"
+      ]
+    },
+    {
+      "id": "b14.02",
+      "title": "Statement Browser Integration",
+      "description": "Integrate Learning Locker statement browser into admin interface with filtering and search",
+      "status": "awaiting_verification",
+      "files": ["app/ui/statement_browser.py", "templates/statement_browser.html"],
+      "acceptance_criteria": [
+        "Statement list with pagination",
+        "Advanced filtering by actor, verb, object",
+        "Search functionality",
+        "Statement detail view"
+      ]
+    },
+    {
+      "id": "b14.03",
+      "title": "Data Export Interface",
+      "description": "Create interface for exporting xAPI statements in various formats",
+      "status": "awaiting_verification",
+      "files": ["app/ui/data_export.py", "templates/data_export.html"],
+      "acceptance_criteria": [
+        "Export format selection (JSON, CSV, XML)",
+        "Date range filtering",
+        "Statement filtering options",
+        "Download functionality"
+      ]
+    },
+    {
+      "id": "b14.04",
+      "title": "Analytics Dashboard Enhancement",
+      "description": "Enhance existing analytics dashboard with Learning Locker data visualization",
+      "status": "awaiting_verification",
+      "files": ["app/ui/dashboard.py", "templates/dashboard.html"],
+      "acceptance_criteria": [
+        "Learning Locker data charts",
+        "Sync status indicators",
+        "Statement activity graphs",
+        "Performance metrics"
+      ]
+    },
+    {
+      "id": "b14.05",
+      "title": "User Access Management",
+      "description": "Create user management interface for Learning Locker access control",
+      "status": "awaiting_verification",
+      "files": ["app/ui/user_management.py", "templates/user_management.html"],
+      "acceptance_criteria": [
+        "User role management",
+        "Access level configuration",
+        "Login/logout functionality",
+        "Permission-based UI elements"
+      ]
+    }
+  ],
+  "deliverables": [
+    "Learning Locker admin dashboard",
+    "Statement browser interface",
+    "Data export functionality",
+    "Enhanced analytics dashboard",
+    "User access management system"
+  ],
+  "testing_phases": {
+    "ui_testing": {
+      "status": "pending",
+      "notes": "Test all UI components and user interactions"
+    },
+    "integration_testing": {
+      "status": "pending",
+      "notes": "Test UI integration with Learning Locker backend"
+    },
+    "user_acceptance_testing": {
+      "status": "pending",
+      "notes": "Verify UI meets team data checking requirements"
+    }
+  },
+  "agent_handoff": {
+    "next_agent": "testing_agent",
+    "handoff_notes": "UI agent completes Learning Locker interface, testing agent validates functionality",
+    "dependencies_completed": ["b14.01", "b14.02", "b14.03", "b14.04", "b14.05"]
+  }
+} 

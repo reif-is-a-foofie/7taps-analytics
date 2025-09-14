@@ -1,0 +1,80 @@
+{
+  "module": "gc03_bigquery_schema_migration",
+  "agent": "backend_etl_agent",
+  "allowed_files": [
+    "app/etl/bigquery_schema_migration.py",
+    "app/config/bigquery_schema.py",
+    "app/config/gcp_config.py",
+    "tests/test_bigquery_schema_migration.py"
+  ],
+  "required_endpoints": [
+    "GET /api/debug/bigquery-migration-status",
+    "GET /api/debug/bigquery-metrics",
+    "POST /api/debug/trigger-schema-migration"
+  ],
+  "status": "awaiting_verification",
+  "task_tracking": {
+    "assigned_at": "2024-01-20T00:00:00Z",
+    "estimated_duration": "6h",
+    "dependencies": ["gc01", "gc02"],
+    "subtasks": [
+      {
+        "id": "gc03.1",
+        "description": "Define BigQuery schema for structured xAPI events",
+        "status": "completed",
+        "agent": "backend_etl_agent",
+        "files": ["app/config/bigquery_schema.py"]
+      },
+      {
+        "id": "gc03.2",
+        "description": "Create Pub/Sub subscriber for schema transformation",
+        "status": "completed",
+        "agent": "backend_etl_agent",
+        "files": ["app/etl/bigquery_schema_migration.py"]
+      },
+      {
+        "id": "gc03.3",
+        "description": "Implement xAPI JSON to structured table transformation",
+        "status": "completed",
+        "agent": "backend_etl_agent",
+        "files": ["app/etl/bigquery_schema_migration.py"]
+      },
+      {
+        "id": "gc03.4",
+        "description": "Add BigQuery table creation and data insertion logic",
+        "status": "completed",
+        "agent": "backend_etl_agent",
+        "files": ["app/etl/bigquery_schema_migration.py"]
+      },
+      {
+        "id": "gc03.5",
+        "description": "Create monitoring and manual trigger endpoints",
+        "status": "completed",
+        "agent": "backend_etl_agent",
+        "files": ["app/etl/bigquery_schema_migration.py"]
+      }
+    ],
+    "completion_criteria": [
+      "BigQuery schema defined for structured xAPI events",
+      "Pub/Sub subscriber transforms raw JSON to structured format",
+      "Transformed data inserted into BigQuery tables",
+      "Monitoring endpoints show migration status and metrics",
+      "Manual trigger endpoint allows on-demand schema migration",
+      "pytest tests/test_bigquery_schema_migration.py passes"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Requires BigQuery dataset and table setup with proper permissions",
+      "docker_compose_required": false,
+      "test_environment": "Google Cloud BigQuery with Pub/Sub integration"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 100
+  },
+  "agent_handoff": {
+    "from_agent": "backend_etl_agent",
+    "to_agent": "backend_etl_agent",
+    "handoff_notes": "Implement schema migration from raw xAPI to structured BigQuery tables",
+    "required_approval": false
+  }
+}

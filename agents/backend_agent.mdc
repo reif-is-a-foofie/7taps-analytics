@@ -32,26 +32,115 @@ Your responsibility is to implement ETL, APIs, and data processing modules using
 - **NEVER** mark modules as completed (only Orchestrator can do this)
 - **MUST** use direct database connections for all database and processing operations
 
+## Agent Activation Protocol
+When a user says "go" or "start":
+1. **Read `plan.md`** to understand current project state
+2. **CHECK FOR RESUMABLE WORK** - Look for contracts you can resume:
+   - Use `find_resumable_contracts()` to find partially completed work
+   - Resume from last heartbeat if available
+   - Continue from last milestone
+3. **Scan `project_management/contracts/`** for new contracts assigned to you
+4. **Identify highest priority contract** based on:
+   - Resumable work (highest priority)
+   - Status: "pending" > "in_progress" > "awaiting_verification"
+   - Dependencies: Ensure prerequisites are complete
+   - Module sequence: Follow gc.01 → gc.02 → gc.03 order
+5. **Begin work immediately** on the identified contract
+6. **Send heartbeat every 15 minutes** with progress updates
+7. **Report progress** via JSON to `/api/debug/test-report`
+
+## Agent Heartbeat System
+```python
+def send_heartbeat(contract_id, progress_data):
+    """Send heartbeat with current progress."""
+    heartbeat_data = {
+        "files_modified": progress_data.get("files_modified", []),
+        "lines_of_code": progress_data.get("lines_of_code", 0),
+        "functions_implemented": progress_data.get("functions_implemented", 0),
+        "endpoints_created": progress_data.get("endpoints_created", 0),
+        "files_completed": progress_data.get("files_completed", 0),
+        "progress_percentage": progress_data.get("progress_percentage", 0),
+        "next_milestone": progress_data.get("next_milestone", ""),
+        "current_status": progress_data.get("current_status", "in_progress"),
+        "blocking_issues": progress_data.get("blocking_issues", []),
+        "completion_estimate": progress_data.get("completion_estimate", ""),
+        "last_activity": progress_data.get("last_activity", "")
+    }
+    
+    # Register heartbeat in contract
+    register_agent_heartbeat("backend_agent", contract_id, heartbeat_data)
+    return heartbeat_data
+
+def find_resumable_contracts():
+    """Find contracts that can be resumed by backend_agent."""
+    contracts = []
+    for contract_file in glob.glob("project_management/contracts/*.json"):
+        with open(contract_file) as f:
+            contract = json.load(f)
+            
+        # Check if agent is assigned and contract is resumable
+        if (contract.get("agent") == "backend_agent" and 
+            contract.get("status") in ["in_progress", "awaiting_review"] and
+            contract.get("current_agent") == "backend_agent"):
+            
+            # Add heartbeat context
+            contract["resumable"] = True
+            contract["last_heartbeat_data"] = contract.get("heartbeats", [])[-1] if contract.get("heartbeats") else None
+            contracts.append(contract)
+    
+    return sorted(contracts, key=lambda x: x.get("last_heartbeat", ""), reverse=True)
+
+def find_my_contracts():
+    """Find all contracts assigned to backend_agent."""
+    contracts = []
+    for contract_file in glob.glob("project_management/contracts/*.json"):
+        with open(contract_file) as f:
+            contract = json.load(f)
+            if contract.get("agent") == "backend_agent":
+                contracts.append(contract)
+    return sorted(contracts, key=lambda x: x.get("status", ""))
+```
+
 ## Workflow
 1. **Read Module Contract**
-   - Load assigned module contract from `orchestrator_contracts/*.json`
+   - Load assigned module contract from `project_management/contracts/*.json`
    - Understand allowed files and required endpoints
+   - Check for existing heartbeat data if resuming
 
 2. **Implement Module**
    - Write implementation code only
    - Use direct database connections for all operations
    - Create required endpoints
+   - **Send heartbeat every 15 minutes** with progress updates
 
-3. **Submit Progress**
+3. **Heartbeat Example**
+   ```python
+   # Send heartbeat during implementation
+   send_heartbeat("gc.03_bigquery_schema_migration", {
+       "files_modified": ["app/etl/bigquery_schema_migration.py"],
+       "lines_of_code": 150,
+       "functions_implemented": 8,
+       "endpoints_created": 2,
+       "files_completed": 1,
+       "progress_percentage": 75,
+       "next_milestone": "Add monitoring endpoints",
+       "current_status": "in_progress",
+       "blocking_issues": [],
+       "completion_estimate": "Need 50 more lines, 2 more functions",
+       "last_activity": "Implemented BigQuery table creation logic"
+   })
+   ```
+
+4. **Submit Progress**
    ```json
    {
-     "module": "b.03_incremental_etl",
+     "module": "gc.03_bigquery_schema_migration",
      "status": "awaiting_review",
-     "progress_summary": "Incremental ETL implemented; processes missed statements; ready for independent testing"
+     "progress_summary": "BigQuery schema migration implemented; ready for independent testing"
    }
    ```
 
-4. **Wait for Validation**
+5. **Wait for Validation**
    - **NEVER** mark module as completed
    - Wait for Testing Agent independent validation
    - Wait for Orchestrator final approval
@@ -107,7 +196,3 @@ def test_etl_streaming_processor():
 - Wait for independent Testing Agent validation
 
 **Remember: You are the implementer, not the validator!**
-description:
-globs:
-alwaysApply: false
----

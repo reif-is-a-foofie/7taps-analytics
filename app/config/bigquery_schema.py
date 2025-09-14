@@ -243,5 +243,15 @@ class BigQuerySchema:
         return info
 
 
-# Global schema instance
-bigquery_schema = BigQuerySchema()
+# Global schema instance (lazy-loaded)
+_bigquery_schema = None
+
+def get_bigquery_schema() -> BigQuerySchema:
+    """Get the global BigQuery schema instance (lazy-loaded)."""
+    global _bigquery_schema
+    if _bigquery_schema is None:
+        _bigquery_schema = BigQuerySchema()
+    return _bigquery_schema
+
+# For backward compatibility
+bigquery_schema = get_bigquery_schema
