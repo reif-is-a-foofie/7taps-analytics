@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .docs-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .docs-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .docs-header {
+        background: var(--card-bg);
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .docs-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .docs-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .docs-content {
+        padding: 1.5rem;
+    }
+
+    .endpoint {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+
+    .endpoint-header {
+        padding: 1rem;
+        background: var(--card-bg);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .method {
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .method.get {
+        background: #10b981;
+        color: white;
+    }
+
+    .method.post {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .endpoint-url {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .endpoint-description {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .endpoint-body {
+        padding: 1rem;
+    }
+
+    .endpoint-example {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-top: 1rem;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.85rem;
+        overflow-x: auto;
+    }
+
+    .api-section {
+        margin-bottom: 3rem;
+    }
+
+    .api-section h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-color);
+    }
+
+    .api-section h3 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 1.5rem 0 1rem 0;
+    }
+
+    .code-block {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.85rem;
+        overflow-x: auto;
+        margin: 1rem 0;
+    }
+
+    .response-example {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-top: 1rem;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="docs-container">
+    <div class="docs-section">
+        <div class="docs-header">
+            <div class="docs-title">7taps Analytics API Documentation</div>
+            <div class="docs-subtitle">Complete API reference for the 7taps Analytics platform</div>
+        </div>
+        <div class="docs-content">
+            <p>Welcome to the 7taps Analytics API documentation. This API provides access to learning analytics data, dashboard metrics, and AI-powered insights.</p>
+        </div>
+    </div>
+
+    <div class="api-section">
+        <h2>Dashboard API</h2>
+        <p>Endpoints for accessing analytics dashboard data and metrics.</p>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/dashboard/load</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">Load comprehensive dashboard data including charts, metrics, and summary.</div>
+                <div class="endpoint-example">
+                    <strong>Response:</strong>
+                    {
+                        "success": true,
+                        "data": {
+                            "charts": [...],
+                            "metrics": [...],
+                            "summary": {...}
+                        },
+                        "message": "Dashboard loaded successfully",
+                        "timestamp": "2025-01-20T22:30:00Z"
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/api/dashboard/metrics</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">Get specific metrics based on metric_type.</div>
+                <div class="endpoint-example">
+                    <strong>Request:</strong>
+                    {
+                        "metric_type": "users"
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/api/dashboard/charts</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">Get specific charts based on chart_type.</div>
+                <div class="endpoint-example">
+                    <strong>Request:</strong>
+                    {
+                        "chart_type": "lesson_completion"
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="api-section">
+        <h2>Data Explorer API</h2>
+        <p>Endpoints for exploring and querying raw data tables.</p>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/api/data-explorer/load-table</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">Load data from a specified table with optional limit.</div>
+                <div class="endpoint-example">
+                    <strong>Request:</strong>
+                    {
+                        "table": "users",
+                        "limit": 100
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/api/data-explorer/apply-filter</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">Apply filters to table data based on filter_type and value.</div>
+                <div class="endpoint-example">
+                    <strong>Request:</strong>
+                    {
+                        "filter_type": "email",
+                        "value": "user@example.com",
+                        "table": "users"
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/api/data-explorer/list-tables</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">Returns list of available tables for exploration.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="api-section">
+        <h2>Chat API</h2>
+        <p>AI-powered chat interface for natural language queries and data analysis.</p>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/api/chat/query</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">Send natural language queries to the AI assistant.</div>
+                <div class="endpoint-example">
+                    <strong>Request:</strong>
+                    {
+                        "action": "ask_question",
+                        "query": "How many users completed the course?"
+                    }
+                </div>
+                <div class="response-example">
+                    <strong>Response:</strong>
+                    {
+                        "success": true,
+                        "action": "ask_question",
+                        "text": "Based on the data, 45 users completed the course...",
+                        "table": {
+                            "data": [...],
+                            "columns": [...]
+                        },
+                        "confidence": 0.85
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="api-section">
+        <h2>Health & Status</h2>
+        <p>System health and status endpoints.</p>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/health</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">Check system health and database connectivity.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="api-section">
+        <h2>Authentication</h2>
+        <p>Currently, the API does not require authentication for development purposes. In production, API keys or OAuth tokens will be required.</p>
+    </div>
+
+    <div class="api-section">
+        <h2>Rate Limiting</h2>
+        <p>API requests are currently unlimited for development. Production deployments will implement rate limiting based on usage patterns.</p>
+    </div>
+
+    <div class="api-section">
+        <h2>Error Handling</h2>
+        <p>All API endpoints return consistent error responses:</p>
+        <div class="code-block">
+{
+    "success": false,
+    "data": {},
+    "message": "Error description",
+    "timestamp": "2025-01-20T22:30:00Z"
+}
+        </div>
+    </div>
+</div>
+{% endblock %}

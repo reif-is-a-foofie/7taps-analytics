@@ -1,0 +1,103 @@
+{
+  "module": "data_explorer_app",
+  "agent": "ui_agent",
+  "allowed_files": [
+    "app/api/data_explorer.py",
+    "templates/explorer.html"
+  ],
+  "required_endpoints": ["GET /explorer", "POST /api/data-explorer/query", "GET /api/data-explorer/tables"],
+  "status": "completed",
+  "task_tracking": {
+    "assigned_at": "2025-01-20T21:45:00Z",
+    "estimated_duration": "2h",
+    "dependencies": [],
+    "subtasks": [
+      {
+        "id": "explorer_app.1",
+        "description": "Create data explorer API endpoints for orchestrator calls",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/api/data_explorer.py"]
+      },
+      {
+        "id": "explorer_app.2",
+        "description": "Implement load_table action with standard response format",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/api/data_explorer.py"]
+      },
+      {
+        "id": "explorer_app.3",
+        "description": "Create apply_filter and list_tables actions",
+        "status": "pending",
+        "agent": "ui_agent",
+        "files": ["app/api/data_explorer.py"]
+      },
+      {
+        "id": "explorer_app.4",
+        "description": "Test data explorer app contract functionality",
+        "status": "pending",
+        "agent": "testing_agent",
+        "files": []
+      }
+    ],
+    "completion_criteria": [
+      "DataExplorer.load_table action returns standard format",
+      "DataExplorer.apply_filter action provides filtered data",
+      "DataExplorer.list_tables action shows available tables",
+      "All actions return consistent JSON response structure",
+      "Data explorer app can be called by orchestrator reliably"
+    ],
+    "real_world_testing": {
+      "required": true,
+      "notes": "Test data explorer app actions via orchestrator calls",
+      "docker_compose_required": false,
+      "test_environment": "localhost:8000"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "app_contract": {
+    "name": "DataExplorer",
+    "description": "Query raw user/lesson data with filters",
+    "actions": [
+      {
+        "name": "load_table",
+        "input": {
+          "table": "string",
+          "limit": "int"
+        },
+        "output": {
+          "rows": "list",
+          "columns": "list",
+          "total_count": "int"
+        }
+      },
+      {
+        "name": "apply_filter",
+        "input": {
+          "filter_type": "string",
+          "value": "string",
+          "table": "string"
+        },
+        "output": {
+          "filtered_rows": "list",
+          "applied_filters": "list"
+        }
+      },
+      {
+        "name": "list_tables",
+        "input": {},
+        "output": {
+          "tables": "list"
+        }
+      }
+    ]
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "ui_agent",
+    "handoff_notes": "Create Data Explorer as a composable sub-app with standard contract actions",
+    "required_approval": false
+  }
+}

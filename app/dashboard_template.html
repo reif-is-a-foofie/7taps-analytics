@@ -362,10 +362,10 @@
                 .then(data => {
                     // Update metric values
                     document.getElementById('totalUsers').textContent = data.metrics.total_users;
-                    document.getElementById('totalStatements').textContent = data.metrics.total_statements;
+                    document.getElementById('totalStatements').textContent = data.metrics.total_activities;
                     document.getElementById('completionRate').textContent = data.metrics.completion_rate.toFixed(1) + '%';
-                    document.getElementById('activeUsers7d').textContent = data.metrics.active_users_7d;
-                    document.getElementById('activeUsers30d').textContent = data.metrics.active_users_30d;
+                    document.getElementById('activeUsers7d').textContent = data.metrics.active_users_today;
+                    document.getElementById('activeUsers30d').textContent = data.metrics.active_users_today; // Using today's data as fallback
                     
                     // Update charts with new data
                     updateCharts(data.metrics);

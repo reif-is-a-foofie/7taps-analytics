@@ -1,0 +1,58 @@
+{
+  "module": "gc19_docs_sync",
+  "agent": "technical_writer",
+  "allowed_files": [
+    "gcp_deployment_architecture.md",
+    "gcp_ui_config.md",
+    "README.md"
+  ],
+  "required_endpoints": [],
+  "status": "planning",
+  "task_tracking": {
+    "assigned_at": "2025-09-14T00:00:00Z",
+    "estimated_duration": "45m",
+    "dependencies": ["gc14", "gc15", "gc16"],
+    "subtasks": [
+      {
+        "id": "gc19.1",
+        "description": "Update service name to taps-analytics-ui",
+        "status": "pending",
+        "agent": "technical_writer",
+        "files": ["gcp_deployment_architecture.md", "gcp_ui_config.md"]
+      },
+      {
+        "id": "gc19.2",
+        "description": "Standardize port 8080 throughout docs",
+        "status": "pending",
+        "agent": "technical_writer",
+        "files": ["gcp_deployment_architecture.md", "gcp_ui_config.md"]
+      },
+      {
+        "id": "gc19.3",
+        "description": "Document AR usage and SA requirements",
+        "status": "pending",
+        "agent": "technical_writer",
+        "files": ["README.md", "gcp_deployment_architecture.md"]
+      }
+    ],
+    "completion_criteria": [
+      "Docs reflect service name and port",
+      "AR and SA steps documented"
+    ],
+    "real_world_testing": {
+      "required": false,
+      "notes": "Docs review",
+      "docker_compose_required": false,
+      "test_environment": "N/A"
+    },
+    "blocking_issues": [],
+    "progress_percentage": 0
+  },
+  "agent_handoff": {
+    "from_agent": null,
+    "to_agent": "technical_writer",
+    "handoff_notes": "Sync after deployment patches merged",
+    "required_approval": false
+  }
+}
+

@@ -21,7 +21,7 @@ class GCPConfig:
         self.service_account_key_path = os.getenv("GCP_SERVICE_ACCOUNT_KEY_PATH", "google-cloud-key.json")
         self.pubsub_topic = os.getenv("GCP_PUBSUB_TOPIC", "xapi-ingestion-topic")
         self.storage_bucket = os.getenv("GCP_STORAGE_BUCKET", "xapi-raw-data")
-        self.bigquery_dataset = os.getenv("GCP_BIGQUERY_DATASET", "xapi_analytics")
+        self.bigquery_dataset = os.getenv("GCP_BIGQUERY_DATASET", "taps_data")
         self.location = os.getenv("GCP_LOCATION", "us-central1")
 
         self._credentials = None
@@ -34,15 +34,9 @@ class GCPConfig:
         """Get Google Cloud credentials."""
         if self._credentials is None:
             try:
-                # Try to use service account key file first
-                if os.path.exists(self.service_account_key_path):
-                    self._credentials = service_account.Credentials.from_service_account_file(
-                        self.service_account_key_path,
-                        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-                    )
-                else:
-                    # Fall back to default credentials (for Cloud Functions)
-                    self._credentials, _ = default()
+                # In Cloud Run, use default credentials (metadata service)
+                # The GOOGLE_APPLICATION_CREDENTIALS env var is set by Cloud Run
+                self._credentials, _ = default()
             except Exception as e:
                 raise ValueError(f"Failed to load GCP credentials: {str(e)}")
 
@@ -135,5 +129,15 @@ class GCPConfig:
         return status
 
 
-# Global configuration instance
-gcp_config = GCPConfig()
+# Global configuration instance (lazy-loaded)
+_gcp_config = None
+
+def get_gcp_config() -> GCPConfig:
+    """Get the global GCP config instance (lazy-loaded)."""
+    global _gcp_config
+    if _gcp_config is None:
+        _gcp_config = GCPConfig()
+    return _gcp_config
+
+# For backward compatibility: export an instantiated config
+gcp_config = get_gcp_config()

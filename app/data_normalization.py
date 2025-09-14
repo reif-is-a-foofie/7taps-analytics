@@ -608,3 +608,27 @@ class DataNormalizer:
         except Exception as e:
             logger.error(f"Error getting normalization stats: {e}")
             return {}
+
+    async def exists_equivalent_statement(self, actor_id: str, activity_id: str, response_text: str) -> bool:
+        """Check if an equivalent statement already exists.
+
+        Two statements are considered equivalent for idempotency purposes if:
+        - actor_id matches
+        - activity_id matches
+        - result.response (stored in raw_statement JSONB) matches
+        """
+        sql = (
+            "SELECT 1 FROM statements_normalized "
+            "WHERE actor_id = %s AND activity_id = %s "
+            "AND COALESCE(raw_statement #>> '{result,response}', '') = %s "
+            "LIMIT 1"
+        )
+        try:
+            async with self.get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(sql, (actor_id, activity_id, response_text or ""))
+                    return cursor.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking existing equivalent statement: {e}")
+            # If check fails, default to not found so we don't block ingestion
+            return False

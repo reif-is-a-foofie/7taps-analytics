@@ -30,12 +30,12 @@ RUN mkdir -p /app/logs && chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Expose port (Cloud Run sets PORT=8000)
-EXPOSE 8000
+# Expose port (Cloud Run sets PORT=8080)
+EXPOSE 8080
 
-# Health check (use PORT env var for Cloud Run - defaults to 8000)
+# Health check (use PORT env var for Cloud Run - defaults to 8080)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD sh -c 'curl -f http://localhost:${PORT:-8000}/api/health || exit 1'
+    CMD sh -c 'curl -f http://localhost:${PORT:-8080}/api/health || exit 1'
 
 # Run the application with production settings (bind to PORT env var for Cloud Run)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"] 
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"] 
