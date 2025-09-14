@@ -16,6 +16,7 @@ from pydantic import BaseModel
 import pandas as pd
 from io import StringIO, BytesIO
 import asyncio
+from app.importers.manual_importer import import_focus_group_csv_text
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,6 +47,13 @@ class ImportStats(BaseModel):
     polls_imported: int
     audio_imported: int
     errors: int
+    timestamp: datetime = datetime.utcnow()
+
+class FocusGroupImportStats(BaseModel):
+    """Statistics for focus-group CSV import."""
+    imported: int
+    skipped: int
+    errors: List[str] = []
     timestamp: datetime = datetime.utcnow()
 
 # Global normalizer instance - lazy initialization
@@ -447,4 +455,21 @@ async def get_import_statistics():
         
     except Exception as e:
         logger.error(f"Error getting import stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/import/focus-group-csv", response_model=FocusGroupImportStats)
+async def import_focus_group_csv_file(csv_file: UploadFile = File(...), dry_run: bool = Form(False)):
+    """Import focus group CSV (normalized form) with idempotency."""
+    try:
+        content = await csv_file.read()
+        text = content.decode('utf-8')
+        summary = await import_focus_group_csv_text(text, dry_run=dry_run)
+        return FocusGroupImportStats(
+            imported=summary.get('imported', 0),
+            skipped=summary.get('skipped', 0),
+            errors=summary.get('errors', []),
+        )
+    except Exception as e:
+        logger.error(f"Error importing focus group CSV: {e}")
         raise HTTPException(status_code=500, detail=str(e))
