@@ -7,7 +7,7 @@
 5. Do not create new files, directories, or dependencies outside the plan.
 6. Do not modify `plan.md`, `README.md`, or `.cursorrules`.
 7. After completing a module, run `pytest` and any additional commands under that module's **Tests** section. Publish results to `/api/debug/test-report`.
-8. Commit changes only after tests pass, using conventional commit messages referencing the module (e.g., `feat: implement signup API`).
+8. Commit changes frequently - after each logical change, using conventional commit messages referencing the module (e.g., `feat: implement signup API`). Use `./quick-commit.sh` or `git qc` for rapid commits.
 9. Maintain code formatting with `black` and `isort` when applicable.
 10. All xAPI statements must be queued to Redis Streams and processed by Dramatiq workers.
 11. Background jobs use the Dramatiq scheduler and log status via `TaskStatus`.
