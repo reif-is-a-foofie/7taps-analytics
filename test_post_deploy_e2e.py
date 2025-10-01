@@ -170,7 +170,7 @@ def test_user_id_display():
             truncation_found = False
         
         # Check for hover tooltip with full ID
-        if 'title=' in content and 'actor_id' in content:
+        if 'title=' in content and 'Click to copy full ID:' in content:
             print("✅ User ID hover tooltip found")
             tooltip_found = True
         else:
