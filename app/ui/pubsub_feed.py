@@ -422,7 +422,7 @@ async def data_explorer(request: Request, limit: int = Query(25, ge=1, le=100)) 
         "success": etl_data.get("success", False) or direct_data.get("success", False) or endpoint_data.get("success", False)
     }
 
-    return templates.TemplateResponse("data_explorer_modern.html", context)
+    return templates.TemplateResponse("data_explorer_terminal.html", context)
 
 
 @router.get("/raw-statements", response_class=HTMLResponse)
