@@ -359,9 +359,25 @@
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-900">
                                 <div class="max-w-xs">
-                                    {% if statement.actor_id.startswith('mailto:') %}
+                                    {% if statement.actor_mbox %}
+                                        <!-- Show email address with hover to reveal full email -->
+                                        <div class="relative group">
+                                            <div class="font-medium text-primary-600 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors" 
+                                                 title="Click to copy full email: {{ statement.actor_mbox.replace('mailto:', '') }}"
+                                                 onclick="copyToClipboard('{{ statement.actor_mbox.replace('mailto:', '') }}')">
+                                                {% set email = statement.actor_mbox.replace('mailto:', '') %}
+                                                {{ email[:15] }}{% if email|length > 15 %}...{% endif %}
+                                            </div>
+                                            <!-- Hover tooltip showing full email -->
+                                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                {{ statement.actor_mbox.replace('mailto:', '') }}
+                                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                            </div>
+                                        </div>
+                                    {% elif statement.actor_id.startswith('mailto:') %}
                                         <div class="font-medium text-primary-600">{{ statement.actor_id.replace('mailto:', '') }}</div>
                                     {% else %}
+                                        <!-- Fallback for hash IDs -->
                                         <div class="relative group">
                                             <div class="font-mono text-xs bg-gray-100 px-2 py-1 rounded cursor-pointer hover:bg-gray-200 transition-colors" 
                                                  title="Click to copy full ID: {{ statement.actor_id }}"

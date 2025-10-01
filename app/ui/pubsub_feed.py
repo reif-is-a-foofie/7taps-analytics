@@ -20,7 +20,8 @@ async def get_direct_xapi_requests(limit: int = 25) -> Dict[str, Any]:
             query = f"""
             SELECT 
                 timestamp,
-                actor_name as actor_id,
+                actor_name,
+                actor_mbox,
                 verb_id as verb_display,
                 object_name,
                 result_completion,
@@ -162,6 +163,7 @@ async def get_recent_bigquery_data(limit: int = 25) -> Dict[str, Any]:
             SELECT 
                 timestamp,
                 actor_id,
+                actor_mbox,
                 verb_display,
                 object_name,
                 result_completion,
@@ -252,6 +254,7 @@ async def get_raw_incoming_statements(limit: int = 25) -> Dict[str, Any]:
                 timestamp,
                 statement_id,
                 actor_name,
+                actor_mbox,
                 verb_id,
                 object_id,
                 object_name,
