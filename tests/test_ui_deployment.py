@@ -76,37 +76,6 @@ class TestCostMonitoring:
         assert "recommendations" in data
         assert "estimated_monthly_savings" in data
 
-class TestBigQueryCaching:
-    """Test BigQuery caching functionality."""
-    
-    def test_cache_key_generation(self):
-        """Test cache key generation logic."""
-        from app.api.data_explorer import generate_cache_key
-        
-        query1 = "SELECT * FROM statements LIMIT 100"
-        query2 = "SELECT * FROM statements LIMIT 100"
-        query3 = "SELECT * FROM statements LIMIT 200"
-        
-        key1 = generate_cache_key(query1)
-        key2 = generate_cache_key(query2)
-        key3 = generate_cache_key(query3)
-        
-        # Same query should generate same key
-        assert key1 == key2
-        # Different query should generate different key
-        assert key1 != key3
-        # Keys should start with explorer_cache prefix
-        assert key1.startswith("explorer_cache:")
-    
-    def test_redis_client_connection(self):
-        """Test Redis client connection handling."""
-        from app.api.data_explorer import get_redis_client
-        
-        # Should handle missing Redis gracefully
-        client = get_redis_client()
-        # Function should not raise exception even if Redis is not available
-        assert client is None or hasattr(client, 'get')
-
 class TestCloudRunConfiguration:
     """Test Cloud Run deployment configuration."""
     

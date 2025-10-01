@@ -58,7 +58,8 @@ def validate_database_value(value: Any, field_name: str, expected_type: str = "a
             elif isinstance(value, str):
                 # Try to parse date string
                 from datetime import datetime
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                from app.utils.timestamp_utils import parse_timestamp
+                return parse_timestamp(value)
             else:
                 return get_default_value("date")
         else:  # auto

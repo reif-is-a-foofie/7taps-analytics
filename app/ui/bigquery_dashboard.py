@@ -20,6 +20,14 @@ templates = Jinja2Templates(directory="templates")
 class BigQueryDashboardConfig:
     def __init__(self):
         self.api_base_url = os.getenv("API_BASE_URL", "")
+        # If no API_BASE_URL is set, use the current request context
+        if not self.api_base_url:
+            # For local development, use localhost
+            if os.getenv("ENVIRONMENT") == "development":
+                self.api_base_url = "http://localhost:8000"
+            else:
+                # For production, use the current domain with proper protocol
+                self.api_base_url = "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app"
 
 # Initialize config
 dashboard_config = BigQueryDashboardConfig()

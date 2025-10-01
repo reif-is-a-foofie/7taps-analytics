@@ -2,13 +2,12 @@
 Manual CSV importer for 7taps Analytics (idempotent).
 
 Reads focus-group style CSV rows and converts them into xAPI statements,
-then uses the DataNormalizer pipeline to write into the normalized tables.
+and produces xAPI statements ready for ingestion into the Redis-backed
+xAPI pipeline.
 
-Idempotency:
-- Deterministic statement IDs for CSV rows based on a natural key
-  (actor_id + activity_id + response text).
-- Before inserting, checks for an equivalent statement already present
-  (same actor_id, activity_id, and response). If present, skips.
+Idempotency within a single import is provided via deterministic statement IDs
+computed from actor, activity, and response values. The caller is responsible
+for deciding how to handle duplicates across multiple import runs.
 """
 
 from __future__ import annotations
@@ -22,7 +21,6 @@ from typing import Any, Dict, Iterable, List, Optional
 import pandas as pd
 
 from app.config import get_extension_key, get_lesson_name, get_lesson_url, settings
-from app.data_normalization import DataNormalizer
 
 
 @dataclass
@@ -161,63 +159,51 @@ def parse_focus_group_csv_text(csv_text: str) -> List[FocusGroupRow]:
 async def import_focus_group_csv_text(
     csv_text: str,
     *,
-    normalizer: Optional[DataNormalizer] = None,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
-    """Import focus group CSV text via normalizer with idempotency.
-
-    Returns summary dict: { imported, skipped, errors }.
-    """
+    """Convert focus group CSV text to xAPI statements with deterministic IDs."""
     rows = parse_focus_group_csv_text(csv_text)
-    base_time = datetime.utcnow().replace(microsecond=0)
-
-    norm = normalizer or DataNormalizer()
+    base_time = datetime.now(timezone.utc).replace(microsecond=0)
 
     imported = 0
     skipped = 0
     errors: List[str] = []
-    matches: List[Dict[str, Any]] = []
+    statements: List[Dict[str, Any]] = []
+    seen_ids: set[str] = set()
     would_import: List[Dict[str, Any]] = []
 
     for row in rows:
         try:
             stmt = _xapi_for_row(row, base_time)
+            statement_id = stmt.get("id")
 
-            # Dedupe: skip if an equivalent statement already exists
-            actor_id = stmt["actor"]["account"]["name"]
-            activity_id = stmt["object"]["id"]
-            response = (stmt.get("result") or {}).get("response") or ""
-
-            exists = await norm.exists_equivalent_statement(actor_id, activity_id, response)
-            if exists:
+            if statement_id and statement_id in seen_ids:
                 skipped += 1
-                matches.append({
-                    "actor_id": actor_id,
-                    "activity_id": activity_id,
-                    "response": response,
-                    "statement_id": stmt.get("id"),
-                })
                 continue
 
+            seen_ids.add(statement_id)
+            statements.append(stmt)
+            imported += 1
+
             if dry_run:
+                actor_id = stmt["actor"]["account"].get("name", "")
+                activity_id = stmt["object"].get("id", "")
+                response = (stmt.get("result") or {}).get("response") or ""
                 would_import.append({
                     "actor_id": actor_id,
                     "activity_id": activity_id,
                     "response": response,
-                    "statement_id": stmt.get("id"),
+                    "statement_id": statement_id,
                 })
-                imported += 1
-            else:
-                await norm.process_statement_normalization(stmt)
-                imported += 1
-        except Exception as e:
-            errors.append(str(e))
+
+        except Exception as exc:  # pragma: no cover - defensive
+            errors.append(str(exc))
 
     return {
         "imported": imported,
         "skipped": skipped,
         "errors": errors,
-        "matches": matches,
+        "statements": statements,
         "would_import": would_import,
         "dry_run": dry_run,
     }

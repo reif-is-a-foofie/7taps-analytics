@@ -111,12 +111,14 @@ class DataExporter:
             
             # Apply date filters
             if start_date:
-                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                statements = [s for s in statements if datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00')) >= start_dt]
+                from app.utils.timestamp_utils import parse_timestamp
+                start_dt = parse_timestamp(start_date)
+                statements = [s for s in statements if parse_timestamp(s["timestamp"]) >= start_dt]
             
             if end_date:
-                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-                statements = [s for s in statements if datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00')) <= end_dt]
+                from app.utils.timestamp_utils import parse_timestamp
+                end_dt = parse_timestamp(end_date)
+                statements = [s for s in statements if parse_timestamp(s["timestamp"]) <= end_dt]
             
             # Apply limit
             statements = statements[:limit]
@@ -126,7 +128,7 @@ class DataExporter:
                 "export_info": {
                     "format": format_type,
                     "total_statements": len(statements),
-                    "export_date": datetime.utcnow().isoformat(),
+                    "export_date": datetime.now(timezone.utc).isoformat(),
                     "filters_applied": {
                         "start_date": start_date,
                         "end_date": end_date,
@@ -231,14 +233,14 @@ async def data_export_page(request: Request):
     """Data export main page."""
     try:
         # Get default date range (last 30 days)
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=30)
         
         context = {
             "request": request,
             "default_start_date": start_date.strftime("%Y-%m-%d"),
             "default_end_date": end_date.strftime("%Y-%m-%d"),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         return templates.TemplateResponse("data_export.html", context)
@@ -274,15 +276,15 @@ async def download_export(format_type: str = Query("json"),
         # Generate export content
         if format_type == "json":
             content = exporter.export_to_json(data)
-            filename = f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+            filename = f"xapi_statements_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
             media_type = "application/json"
         elif format_type == "csv":
             content = exporter.export_to_csv(data)
-            filename = f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+            filename = f"xapi_statements_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
             media_type = "text/csv"
         elif format_type == "xml":
             content = exporter.export_to_xml(data)
-            filename = f"xapi_statements_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xml"
+            filename = f"xapi_statements_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xml"
             media_type = "application/xml"
         else:
             raise HTTPException(status_code=400, detail="Unsupported format type")

@@ -6,23 +6,37 @@ Handles authentication, Pub/Sub client setup, and Cloud Function configuration.
 import os
 import json
 from typing import Optional, Dict, Any
-from pathlib import Path
 from google.auth import default
-from google.oauth2 import service_account
 from google.cloud import pubsub_v1, storage, bigquery
 from google.api_core import exceptions
+import importlib.util
+
+
+def _load_settings_module():
+    """Load app.config.settings without triggering circular imports."""
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.py")
+    spec = importlib.util.spec_from_file_location("config", config_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+settings = _load_settings_module().settings
 
 
 class GCPConfig:
     """Configuration class for Google Cloud Platform services."""
 
     def __init__(self):
-        self.project_id = os.getenv("GCP_PROJECT_ID", "taps-data")
-        self.service_account_key_path = os.getenv("GCP_SERVICE_ACCOUNT_KEY_PATH", "google-cloud-key.json")
-        self.pubsub_topic = os.getenv("GCP_PUBSUB_TOPIC", "xapi-ingestion-topic")
-        self.storage_bucket = os.getenv("GCP_STORAGE_BUCKET", "xapi-raw-data")
-        self.bigquery_dataset = os.getenv("GCP_BIGQUERY_DATASET", "taps_data")
-        self.location = os.getenv("GCP_LOCATION", "us-central1")
+        self.project_id = os.getenv("GOOGLE_CLOUD_PROJECT", settings.GCP_PROJECT_ID)
+        self.service_account_key_path = os.getenv(
+            "GOOGLE_APPLICATION_CREDENTIALS",
+            settings.GCP_SERVICE_ACCOUNT_KEY_PATH or "",
+        )
+        self.pubsub_topic = settings.GCP_PUBSUB_TOPIC
+        self.storage_bucket = settings.GCP_STORAGE_BUCKET
+        self.bigquery_dataset = settings.GCP_BIGQUERY_DATASET
+        self.location = settings.GCP_LOCATION
 
         self._credentials = None
         self._pubsub_publisher = None
@@ -34,11 +48,22 @@ class GCPConfig:
         """Get Google Cloud credentials."""
         if self._credentials is None:
             try:
-                # In Cloud Run, use default credentials (metadata service)
-                # The GOOGLE_APPLICATION_CREDENTIALS env var is set by Cloud Run
-                self._credentials, _ = default()
+                # Check if we're in Cloud Run environment
+                if os.getenv("K_SERVICE") or os.getenv("DEPLOYMENT_MODE") == "cloud_run":
+                    # In Cloud Run, use default credentials (metadata service)
+                    self._credentials, _ = default()
+                else:
+                    # For local development, try service account key file
+                    key_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+                    if key_path and os.path.exists(key_path):
+                        self._credentials, _ = default()
+                    else:
+                        # Fallback to default credentials
+                        self._credentials, _ = default()
             except Exception as e:
-                raise ValueError(f"Failed to load GCP credentials: {str(e)}")
+                # Return None instead of raising error to allow graceful degradation
+                print(f"Warning: Failed to load GCP credentials: {str(e)}")
+                self._credentials = None
 
         return self._credentials
 
@@ -46,21 +71,30 @@ class GCPConfig:
     def pubsub_publisher(self) -> pubsub_v1.PublisherClient:
         """Get Pub/Sub publisher client."""
         if self._pubsub_publisher is None:
-            self._pubsub_publisher = pubsub_v1.PublisherClient(credentials=self.credentials)
+            if self.credentials:
+                self._pubsub_publisher = pubsub_v1.PublisherClient(credentials=self.credentials)
+            else:
+                raise ValueError("GCP credentials not available for Pub/Sub")
         return self._pubsub_publisher
 
     @property
     def storage_client(self) -> storage.Client:
         """Get Cloud Storage client."""
         if self._storage_client is None:
-            self._storage_client = storage.Client(credentials=self.credentials, project=self.project_id)
+            if self.credentials:
+                self._storage_client = storage.Client(credentials=self.credentials, project=self.project_id)
+            else:
+                raise ValueError("GCP credentials not available for Cloud Storage")
         return self._storage_client
 
     @property
     def bigquery_client(self) -> bigquery.Client:
         """Get BigQuery client."""
         if self._bigquery_client is None:
-            self._bigquery_client = bigquery.Client(credentials=self.credentials, project=self.project_id)
+            if self.credentials:
+                self._bigquery_client = bigquery.Client(credentials=self.credentials, project=self.project_id)
+            else:
+                raise ValueError("GCP credentials not available for BigQuery")
         return self._bigquery_client
 
     def get_topic_path(self) -> str:

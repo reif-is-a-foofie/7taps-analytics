@@ -5,12 +5,9 @@ This directory contains all project configuration files.
 ## Contents
 
 ### Deployment Configuration
-- `docker-compose.yml` - Docker services configuration
-- `Dockerfile` - Container build instructions
-- `Procfile` - Heroku/Railway process definitions
-- `render.yaml` - Render deployment configuration
-- `railway.json` - Railway deployment configuration
-- `runtime.txt` - Python runtime specification
+- `docker-compose.yml` - Docker services configuration for local development
+- `Dockerfile` - Container build instructions aligned with Cloud Run deployment
+- `runtime.txt` - Python runtime specification for legacy platforms
 
 ### Development Configuration
 - `pyproject.toml` - Python project metadata and dependencies

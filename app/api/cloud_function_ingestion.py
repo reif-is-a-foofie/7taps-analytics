@@ -7,12 +7,14 @@ import json
 import logging
 import os
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Google Cloud imports
 from google.cloud import pubsub_v1
 from google.api_core import exceptions as gcp_exceptions
 from google.auth import default
+
+from app.api.trigger_word_alerts import trigger_word_alert_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +40,7 @@ def get_pubsub_client():
             logger.info(f"Initialized Pub/Sub client for topic: {topic_path}")
         except Exception as e:
             logger.error(f"Failed to initialize Pub/Sub client: {e}")
-            raise
+            raise RuntimeError(f"Pub/Sub client not initialized: {e}") from e
     return publisher, topic_path
 
 
@@ -48,18 +50,19 @@ def validate_xapi_statement(statement: Dict[str, Any]) -> bool:
     return all(field in statement for field in required_fields)
 
 
-def publish_to_pubsub(statement: Dict[str, Any]) -> Dict[str, Any]:
-    """Publish xAPI statement to Pub/Sub topic."""
+def publish_to_pubsub(statement: Dict[str, Any], *, source: str = "cloud_function") -> Dict[str, Any]:
+    """Publish xAPI statement to Pub/Sub topic and trigger ETL processing."""
     try:
         # Get Pub/Sub client (lazy initialization)
         publisher, topic_path = get_pubsub_client()
-            
+        alert_id = trigger_word_alert_manager.evaluate_statement(statement, source=source)
+
         message_data = json.dumps(statement).encode('utf-8')
 
         # Add metadata
         attributes = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "source": "cloud_function",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source": source,
             "statement_count": "1"
         }
 
@@ -71,6 +74,15 @@ def publish_to_pubsub(statement: Dict[str, Any]) -> Dict[str, Any]:
 
         message_id = future.result()
         logger.info(f"Published message {message_id} to topic {topic_path}")
+
+        trigger_word_alert_manager.attach_publish_metadata(
+            alert_id,
+            message_id=message_id,
+            topic=topic_path,
+        )
+
+        # Wake ETL processors immediately after publishing
+        wake_etl_processors()
 
         return {
             "success": True,
@@ -84,6 +96,44 @@ def publish_to_pubsub(statement: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to publish to Pub/Sub: {str(e)}")
         raise Exception(f"Pub/Sub publishing failed: {str(e)}")
+
+
+def wake_etl_processors():
+    """Trigger ETL processors to wake up and process any pending messages."""
+    try:
+        import httpx
+        import asyncio
+        
+        # Get the Cloud Run service URL
+        service_url = os.environ.get('CLOUD_RUN_SERVICE_URL', 'https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app')
+        
+        async def trigger_etl():
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    # Trigger ETL processing via a lightweight endpoint
+                    response = await client.post(f"{service_url}/api/etl/trigger-processing")
+                    if response.status_code == 200:
+                        logger.info("Successfully triggered ETL processors")
+                    else:
+                        logger.warning(f"ETL trigger returned status {response.status_code}")
+            except Exception as e:
+                logger.warning(f"Failed to trigger ETL processors: {e}")
+        
+        # Run the async function in a new event loop
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're already in an event loop, create a task
+                asyncio.create_task(trigger_etl())
+            else:
+                loop.run_until_complete(trigger_etl())
+        except RuntimeError:
+            # No event loop running, create a new one
+            asyncio.run(trigger_etl())
+            
+    except Exception as e:
+        logger.warning(f"Failed to wake ETL processors: {e}")
+        # Don't fail the main operation if ETL wake fails
 
 
 def cloud_ingest_xapi(request) -> tuple[str, int]:
@@ -151,7 +201,7 @@ def cloud_ingest_xapi(request) -> tuple[str, int]:
         # Publish statements to Pub/Sub
         results = []
         for statement in statements:
-            result = publish_to_pubsub(statement)
+            result = publish_to_pubsub(statement, source="cloud_function_http")
             results.append(result)
 
         # Prepare response
@@ -160,7 +210,7 @@ def cloud_ingest_xapi(request) -> tuple[str, int]:
             'message': f'Successfully ingested {len(statements)} xAPI statement(s) via {request.method}',
             'method': request.method,
             'results': results,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
         logger.info(f"Successfully processed {len(statements)} xAPI statements")
@@ -194,7 +244,7 @@ def get_cloud_function_status() -> tuple[str, int]:
         function_status = {
             "function_name": "cloud_ingest_xapi",
             "runtime": "python39",
-            "last_check": datetime.utcnow().isoformat(),
+            "last_check": datetime.now(timezone.utc).isoformat(),
             "pubsub_status": pubsub_status
         }
 
@@ -204,7 +254,7 @@ def get_cloud_function_status() -> tuple[str, int]:
         response_data = {
             "status": "healthy" if is_healthy else "unhealthy",
             "function_status": function_status,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
         status_code = 200 if is_healthy else 503
@@ -215,7 +265,7 @@ def get_cloud_function_status() -> tuple[str, int]:
         return json.dumps({
             "status": "error",
             "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }), 500
 
 

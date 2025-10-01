@@ -6,14 +6,15 @@ Optimized for cost and performance with Google Cloud Run.
 import os
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
+from app.config import settings
 
 class CloudRunConfig(BaseModel):
     """Cloud Run deployment configuration."""
     
     # Service configuration
     service_name: str = Field(default="taps-analytics-ui", description="Cloud Run service name")
-    region: str = Field(default="us-central1", description="Deployment region")
-    project_id: str = Field(default_factory=lambda: os.getenv("GOOGLE_CLOUD_PROJECT", ""), description="GCP project ID")
+    region: str = Field(default=settings.GCP_LOCATION, description="Deployment region")
+    project_id: str = Field(default_factory=lambda: settings.GCP_PROJECT_ID, description="GCP project ID")
     
     # Resource allocation
     cpu: str = Field(default="1", description="CPU allocation (1, 2, 4, 6, 8)")
@@ -50,15 +51,20 @@ class CloudRunConfig(BaseModel):
     def _set_default_environment_vars(self):
         """Set default environment variables for Cloud Run deployment."""
         default_vars = {
-            "PORT": "8080",
-            "ENVIRONMENT": "production",
-            "LOG_LEVEL": "INFO",
+            "PORT": os.getenv("PORT", "8080"),
+            "ENVIRONMENT": settings.ENVIRONMENT,
+            "LOG_LEVEL": settings.LOG_LEVEL.upper(),
             "BIGQUERY_CACHE_TTL": str(self.bigquery_cache_ttl),
             "BIGQUERY_COST_THRESHOLD": str(self.bigquery_cost_threshold),
             "REDIS_URL": os.getenv("REDIS_URL", "redis://localhost:6379"),
-            "DATABASE_URL": os.getenv("DATABASE_URL", ""),
-            "GOOGLE_APPLICATION_CREDENTIALS": "/app/google-cloud-key.json"
+            "GCP_PROJECT_ID": settings.GCP_PROJECT_ID,
+            "GCP_BIGQUERY_DATASET": settings.GCP_BIGQUERY_DATASET,
+            "GCP_LOCATION": settings.GCP_LOCATION,
+            "GOOGLE_CLOUD_PROJECT": settings.GCP_PROJECT_ID,
+            "DEPLOYMENT_MODE": settings.DEPLOYMENT_MODE,
         }
+        if settings.GCP_SERVICE_ACCOUNT_KEY_PATH:
+            default_vars["GOOGLE_APPLICATION_CREDENTIALS"] = settings.GCP_SERVICE_ACCOUNT_KEY_PATH
         
         # Merge with provided environment variables
         self.environment_vars = {**default_vars, **self.environment_vars}

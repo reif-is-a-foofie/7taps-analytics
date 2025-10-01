@@ -1,251 +1,226 @@
 """
-Monitoring API endpoints for production monitoring system
-Provides health checks, metrics, alerts, and performance monitoring
+Monitoring API endpoints for system health and performance tracking.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, List, Any, Optional
-import os
-import logging
-from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timezone, timedelta
 
-from app.monitoring import ProductionMonitor, AlertLevel
-from app.database import get_db_pool
-from app.redis_client import get_redis_client
+from app.logging_config import get_logger
+from app.monitoring import system_monitor
+from app.middleware.error_handling import ErrorHandlingMiddleware
+from app.utils.timestamp_utils import get_current_central_time_str
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+logger = get_logger("monitoring_api")
 router = APIRouter()
 
-# Global monitor instance
-monitor: Optional[ProductionMonitor] = None
+# Global error handler instance (will be set by main.py)
+error_handler: Optional[ErrorHandlingMiddleware] = None
 
-def get_monitor() -> ProductionMonitor:
-    """Get or create the production monitor instance"""
-    global monitor
-    if monitor is None:
-        db_pool = get_db_pool()
-        redis_client = get_redis_client()
-        monitor = ProductionMonitor(db_pool, redis_client)
-    return monitor
+def set_error_handler(handler: ErrorHandlingMiddleware):
+    """Set the global error handler instance."""
+    global error_handler
+    error_handler = handler
 
 @router.get("/health")
-async def health_check():
-    """System health check endpoint"""
+async def system_health() -> Dict[str, Any]:
+    """Get overall system health status."""
     try:
-        monitor = get_monitor()
-        health_data = monitor.get_system_health()
-        
-        if "error" in health_data:
-            raise HTTPException(status_code=503, detail=health_data["error"])
-        
-        # Determine overall health status
-        is_healthy = (
-            health_data["database_connected"] and 
-            health_data["redis_connected"] and
-            health_data["cpu_percent"] < 90 and
-            health_data["memory_percent"] < 95 and
-            health_data["disk_percent"] < 95
-        )
-        
-        return {
-            "status": "healthy" if is_healthy else "unhealthy",
-            "timestamp": datetime.now().isoformat(),
-            "checks": {
-                "database": health_data["database_connected"],
-                "redis": health_data["redis_connected"],
-                "cpu": health_data["cpu_percent"] < 90,
-                "memory": health_data["memory_percent"] < 95,
-                "disk": health_data["disk_percent"] < 95
-            },
-            "metrics": health_data
-        }
+        health = system_monitor.get_system_health()
+        return health
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=503, detail=f"Health check failed: {str(e)}")
+        logger.error(f"Error getting system health: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get system health")
 
 @router.get("/metrics")
-async def get_metrics():
-    """Get comprehensive system and data metrics"""
+async def get_metrics(hours: int = 24) -> Dict[str, Any]:
+    """Get system metrics for the specified time period."""
     try:
-        monitor = get_monitor()
+        if hours < 1 or hours > 168:  # Max 1 week
+            raise HTTPException(status_code=400, detail="Hours must be between 1 and 168")
         
-        system_health = monitor.get_system_health()
-        data_metrics = monitor.get_data_metrics()
-        performance_metrics = monitor.get_performance_metrics()
+        metrics_history = system_monitor.get_metrics_history(hours)
+        current_metrics = system_monitor.get_current_metrics()
         
         return {
-            "timestamp": datetime.now().isoformat(),
-            "system_health": system_health,
-            "data_metrics": data_metrics,
-            "performance_metrics": performance_metrics
-        }
-    except Exception as e:
-        logger.error(f"Metrics retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Metrics retrieval failed: {str(e)}")
-
-@router.get("/alerts")
-async def get_alerts(active_only: bool = True):
-    """Get system alerts"""
-    try:
-        monitor = get_monitor()
-        
-        # Check for new alerts
-        new_alerts = monitor.check_alerts()
-        
-        # Get all alerts or only active ones
-        if active_only:
-            alerts = [asdict(alert) for alert in monitor.alerts if not alert.resolved]
-        else:
-            alerts = [asdict(alert) for alert in monitor.alerts]
-        
-        return {
-            "timestamp": datetime.now().isoformat(),
-            "new_alerts": new_alerts,
-            "all_alerts": alerts,
-            "summary": {
-                "total": len(alerts),
-                "critical": len([a for a in alerts if a["level"] == "critical"]),
-                "warning": len([a for a in alerts if a["level"] == "warning"]),
-                "error": len([a for a in alerts if a["level"] == "error"]),
-                "info": len([a for a in alerts if a["level"] == "info"])
-            }
-        }
-    except Exception as e:
-        logger.error(f"Alerts retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Alerts retrieval failed: {str(e)}")
-
-@router.post("/alerts/{alert_id}/resolve")
-async def resolve_alert(alert_id: str):
-    """Mark an alert as resolved"""
-    try:
-        monitor = get_monitor()
-        success = monitor.resolve_alert(alert_id)
-        
-        if not success:
-            raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
-        
-        return {
-            "message": f"Alert {alert_id} resolved successfully",
-            "timestamp": datetime.now().isoformat()
+            "current_metrics": current_metrics.__dict__ if current_metrics else None,
+            "metrics_history": metrics_history,
+            "time_range_hours": hours,
+            "timestamp": get_current_central_time_str()
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Alert resolution failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Alert resolution failed: {str(e)}")
+        logger.error(f"Error getting metrics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get metrics")
+
+@router.get("/alerts")
+async def get_alerts(active_only: bool = True) -> Dict[str, Any]:
+    """Get system alerts."""
+    try:
+        if active_only:
+            alerts = system_monitor.get_active_alerts()
+        else:
+            alerts = [alert.__dict__ for alert in system_monitor.alerts]
+        
+        return {
+            "alerts": alerts,
+            "active_only": active_only,
+            "total_alerts": len(alerts),
+            "timestamp": get_current_central_time_str()
+        }
+    except Exception as e:
+        logger.error(f"Error getting alerts: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get alerts")
+
+@router.get("/errors")
+async def get_error_stats() -> Dict[str, Any]:
+    """Get error statistics from the error handler."""
+    try:
+        if not error_handler:
+            return {
+                "error": "Error handler not available",
+                "timestamp": get_current_central_time_str()
+            }
+        
+        error_stats = error_handler.get_error_stats()
+        return {
+            "error_statistics": error_stats,
+            "timestamp": get_current_central_time_str()
+        }
+    except Exception as e:
+        logger.error(f"Error getting error stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get error statistics")
 
 @router.get("/performance")
-async def get_performance_metrics():
-    """Get detailed performance metrics"""
+async def get_performance_summary() -> Dict[str, Any]:
+    """Get performance summary with key metrics."""
     try:
-        monitor = get_monitor()
-        performance = monitor.get_performance_metrics()
+        current_metrics = system_monitor.get_current_metrics()
+        active_alerts = system_monitor.get_active_alerts()
+        
+        if not current_metrics:
+            return {
+                "error": "No metrics available",
+                "timestamp": get_current_central_time_str()
+            }
+        
+        # Calculate performance score (0-100)
+        performance_score = 100
+        
+        # Deduct points for high resource usage
+        if current_metrics.cpu_percent > 80:
+            performance_score -= 20
+        elif current_metrics.cpu_percent > 60:
+            performance_score -= 10
+        
+        if current_metrics.memory_percent > 85:
+            performance_score -= 20
+        elif current_metrics.memory_percent > 70:
+            performance_score -= 10
+        
+        if current_metrics.response_time_avg_ms > 1000:
+            performance_score -= 20
+        elif current_metrics.response_time_avg_ms > 500:
+            performance_score -= 10
+        
+        if current_metrics.error_rate_percent > 5:
+            performance_score -= 20
+        elif current_metrics.error_rate_percent > 2:
+            performance_score -= 10
+        
+        # Deduct points for active alerts
+        critical_alerts = len([a for a in active_alerts if a["severity"] == "CRITICAL"])
+        high_alerts = len([a for a in active_alerts if a["severity"] == "HIGH"])
+        
+        performance_score -= critical_alerts * 15
+        performance_score -= high_alerts * 10
+        
+        performance_score = max(0, performance_score)
         
         return {
-            "timestamp": datetime.now().isoformat(),
-            "performance": performance
+            "performance_score": performance_score,
+            "status": "EXCELLENT" if performance_score >= 90 else
+                     "GOOD" if performance_score >= 70 else
+                     "FAIR" if performance_score >= 50 else
+                     "POOR",
+            "key_metrics": {
+                "cpu_percent": current_metrics.cpu_percent,
+                "memory_percent": current_metrics.memory_percent,
+                "response_time_ms": current_metrics.response_time_avg_ms,
+                "error_rate_percent": current_metrics.error_rate_percent,
+                "requests_per_minute": current_metrics.requests_per_minute
+            },
+            "active_alerts": len(active_alerts),
+            "critical_alerts": critical_alerts,
+            "high_alerts": high_alerts,
+            "timestamp": get_current_central_time_str()
         }
     except Exception as e:
-        logger.error(f"Performance metrics retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Performance metrics retrieval failed: {str(e)}")
-
-@router.get("/analytics")
-async def get_analytics_insights():
-    """Get analytics insights from data normalization"""
-    try:
-        monitor = get_monitor()
-        insights = monitor.get_analytics_insights()
-        
-        return {
-            "timestamp": datetime.now().isoformat(),
-            "insights": insights
-        }
-    except Exception as e:
-        logger.error(f"Analytics insights retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Analytics insights retrieval failed: {str(e)}")
-
-@router.get("/metrics/history")
-async def get_metrics_history(hours: int = 24):
-    """Get metrics history for the specified hours"""
-    try:
-        monitor = get_monitor()
-        history = monitor.get_metrics_history(hours)
-        
-        return {
-            "timestamp": datetime.now().isoformat(),
-            "history": history
-        }
-    except Exception as e:
-        logger.error(f"Metrics history retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Metrics history retrieval failed: {str(e)}")
+        logger.error(f"Error getting performance summary: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get performance summary")
 
 @router.get("/status")
-async def get_system_status():
-    """Get comprehensive system status overview"""
+async def get_comprehensive_status() -> Dict[str, Any]:
+    """Get comprehensive system status including all monitoring data."""
     try:
-        monitor = get_monitor()
-        
-        # Get all metrics
-        system_health = monitor.get_system_health()
-        data_metrics = monitor.get_data_metrics()
-        performance = monitor.get_performance_metrics()
-        alerts = monitor.check_alerts()
-        
-        # Determine overall status
-        critical_alerts = len([a for a in alerts if a["level"] == "critical"])
-        warning_alerts = len([a for a in alerts if a["level"] == "warning"])
-        
-        if critical_alerts > 0:
-            status = "critical"
-        elif warning_alerts > 0:
-            status = "warning"
-        elif "error" in system_health or "error" in data_metrics:
-            status = "error"
-        else:
-            status = "healthy"
+        health = system_monitor.get_system_health()
+        active_alerts = system_monitor.get_active_alerts()
+        current_metrics = system_monitor.get_current_metrics()
+        error_stats = error_handler.get_error_stats() if error_handler else {}
         
         return {
-            "timestamp": datetime.now().isoformat(),
-            "status": status,
-            "summary": {
-                "system_health": "healthy" if "error" not in system_health else "unhealthy",
-                "data_processing": "healthy" if "error" not in data_metrics else "unhealthy",
-                "critical_alerts": critical_alerts,
-                "warning_alerts": warning_alerts,
-                "database_connected": system_health.get("database_connected", False),
-                "redis_connected": system_health.get("redis_connected", False)
-            },
-            "quick_metrics": {
-                "cpu_percent": system_health.get("cpu_percent", 0),
-                "memory_percent": system_health.get("memory_percent", 0),
-                "disk_percent": system_health.get("disk_percent", 0),
-                "statements_flat": data_metrics.get("statements_flat_count", 0),
-                "statements_normalized": data_metrics.get("statements_normalized_count", 0),
-                "processing_rate": data_metrics.get("processing_rate", 0)
-            }
+            "system_health": health,
+            "active_alerts": active_alerts,
+            "current_metrics": current_metrics.__dict__ if current_metrics else None,
+            "error_statistics": error_stats,
+            "monitoring_status": "ACTIVE",
+            "timestamp": get_current_central_time_str()
         }
     except Exception as e:
-        logger.error(f"System status retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"System status retrieval failed: {str(e)}")
+        logger.error(f"Error getting comprehensive status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get comprehensive status")
 
-@router.get("/config")
-async def get_monitoring_config():
-    """Get monitoring configuration and thresholds"""
+@router.post("/alerts/resolve/{alert_id}")
+async def resolve_alert(alert_id: str) -> Dict[str, Any]:
+    """Manually resolve an alert by ID."""
     try:
-        monitor = get_monitor()
+        # Find and resolve the alert
+        for alert in system_monitor.alerts:
+            if str(id(alert)) == alert_id:
+                alert.resolved = True
+                logger.info(f"Alert {alert_id} manually resolved")
+                return {
+                    "message": "Alert resolved successfully",
+                    "alert_id": alert_id,
+                    "timestamp": get_current_central_time_str()
+                }
+        
+        raise HTTPException(status_code=404, detail="Alert not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resolving alert: {e}")
+        raise HTTPException(status_code=500, detail="Failed to resolve alert")
+
+@router.get("/circuit-breakers")
+async def get_circuit_breaker_status() -> Dict[str, Any]:
+    """Get status of all circuit breakers."""
+    try:
+        from app.middleware.error_handling import (
+            bigquery_circuit_breaker,
+            pubsub_circuit_breaker,
+            storage_circuit_breaker
+        )
         
         return {
-            "timestamp": datetime.now().isoformat(),
-            "thresholds": monitor.thresholds,
-            "environment": {
-                "database_url": os.getenv("DATABASE_URL", "not_set"),
-                "redis_url": os.getenv("REDIS_URL", "not_set"),
-                "environment": os.getenv("ENVIRONMENT", "development")
-            }
+            "circuit_breakers": {
+                "bigquery": bigquery_circuit_breaker.get_state(),
+                "pubsub": pubsub_circuit_breaker.get_state(),
+                "storage": storage_circuit_breaker.get_state()
+            },
+            "timestamp": get_current_central_time_str()
         }
     except Exception as e:
-        logger.error(f"Monitoring config retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Monitoring config retrieval failed: {str(e)}")
+        logger.error(f"Error getting circuit breaker status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get circuit breaker status")

@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Data Explorer - POL Analytics{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">📊 Data Explorer</h1>
+        <p class="text-gray-600">Real-time xAPI data from your course</p>
+    </div>
+
+    <!-- System Status -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">System Status</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-600">Total Statements</div>
+                <div class="text-2xl font-bold text-gray-900">{{ system_status.total_statements }}</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-600">Latest Activity</div>
+                <div class="text-sm font-medium text-gray-900">
+                    {% if system_status.latest_timestamp %}
+                        {{ system_status.latest_timestamp[:19] }} UTC
+                    {% else %}
+                        No data
+                    {% endif %}
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-600">ETL Processor</div>
+                <div class="text-sm font-medium">
+                    {% if system_status.etl_status.running %}
+                        <span class="text-green-600">🟢 Running</span>
+                    {% else %}
+                        <span class="text-red-600">🔴 Stopped</span>
+                    {% endif %}
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                    {% if system_status.etl_status.uptime_seconds %}
+                        Uptime: {{ (system_status.etl_status.uptime_seconds / 60) | round(1) }}m
+                    {% endif %}
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-600">Processing Stats</div>
+                <div class="text-xs text-gray-700">
+                    <div>Received: {{ system_status.etl_status.messages_received }}</div>
+                    <div>Processed: {{ system_status.etl_status.messages_processed }}</div>
+                    {% if system_status.etl_status.messages_failed > 0 %}
+                        <div class="text-red-600">Failed: {{ system_status.etl_status.messages_failed }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- ETL Status Details -->
+        {% if system_status.etl_status.errors %}
+        <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div class="text-sm font-medium text-red-800">ETL Errors:</div>
+            {% for error in system_status.etl_status.errors %}
+            <div class="text-xs text-red-700 mt-1">{{ error }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Controls -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div class="flex items-center gap-4">
+                <label for="limit" class="text-sm font-medium text-gray-700">Show:</label>
+                <select id="limit" class="border border-gray-300 rounded-md px-3 py-2 text-sm" onchange="updateLimit()">
+                    <option value="10" {% if limit == 10 %}selected{% endif %}>10 events</option>
+                    <option value="25" {% if limit == 25 %}selected{% endif %}>25 events</option>
+                    <option value="50" {% if limit == 50 %}selected{% endif %}>50 events</option>
+                    <option value="100" {% if limit == 100 %}selected{% endif %}>100 events</option>
+                </select>
+            </div>
+            <button onclick="refreshData()" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                🔄 Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">Recent Events</h2>
+            <p class="text-sm text-gray-600 mt-1">Showing {{ statements|length }} of {{ total_count }} total events</p>
+</div>
+        
+        {% if success and statements %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Content</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for statement in statements %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ statement.timestamp[:19] }} UTC
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            <div class="max-w-xs">
+                                {% if statement.actor_id.startswith('mailto:') %}
+                                    <div class="font-medium text-blue-600">{{ statement.actor_id.replace('mailto:', '') }}</div>
+                                {% else %}
+                                    <div class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                                        {{ statement.actor_id[:12] }}{% if statement.actor_id|length > 12 %}...{% endif %}
+                                    </div>
+                                {% endif %}
+                                {% if statement.normalized_user_id and statement.normalized_user_id != statement.actor_id %}
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        Normalized: {{ statement.normalized_user_id[:20] }}...
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if statement.verb_display == "completed" %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    ✅ Completed
+                                </span>
+                            {% elif statement.verb_display == "answered" %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    💬 Answered
+                                </span>
+                            {% elif statement.verb_display == "initialized" %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    🚀 Started
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    {{ statement.verb_display }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            <div class="max-w-md">
+                                <div class="font-medium text-gray-900 mb-1">{{ statement.object_name }}</div>
+                                {% if statement.result_response %}
+                                    <div class="text-xs text-gray-600 bg-gray-50 p-2 rounded border-l-2 border-blue-200">
+                                        <strong>Response:</strong> {{ statement.result_response[:200] }}{% if statement.result_response|length > 200 %}...{% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {% if statement.result_completion %}
+                                <span class="text-green-600 font-medium">✓ Complete</span>
+                            {% elif statement.result_success is not none %}
+                                {% if statement.result_success %}
+                                    <span class="text-green-600 font-medium">✓ Success</span>
+                                {% else %}
+                                    <span class="text-red-600 font-medium">✗ Failed</span>
+                                {% endif %}
+                            {% elif statement.result_score_scaled %}
+                                <span class="text-blue-600 font-medium">{{ (statement.result_score_scaled * 100)|round(1) }}%</span>
+                            {% else %}
+                                <span class="text-gray-500">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% elif not success %}
+        <div class="px-6 py-12 text-center">
+            <div class="text-red-600 text-lg font-medium mb-2">❌ Error loading data</div>
+            <p class="text-gray-600">Unable to connect to the database. Please try again.</p>
+        </div>
+        {% else %}
+        <div class="px-6 py-12 text-center">
+            <div class="text-gray-500 text-lg font-medium mb-2">📭 No events found</div>
+            <p class="text-gray-600">No xAPI events have been recorded yet. Start using your course to see data here!</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Auto-refresh info -->
+    <div class="mt-4 text-center text-sm text-gray-500">
+        <p>🔄 Data refreshes automatically every 30 seconds</p>
+    </div>
+</div>
+
+<script>
+function updateLimit() {
+    const limit = document.getElementById('limit').value;
+    window.location.href = `/ui/data-explorer?limit=${limit}`;
+}
+
+function refreshData() {
+    window.location.reload();
+}
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    window.location.reload();
+}, 30000);
+</script>
+{% endblock %}

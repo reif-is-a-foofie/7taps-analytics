@@ -9,14 +9,17 @@ import os
 import csv
 import json
 import logging
+from uuid import uuid4
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 import pandas as pd
 from io import StringIO, BytesIO
 import asyncio
+
 from app.importers.manual_importer import import_focus_group_csv_text
+from app.api.xapi import publish_statement, validate_xapi_statement
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,8 +27,31 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Import DataNormalizer only when needed to avoid startup issues
-DataNormalizer = None
+import_stats_tracker = {
+    "total_statements": 0,
+    "polls_imported": 0,
+    "audio_imported": 0,
+    "focus_group_imported": 0,
+    "last_updated": None,
+}
+
+
+def enqueue_xapi_statement(statement_data: Dict[str, Any]):
+    """Validate and publish an xAPI statement to the ingestion pipeline."""
+    statement = validate_xapi_statement(statement_data)
+    if not statement.id:
+        statement.id = f"import_{uuid4()}"
+    publish_statement(statement, source="data_import")
+
+
+def update_import_stats(*, polls: int = 0, audio: int = 0, focus: int = 0) -> None:
+    """Update import statistics counters."""
+    import_stats_tracker["polls_imported"] += polls
+    import_stats_tracker["audio_imported"] += audio
+    import_stats_tracker["focus_group_imported"] += focus
+    import_stats_tracker["total_statements"] += polls + audio + focus
+    import_stats_tracker["last_updated"] = datetime.now(timezone.utc).isoformat()
+
 
 class PollsDataImport(BaseModel):
     """Model for polls data import request."""
@@ -39,7 +65,7 @@ class AudioUploadResponse(BaseModel):
     file_id: str
     transcription: Optional[str] = None
     message: str
-    timestamp: datetime = datetime.utcnow()
+    timestamp: datetime = datetime.now(timezone.utc)
 
 class ImportStats(BaseModel):
     """Statistics for data import operations."""
@@ -47,26 +73,14 @@ class ImportStats(BaseModel):
     polls_imported: int
     audio_imported: int
     errors: int
-    timestamp: datetime = datetime.utcnow()
+    timestamp: datetime = datetime.now(timezone.utc)
 
 class FocusGroupImportStats(BaseModel):
     """Statistics for focus-group CSV import."""
     imported: int
     skipped: int
     errors: List[str] = []
-    timestamp: datetime = datetime.utcnow()
-
-# Global normalizer instance - lazy initialization
-normalizer = None
-
-def get_normalizer():
-    """Get or create normalizer instance."""
-    global normalizer, DataNormalizer
-    if DataNormalizer is None:
-        from app.data_normalization import DataNormalizer
-    if normalizer is None:
-        normalizer = DataNormalizer()
-    return normalizer
+    timestamp: datetime = datetime.now(timezone.utc)
 
 def parse_polls_csv(csv_data: str) -> List[Dict[str, Any]]:
     """Parse CSV polls data into structured format."""
@@ -247,7 +261,7 @@ async def import_polls_data(request: PollsDataImport):
         # Parse CSV data
         polls_data = parse_polls_csv(request.csv_data)
         
-        # Convert and normalize each poll
+        # Convert and queue each poll
         imported_count = 0
         error_count = 0
         
@@ -255,16 +269,16 @@ async def import_polls_data(request: PollsDataImport):
             try:
                 # Convert poll to xAPI statement
                 statement = convert_poll_to_xapi_statement(poll_data)
-                
-                # Normalize using existing system
-                await get_normalizer().process_statement_normalization(statement)
-                
+                enqueue_xapi_statement(statement)
                 imported_count += 1
                 logger.info(f"Successfully imported poll: {statement['id']}")
                 
             except Exception as e:
                 error_count += 1
                 logger.error(f"Error importing poll: {e}")
+
+        if imported_count:
+            update_import_stats(polls=imported_count)
         
         return ImportStats(
             total_imported=imported_count,
@@ -291,7 +305,7 @@ async def upload_audio_file(
             raise HTTPException(status_code=400, detail="File must be an audio file")
         
         # Generate file ID
-        file_id = f"audio_{user_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+        file_id = f"audio_{user_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
         
         # Transcribe audio
         transcription = await transcribe_audio(file)
@@ -305,13 +319,14 @@ async def upload_audio_file(
             'card_type': card_type,
             'transcription': transcription,
             'metadata': json.loads(metadata),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
         
-        # Convert to xAPI statement and normalize
+        # Convert to xAPI statement and queue
         statement = convert_audio_to_xapi_statement(audio_data)
-        await get_normalizer().process_statement_normalization(statement)
-        
+        enqueue_xapi_statement(statement)
+        update_import_stats(audio=1)
+
         return AudioUploadResponse(
             success=True,
             file_id=file_id,
@@ -348,7 +363,7 @@ async def batch_import_data(
                 for poll_data in polls_data:
                     try:
                         statement = convert_poll_to_xapi_statement(poll_data)
-                        await get_normalizer().process_statement_normalization(statement)
+                        enqueue_xapi_statement(statement)
                         polls_imported += 1
                         total_imported += 1
                     except Exception as e:
@@ -365,26 +380,28 @@ async def batch_import_data(
                 transcription = await transcribe_audio(audio_file)
                 
                 audio_data = {
-                    'file_id': f"audio_{user_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                    'file_id': f"audio_{user_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
                     'user_id': user_id,
                     'file_name': audio_file.filename,
                     'file_size': audio_file.size,
                     'card_type': 'audio',
                     'transcription': transcription,
                     'metadata': json.loads(metadata),
-                    'timestamp': datetime.utcnow().isoformat()
+                    'timestamp': datetime.now(timezone.utc).isoformat()
                 }
                 
                 statement = convert_audio_to_xapi_statement(audio_data)
-                await get_normalizer().process_statement_normalization(statement)
-                
+                enqueue_xapi_statement(statement)
                 audio_imported += 1
                 total_imported += 1
                 
             except Exception as e:
                 error_count += 1
                 logger.error(f"Error processing audio file {audio_file.filename}: {e}")
-        
+
+        if polls_imported or audio_imported:
+            update_import_stats(polls=polls_imported, audio=audio_imported)
+
         return ImportStats(
             total_imported=total_imported,
             polls_imported=polls_imported,
@@ -437,20 +454,21 @@ async def get_polls_csv_template():
 async def get_import_statistics():
     """Get statistics about imported data."""
     try:
-        # Get normalization stats
-        norm_stats = await get_normalizer().get_normalization_stats()
-        
+        stats = import_stats_tracker.copy()
+        last_updated = stats.get("last_updated") or datetime.now(timezone.utc).isoformat()
+
         return {
-            "total_statements": norm_stats.get('statements', 0),
-            "total_actors": norm_stats.get('actors', 0),
-            "total_activities": norm_stats.get('activities', 0),
-            "total_verbs": norm_stats.get('verbs', 0),
+            "total_statements": stats.get("total_statements", 0),
+            "polls_imported": stats.get("polls_imported", 0),
+            "audio_imported": stats.get("audio_imported", 0),
+            "focus_group_imported": stats.get("focus_group_imported", 0),
             "import_sources": {
-                "xapi_ingestion": "Live xAPI data from 7taps",
-                "polls_import": "CSV polls data import",
-                "audio_upload": "Audio file uploads"
+                "xapi_ingestion": "Live xAPI data via Redis stream",
+                "polls_import": "CSV polls data imports",
+                "audio_upload": "Audio file uploads",
+                "focus_group": "Focus group CSV imports"
             },
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": last_updated
         }
         
     except Exception as e:
@@ -465,6 +483,19 @@ async def import_focus_group_csv_file(csv_file: UploadFile = File(...), dry_run:
         content = await csv_file.read()
         text = content.decode('utf-8')
         summary = await import_focus_group_csv_text(text, dry_run=dry_run)
+        statements = summary.pop('statements', [])
+
+        if not dry_run and statements:
+            ingested = 0
+            for stmt in statements:
+                try:
+                    enqueue_xapi_statement(stmt)
+                    ingested += 1
+                except Exception as exc:
+                    summary.setdefault('errors', []).append(str(exc))
+            if ingested:
+                update_import_stats(focus=ingested)
+
         return FocusGroupImportStats(
             imported=summary.get('imported', 0),
             skipped=summary.get('skipped', 0),

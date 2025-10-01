@@ -111,8 +111,13 @@ class PubSubStorageSubscriber:
         if "actor" in message_data and isinstance(message_data["actor"], dict):
             if "account" in message_data["actor"]:
                 actor_id = message_data["actor"]["account"].get("name", "unknown")
-            elif "mbox" in message_data["actor"]:
-                actor_id = message_data["actor"]["mbox"].replace("mailto:", "")
+            elif "mbox" in message_data["actor"] and message_data["actor"]["mbox"] and isinstance(message_data["actor"]["mbox"], str):
+                # Normalize email to lowercase for consistency
+                mbox_value = message_data["actor"]["mbox"]
+                if mbox_value and mbox_value.strip():
+                    actor_id = mbox_value.replace("mailto:", "").lower()
+                else:
+                    actor_id = "unknown"
 
         # Generate path: year/month/day/actor_id/timestamp_messageId.json
         path = (
@@ -193,6 +198,21 @@ class PubSubStorageSubscriber:
             logger.error(error_msg)
             self.metrics["errors"].append(error_msg)
             self.metrics["messages_failed"] += 1
+            
+            # Record failed statement for retry
+            try:
+                from app.etl.error_recovery import get_error_recovery
+                error_recovery = get_error_recovery()
+                error_recovery.record_failed_statement(
+                    statement_id=message.message_id,
+                    raw_statement=message_data,
+                    error_message=str(e),
+                    error_type=type(e).__name__,
+                    processing_stage="storage_subscriber",
+                    message_id=message.message_id
+                )
+            except Exception as recovery_error:
+                logger.error(f"Failed to record error for retry: {recovery_error}")
 
     def start_subscribing(self) -> None:
         """Start the Pub/Sub subscription loop."""
@@ -297,7 +317,8 @@ subscriber = get_subscriber
 def start_subscriber_background() -> None:
     """Start the subscriber in a background thread."""
     def run_subscriber():
-        subscriber.start_subscribing()
+        sub = get_subscriber()
+        sub.start_subscribing()
 
     thread = threading.Thread(target=run_subscriber, daemon=True)
     thread.start()
@@ -306,7 +327,8 @@ def start_subscriber_background() -> None:
 
 def stop_subscriber() -> None:
     """Stop the subscriber."""
-    subscriber.stop_subscribing()
+    sub = get_subscriber()
+    sub.stop_subscribing()
 
 
 # For testing/development

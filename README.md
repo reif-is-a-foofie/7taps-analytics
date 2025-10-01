@@ -41,7 +41,7 @@ Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps l
    * **BigQuery Console:** run queries directly against structured data
    * **Data Explorer UI:** filter responses without writing SQL
    * **Analytics Dashboards:** BigQuery-powered visualizations
-   * **AI Agent (Seven):** ask natural language questions, generate SQL automatically, and visualize results
+   * **AI Agent (September):** ask natural language questions, generate SQL automatically, and visualize results
 
 ---
 
@@ -76,7 +76,7 @@ Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps l
 7taps-analytics/
 ├── app/                   # Application code
 │   ├── api/              # FastAPI endpoints for data access
-│   ├── etl/              # Redis workers and ETL processes
+│   ├── etl/              # Pub/Sub ETL processors
 │   ├── ui/               # Admin interfaces and dashboards
 │   └── main.py           # Application entry point
 ├── project_management/    # Contracts, reports, and project tracking
@@ -120,7 +120,7 @@ gcloud functions deploy cloud-ingest-xapi --runtime python39 --trigger-http --al
 * **BigQuery:** https://console.cloud.google.com/bigquery?project=taps-data
 
 ### Natural Language Queries
-Try asking Seven (the AI agent) questions like:
+Try asking September (the AI agent) questions like:
 * "Show engagement dropoff"
 * "Find problematic users"
 * "Energy levels over time"
@@ -132,13 +132,13 @@ Try asking Seven (the AI agent) questions like:
 
 ## 🧠 AI-Powered Analytics
 
-The system includes **Seven**, an AI analytics assistant that can:
+The system includes **September**, an AI analytics assistant that can:
 * **Understand natural language** - Ask "sleep" and get sleep-related insights
 * **Generate SQL automatically** - Converts questions to database queries
 * **Create visualizations** - Plotly charts for engagement, sentiment, and behavior
 * **Provide contextual analysis** - Explains patterns and trends in the data
 
-Seven has access to the complete database context and can answer questions about:
+September has access to the complete database context and can answer questions about:
 * User engagement patterns
 * Content effectiveness
 * Behavioral insights

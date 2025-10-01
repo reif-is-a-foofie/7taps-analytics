@@ -144,7 +144,7 @@ def convert_csv_to_xapi_statements(csv_data: str, base_timestamp: Optional[datet
     """Convert CSV data to xAPI statements."""
     
     if base_timestamp is None:
-        base_timestamp = datetime.utcnow() - timedelta(days=30)  # Default to 30 days ago
+        base_timestamp = datetime.now(timezone.utc) - timedelta(days=30)  # Default to 30 days ago
     
     try:
         # Parse CSV data

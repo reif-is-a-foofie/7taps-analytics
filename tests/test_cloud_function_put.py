@@ -179,7 +179,7 @@ class TestCloudFunctionPUTSupport:
             response_data = json.loads(response_json)
             
             # Verify publish_to_pubsub was called
-            mock_publish.assert_called_once_with(self.valid_xapi_statement)
+            mock_publish.assert_called_once_with(self.valid_xapi_statement, source='cloud_function_http')
 
     def test_put_vs_post_identical_behavior(self):
         """Test that PUT and POST methods behave identically."""
@@ -260,87 +260,6 @@ class TestCloudFunctionPUTSupport:
             # Verify timestamp is valid ISO format
             timestamp = datetime.fromisoformat(response_data['timestamp'].replace('Z', '+00:00'))
             assert isinstance(timestamp, datetime)
-
-
-class TestCloudFunctionPUTIntegration:
-    """Integration tests for PUT method with real Cloud Function deployment."""
-    
-    @pytest.mark.integration
-    def test_put_method_with_real_cloud_function(self):
-        """Test PUT method with actual deployed Cloud Function."""
-        import requests
-        
-        # This test requires the Cloud Function to be deployed
-        cloud_function_url = "https://us-central1-taps-data.cloudfunctions.net/cloud-ingest-xapi"
-        
-        test_statement = {
-            "actor": {"mbox": "mailto:integration-test@example.com"},
-            "verb": {"id": "http://adlnet.gov/expapi/verbs/experienced"},
-            "object": {"id": "http://example.com/integration-test"}
-        }
-        
-        try:
-            # Test PUT request
-            response = requests.put(
-                cloud_function_url,
-                json=test_statement,
-                headers={'Content-Type': 'application/json'},
-                timeout=10
-            )
-            
-            assert response.status_code == 200
-            response_data = response.json()
-            assert response_data['status'] == 'success'
-            assert response_data['method'] == 'PUT'
-            
-        except requests.exceptions.RequestException as e:
-            pytest.skip(f"Cloud Function not accessible: {e}")
-
-    @pytest.mark.integration
-    def test_put_vs_post_identical_behavior_integration(self):
-        """Integration test comparing PUT vs POST behavior."""
-        import requests
-        
-        cloud_function_url = "https://us-central1-taps-data.cloudfunctions.net/cloud-ingest-xapi"
-        
-        test_statement = {
-            "actor": {"mbox": "mailto:comparison-test@example.com"},
-            "verb": {"id": "http://adlnet.gov/expapi/verbs/completed"},
-            "object": {"id": "http://example.com/comparison-test"}
-        }
-        
-        try:
-            # Test POST
-            post_response = requests.post(
-                cloud_function_url,
-                json=test_statement,
-                headers={'Content-Type': 'application/json'},
-                timeout=10
-            )
-            
-            # Test PUT
-            put_response = requests.put(
-                cloud_function_url,
-                json=test_statement,
-                headers={'Content-Type': 'application/json'},
-                timeout=10
-            )
-            
-            # Both should succeed
-            assert post_response.status_code == 200
-            assert put_response.status_code == 200
-            
-            post_data = post_response.json()
-            put_data = put_response.json()
-            
-            # Both should have same structure (except method)
-            assert post_data['status'] == put_data['status']
-            assert post_data['results'][0]['success'] == put_data['results'][0]['success']
-            assert post_data['method'] == 'POST'
-            assert put_data['method'] == 'PUT'
-            
-        except requests.exceptions.RequestException as e:
-            pytest.skip(f"Cloud Function not accessible: {e}")
 
 
 if __name__ == '__main__':

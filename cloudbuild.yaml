@@ -7,6 +7,7 @@ steps:
       - -lc
       - |
         pip install -q -r requirements.txt pytest && \
+        export PYTHONPATH="$$PYTHONPATH:/workspace" && \
         pytest -q tests/test_ui_deployment.py
 
   # Build the container image
@@ -48,14 +49,24 @@ steps:
       - '--set-env-vars'
       - 'API_BASE_URL='
       - '--set-env-vars'
-      - 'DATABASE_TERMINAL_URL=https://your-sqlpad-instance.run.app'
-      - '--set-env-vars'
       - 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
       - '--set-env-vars'
-      - 'GCP_REGION=us-central1'
+      - 'GCP_PROJECT_ID=$PROJECT_ID'
+      - '--set-env-vars'
+      - 'GCP_LOCATION=us-central1'
+      - '--set-env-vars'
+      - 'GCP_BIGQUERY_DATASET=taps_data'
+      - '--set-env-vars'
+      - 'DEPLOYMENT_MODE=cloud_run'
 
 images:
   - 'gcr.io/$PROJECT_ID/taps-analytics-ui'
+
+
+
+
+
+
 
 
 

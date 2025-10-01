@@ -148,16 +148,16 @@ curl http://localhost:8000/api/security/check-rotation
 
 ## Deployment Security
 
-### Heroku Deployment
-```bash
-# Set environment variables
-heroku config:set OPENAI_API_KEY=your-new-key
-heroku config:set DATABASE_URL=your-database-url
-heroku config:set ENVIRONMENT=production
+### Cloud Run Deployment
+Use either Secret Manager or the Cloud Run UI/CLI to set runtime variables:
 
-# Verify configuration
-heroku config
+```bash
+gcloud run services update taps-analytics-ui \
+  --region=us-central1 \
+  --set-env-vars OPENAI_API_KEY=your-new-key,REDIS_URL=redis://...
 ```
+
+Verify configuration with `gcloud run services describe taps-analytics-ui`.
 
 ### Local Development
 ```bash

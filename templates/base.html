@@ -255,20 +255,20 @@
         <div class="nav-section">
             <div class="nav-section-title">Main Apps</div>
             <a href="/" class="nav-item {{ 'active' if active_page == 'dashboard' else '' }}">
-                <span class="nav-item-icon"></span>
+                <span class="nav-item-icon">📊</span>
                 Analytics Dashboard
             </a>
-            <a href="/explorer" class="nav-item {{ 'active' if active_page == 'explorer' else '' }}">
-                <span class="nav-item-icon">🔍</span>
+            <a href="/ui/daily-analytics" class="nav-item {{ 'active' if active_page == 'daily_analytics' else '' }}">
+                <span class="nav-item-icon">📊</span>
+                Daily Course Analytics
+            </a>
+            <a href="/ui/data-explorer" class="nav-item {{ 'active' if active_page == 'data_explorer' else '' }}">
+                <span class="nav-item-icon">📊</span>
                 Data Explorer
             </a>
-            <a href="/chat" class="nav-item {{ 'active' if active_page == 'chat' else '' }}">
-                <span class="nav-item-icon">💬</span>
-                Chat with September
-            </a>
-            <a href="/api-docs" class="nav-item {{ 'active' if active_page == 'api-docs' else '' }}">
-                <span class="nav-item-icon">🔗</span>
-                API
+            <a href="/ui/csv-upload" class="nav-item {{ 'active' if active_page == 'csv_upload' else '' }}">
+                <span class="nav-item-icon">📥</span>
+                CSV Upload
             </a>
         </div>
         

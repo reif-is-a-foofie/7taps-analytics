@@ -1,280 +1,288 @@
 """
-xAPI Ingestion Endpoint for receiving and queuing learning statements.
+xAPI Ingestion Endpoint for receiving and publishing learning statements.
 """
 
-import os
-import json
-import redis
+import asyncio
 import uuid
-from datetime import datetime
-from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from pydantic import ValidationError
+from collections import OrderedDict
+from copy import deepcopy
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, ValidationError
+
+from app.api.cloud_function_ingestion import publish_to_pubsub
+from app.api.trigger_word_alerts import trigger_word_alert_manager
+from app.api.ai_flagged_content import analyze_xapi_statement_content
+from app.config.gcp_config import get_gcp_config
 from app.models import (
-    xAPIStatement, 
-    xAPIIngestionResponse, 
+    xAPIStatement,
+    xAPIIngestionResponse,
     xAPIIngestionStatus,
-    xAPIValidationError
+    xAPIValidationError,
 )
 
 # Initialize router
 router = APIRouter()
 
-# Global Redis client
-redis_client_instance = None
+MAX_RECENT_STATEMENTS = 100
+
 ingestion_stats = {
     "total_statements": 0,
     "error_count": 0,
-    "last_ingestion_time": None
+    "last_ingestion_time": None,
+    "last_message_id": None,
 }
+recent_statements: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
 
 
-def get_redis_client():
-    """Get Redis client instance."""
-    global redis_client_instance
-    if redis_client_instance is None:
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        redis_client_instance = redis.from_url(
-            redis_url,
-            ssl_cert_reqs=None,  # Disable SSL certificate verification for Heroku Redis
-            decode_responses=True
-        )
-    return redis_client_instance
+class TriggerWordUpdateRequest(BaseModel):
+    words: List[str]
+    mode: Optional[str] = "append"
+
+
+def _serialize_alert(alert: Dict[str, Any]) -> Dict[str, Any]:
+    serialized = dict(alert)
+    detected_at = serialized.get("detected_at")
+    if isinstance(detected_at, datetime):
+        serialized["detected_at"] = detected_at.isoformat()
+    return serialized
+
+
+def _serialize_trigger_word(entry: Dict[str, Any]) -> Dict[str, Any]:
+    serialized = dict(entry)
+    added_at = serialized.get("added_at")
+    if isinstance(added_at, datetime):
+        serialized["added_at"] = added_at.isoformat()
+    return serialized
 
 
 def validate_xapi_statement(statement_data: Dict[str, Any]) -> xAPIStatement:
     """Validate xAPI statement data."""
     try:
         return xAPIStatement(**statement_data)
-    except ValidationError as e:
+    except ValidationError as exc:
         errors = []
-        for error in e.errors():
-            errors.append(xAPIValidationError(
-                field=error["loc"][0] if error["loc"] else "unknown",
-                message=error["msg"],
-                value=error.get("input")
-            ))
+        for error in exc.errors():
+            errors.append(
+                xAPIValidationError(
+                    field=error["loc"][0] if error["loc"] else "unknown",
+                    message=error["msg"],
+                    value=error.get("input"),
+                )
+            )
         raise HTTPException(
             status_code=422,
             detail={
                 "message": "xAPI statement validation failed",
-                "errors": [error.dict() for error in errors]
-            }
+                "errors": [error.model_dump() for error in errors],
+            },
         )
 
 
-def queue_statement_to_redis(statement: xAPIStatement, redis_client: redis.Redis) -> str:
-    """Queue xAPI statement to Redis Streams."""
-    stream_name = "xapi_statements"
+async def _prepare_statement_payload(statement: xAPIStatement, *, source: str) -> Dict[str, Any]:
+    """Convert statement to a Pub/Sub payload with metadata and AI content analysis."""
+    if not statement.id:
+        statement.id = str(uuid.uuid4())
+
+    payload = statement.to_dict()
+    payload["id"] = statement.id
+    payload["ingested_at"] = datetime.now(timezone.utc).isoformat()
+    payload["ingestion_source"] = source
     
-    # Convert statement to JSON for Redis storage
-    statement_data = statement.to_dict()
+    # Run AI content analysis for flagged language detection
+    try:
+        ai_analysis = await analyze_xapi_statement_content(payload)
+        payload["ai_content_analysis"] = ai_analysis
+        
+        # Log flagged content for immediate attention
+        if ai_analysis.get("is_flagged", False):
+            print(f"🚨 FLAGGED CONTENT DETECTED: {statement.id}")
+            print(f"   Severity: {ai_analysis.get('severity', 'unknown')}")
+            print(f"   Reasons: {ai_analysis.get('flagged_reasons', [])}")
+            print(f"   Confidence: {ai_analysis.get('confidence_score', 0)}")
+            
+    except Exception as e:
+        print(f"⚠️ AI content analysis failed for statement {statement.id}: {e}")
+        payload["ai_content_analysis"] = {
+            "is_flagged": False,
+            "severity": "low",
+            "flagged_reasons": ["Analysis failed"],
+            "confidence_score": 0.0,
+            "error": str(e)
+        }
     
-    # Add metadata
-    statement_data["ingested_at"] = datetime.utcnow().isoformat()
-    statement_data["queue_id"] = str(uuid.uuid4())
-    
-    # Add to Redis Stream
-    message_id = redis_client.xadd(
-        stream_name,
-        {"data": json.dumps(statement_data)},
-        maxlen=10000  # Keep last 10k messages
-    )
-    
-    return message_id
+    return payload
+
+
+def _record_ingestion(payload: Dict[str, Any], publish_result: Dict[str, Any]) -> None:
+    """Track successful ingestion metrics and recent statements."""
+    ingestion_stats["total_statements"] += 1
+    ingestion_stats["last_ingestion_time"] = datetime.now(timezone.utc)
+    ingestion_stats["last_message_id"] = publish_result.get("message_id")
+
+    recent_statements[payload["id"]] = {
+        "payload": payload,
+        "message_id": publish_result.get("message_id"),
+        "published_at": datetime.now(timezone.utc).isoformat(),
+        "statement_id": payload["id"],
+    }
+    while len(recent_statements) > MAX_RECENT_STATEMENTS:
+        recent_statements.popitem(last=False)
+
+
+def _publish_payload(payload: Dict[str, Any], *, source: str) -> Dict[str, Any]:
+    """Publish payload to Pub/Sub and return the publish result."""
+    return publish_to_pubsub(payload, source=source)
+
+
+def publish_statement(statement: xAPIStatement, *, source: str = "api_ingest") -> Dict[str, Any]:
+    """Publish a statement to Pub/Sub synchronously."""
+    payload = _prepare_statement_payload(statement, source=source)
+    try:
+        publish_result = _publish_payload(payload, source=source)
+    except Exception:
+        ingestion_stats["error_count"] += 1
+        raise
+
+    _record_ingestion(payload, publish_result)
+    return publish_result
+
+
+async def publish_statement_async(statement: xAPIStatement, *, source: str = "api_ingest") -> Dict[str, Any]:
+    """Asynchronously publish a statement to Pub/Sub with AI content analysis."""
+    payload = await _prepare_statement_payload(statement, source=source)
+    loop = asyncio.get_running_loop()
+    try:
+        publish_result = await loop.run_in_executor(
+            None,
+            lambda: _publish_payload(payload, source=source),
+        )
+    except Exception:
+        ingestion_stats["error_count"] += 1
+        raise
+
+    _record_ingestion(payload, publish_result)
+    return publish_result
 
 
 @router.post("/api/xapi/ingest", response_model=xAPIIngestionResponse)
 async def ingest_xapi_statement(statement_data: Dict[str, Any]):
-    """
-    Ingest xAPI statement and queue for ETL processing.
-    
-    Accepts xAPI statement in JSON format and validates it before
-    queuing to Redis Streams for ETL processing.
-    """
+    """Ingest xAPI statement and publish for downstream ETL processing."""
     try:
-        # Get Redis client
-        redis_client = get_redis_client()
-        
-        # Validate xAPI statement
         statement = validate_xapi_statement(statement_data)
-        
-        # Generate statement ID if not provided
-        if not statement.id:
-            statement.id = str(uuid.uuid4())
-        
-        # Queue to Redis Streams
-        message_id = queue_statement_to_redis(statement, redis_client)
-        
-        # Update stats
-        ingestion_stats["total_statements"] += 1
-        ingestion_stats["last_ingestion_time"] = datetime.utcnow()
-        
-        # Get queue position (approximate)
-        queue_size = redis_client.xlen("xapi_statements")
-        
+        publish_result = await publish_statement_async(statement, source="api_ingest_single")
+
         return xAPIIngestionResponse(
             success=True,
             statement_id=statement.id,
-            message=f"xAPI statement ingested successfully. Message ID: {message_id}",
-            queue_position=queue_size
+            message=(
+                f"xAPI statement published to Pub/Sub topic {publish_result.get('topic')} "
+                f"(message {publish_result.get('message_id')})"
+            ),
+            queue_position=None,
         )
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        ingestion_stats["error_count"] += 1
+    except Exception as exc:  # pragma: no cover - defensive logging path
         raise HTTPException(
             status_code=500,
             detail={
                 "message": "Failed to ingest xAPI statement",
-                "error": str(e)
-            }
+                "error": str(exc),
+            },
         )
 
 
 @router.get("/ui/test-xapi-ingestion", response_model=xAPIIngestionStatus)
 async def get_xapi_ingestion_status():
-    """
-    Get xAPI ingestion endpoint status and statistics.
-    """
+    """Get xAPI ingestion endpoint status and statistics."""
+    gcp_config = get_gcp_config()
+
+    publisher_ready = False
     try:
-        redis_client = get_redis_client()
-        
-        # Test Redis connection
-        redis_connected = redis_client.ping()
-        
-        # Get queue size
-        queue_size = redis_client.xlen("xapi_statements") if redis_connected else None
-        
-        return xAPIIngestionStatus(
-            endpoint_status="operational",
-            redis_connected=redis_connected,
-            total_statements_ingested=ingestion_stats["total_statements"],
-            last_ingestion_time=ingestion_stats["last_ingestion_time"],
-            queue_size=queue_size,
-            error_count=ingestion_stats["error_count"]
-        )
-        
-    except Exception as e:
-        return xAPIIngestionStatus(
-            endpoint_status="error",
-            redis_connected=False,
-            total_statements_ingested=ingestion_stats["total_statements"],
-            last_ingestion_time=ingestion_stats["last_ingestion_time"],
-            queue_size=None,
-            error_count=ingestion_stats["error_count"]
-        )
+        topic_path = gcp_config.get_topic_path()
+        publisher = gcp_config.pubsub_publisher
+        publisher.get_topic(request={"topic": topic_path})
+        publisher_ready = True
+    except Exception:
+        publisher_ready = False
+
+    status = "operational" if publisher_ready else "error"
+
+    return xAPIIngestionStatus(
+        endpoint_status=status,
+        publisher_ready=publisher_ready,
+        project_id=gcp_config.project_id,
+        pubsub_topic=gcp_config.pubsub_topic,
+        total_statements_ingested=ingestion_stats["total_statements"],
+        last_ingestion_time=ingestion_stats["last_ingestion_time"],
+        last_message_id=ingestion_stats.get("last_message_id"),
+        error_count=ingestion_stats["error_count"],
+    )
 
 
 @router.post("/api/xapi/ingest/batch")
 async def ingest_xapi_batch(statements: List[Dict[str, Any]]):
-    """
-    Ingest multiple xAPI statements in batch.
-    """
-    results = []
+    """Ingest multiple xAPI statements in batch."""
+    results: List[Dict[str, Any]] = []
     success_count = 0
     error_count = 0
-    
-    for i, statement_data in enumerate(statements):
+
+    for index, statement_data in enumerate(statements):
         try:
-            # Validate statement
             statement = validate_xapi_statement(statement_data)
-            
-            # Generate ID if not provided
-            if not statement.id:
-                statement.id = str(uuid.uuid4())
-            
-            # Queue to Redis
-            redis_client = get_redis_client()
-            message_id = queue_statement_to_redis(statement, redis_client)
-            
-            results.append({
-                "index": i,
-                "success": True,
-                "statement_id": statement.id,
-                "message_id": message_id
-            })
+            publish_result = await publish_statement_async(statement, source="api_ingest_batch")
+
+            results.append(
+                {
+                    "index": index,
+                    "success": True,
+                    "statement_id": statement.id,
+                    "message_id": publish_result.get("message_id"),
+                }
+            )
             success_count += 1
-            
-        except Exception as e:
-            results.append({
-                "index": i,
-                "success": False,
-                "error": str(e)
-            })
+        except Exception as exc:
+            results.append(
+                {
+                    "index": index,
+                    "success": False,
+                    "error": str(exc),
+                }
+            )
             error_count += 1
-    
-    # Update stats
-    ingestion_stats["total_statements"] += success_count
-    ingestion_stats["error_count"] += error_count
-    if success_count > 0:
-        ingestion_stats["last_ingestion_time"] = datetime.utcnow()
-    
+
     return {
         "batch_results": results,
         "summary": {
             "total": len(statements),
             "successful": success_count,
-            "failed": error_count
-        }
+            "failed": error_count,
+        },
     }
 
 
 @router.get("/api/xapi/statements/{statement_id}")
 async def get_statement_status(statement_id: str):
-    """
-    Get status of a specific xAPI statement.
-    """
-    try:
-        redis_client = get_redis_client()
-        
-        # Search for statement in Redis Stream
-        stream_name = "xapi_statements"
-        messages = redis_client.xread({stream_name: "0"}, count=1000)
-        
-        for stream, message_list in messages:
-            for message_id, fields in message_list:
-                if b'data' in fields:
-                    data = json.loads(fields[b'data'].decode('utf-8'))
-                    if data.get('id') == statement_id:
-                        return {
-                            "found": True,
-                            "statement_id": statement_id,
-                            "message_id": message_id,
-                            "data": data
-                        }
-        
+    """Return the most recent publication metadata for a statement id."""
+    record = recent_statements.get(statement_id)
+    if record:
         return {
-            "found": False,
+            "found": True,
             "statement_id": statement_id,
-            "message": "Statement not found in queue"
+            "message_id": record.get("message_id"),
+            "published_at": record.get("published_at"),
+            "data": record.get("payload"),
         }
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail={"message": "Failed to retrieve statement status", "error": str(e)}
-        )
 
-
-# Helper functions for Testing Agent
-def get_redis_client_helper():
-    """Get Redis client instance."""
-    return get_redis_client()
-
-
-def validate_statement(statement_data: Dict[str, Any]) -> xAPIStatement:
-    """Validate xAPI statement data."""
-    return validate_xapi_statement(statement_data)
-
-
-def queue_statement(statement: xAPIStatement) -> str:
-    """Queue statement to Redis Streams."""
-    redis_client = get_redis_client()
-    return queue_statement_to_redis(statement, redis_client)
+    return {
+        "found": False,
+        "statement_id": statement_id,
+        "message": "Statement not found in recent publish history",
+    }
 
 
 def get_ingestion_stats() -> Dict[str, Any]:
@@ -282,11 +290,100 @@ def get_ingestion_stats() -> Dict[str, Any]:
     return ingestion_stats.copy()
 
 
-def reset_ingestion_stats():
-    """Reset ingestion statistics (for testing)."""
-    global ingestion_stats
-    ingestion_stats = {
-        "total_statements": 0,
-        "error_count": 0,
-        "last_ingestion_time": None
-    } 
+def reset_ingestion_stats() -> None:
+    """Reset ingestion statistics and cached statements (for testing)."""
+    ingestion_stats.update(
+        {
+            "total_statements": 0,
+            "error_count": 0,
+            "last_ingestion_time": None,
+            "last_message_id": None,
+        }
+    )
+    recent_statements.clear()
+
+
+def get_recent_statements(limit: int = 50) -> List[Dict[str, Any]]:
+    """Return recent published statements (most recent first)."""
+    entries = list(recent_statements.values())
+    if limit > 0:
+        entries = entries[-limit:]
+
+    ordered = list(reversed(entries))
+    return [deepcopy(entry) for entry in ordered]
+
+
+@router.get("/api/xapi/recent")
+async def recent_statements_endpoint(limit: int = 25) -> Dict[str, Any]:
+    """Expose recently published xAPI statements."""
+    statements = get_recent_statements(limit)
+    alerts = [
+        _serialize_alert(alert)
+        for alert in trigger_word_alert_manager.get_recent_alerts(limit=limit)
+    ]
+    alert_summary = trigger_word_alert_manager.get_summary()
+    latest_alert = alert_summary.get("latest_alert")
+    if latest_alert:
+        alert_summary["latest_alert"] = _serialize_alert(latest_alert)
+    return {
+        "statements": statements,
+        "limit": limit,
+        "available": len(recent_statements),
+        "ingestion_stats": get_ingestion_stats(),
+        "alerts": alerts,
+        "alerts_summary": alert_summary,
+    }
+
+
+@router.get("/api/xapi/alerts/trigger-words")
+async def get_trigger_word_alerts(limit: int = 25) -> Dict[str, Any]:
+    alerts = [
+        _serialize_alert(alert)
+        for alert in trigger_word_alert_manager.get_recent_alerts(limit=limit)
+    ]
+    summary = trigger_word_alert_manager.get_summary()
+    latest_alert = summary.get("latest_alert")
+    if latest_alert:
+        summary["latest_alert"] = _serialize_alert(latest_alert)
+    return {
+        "trigger_words": [
+            _serialize_trigger_word(entry)
+            for entry in trigger_word_alert_manager.get_trigger_words()
+        ],
+        "alerts": alerts,
+        "summary": summary,
+        "limit": limit,
+    }
+
+
+@router.post("/api/xapi/alerts/trigger-words")
+async def update_trigger_words(request: TriggerWordUpdateRequest) -> Dict[str, Any]:
+    mode = (request.mode or "append").lower()
+    if mode not in {"append", "replace"}:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Invalid mode for trigger word update",
+                "allowed_modes": ["append", "replace"],
+            },
+        )
+
+    result = trigger_word_alert_manager.update_trigger_words(request.words, mode=mode)
+    alerts = [
+        _serialize_alert(alert)
+        for alert in trigger_word_alert_manager.get_recent_alerts()
+    ]
+    summary = trigger_word_alert_manager.get_summary()
+    latest_alert = summary.get("latest_alert")
+    if latest_alert:
+        summary["latest_alert"] = _serialize_alert(latest_alert)
+
+    return {
+        "update_result": result,
+        "trigger_words": [
+            _serialize_trigger_word(entry)
+            for entry in trigger_word_alert_manager.get_trigger_words()
+        ],
+        "alerts": alerts,
+        "summary": summary,
+    }
