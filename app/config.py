@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     GOOGLE_AI_API_KEY: Optional[str] = None
     PRIVACY_ADMIN_KEY: Optional[str] = None  # For Gemini API
+    AI_SERVICE_URL: Optional[str] = None  # URL for AI Analysis Cloud Function
 
     # Application
     LOG_LEVEL: str = "info"

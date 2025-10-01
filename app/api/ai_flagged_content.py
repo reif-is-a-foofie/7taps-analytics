@@ -48,15 +48,12 @@ async def analyze_content_with_gemini(content: str, context: str = "general") ->
         Analysis results with flagged status and details
     """
     try:
-        # Use improved batch analysis system
-        from app.api.batch_ai_safety import batch_processor
-        return await batch_processor.process_content(content, context, "unknown", "unknown")
+        # Use AI service client (Cloud Function or local fallback)
+        from app.services.ai_service_client import ai_service_client
+        return await ai_service_client.analyze_content(content, context, "unknown", "unknown")
         
-    except ImportError:
-        logger.error("Batch AI safety module not available")
-        return _fallback_keyword_analysis(content)
     except Exception as e:
-        logger.error(f"Batch analysis failed: {e}")
+        logger.error(f"AI service analysis failed: {e}")
         return _fallback_keyword_analysis(content)
 
 
