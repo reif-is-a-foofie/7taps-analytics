@@ -9,12 +9,14 @@ import os
 import json
 import base64
 import logging
+import uuid
 from datetime import datetime
-from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-import redis
+
+from app.api.xapi import publish_statement_async, validate_xapi_statement
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -67,15 +69,6 @@ def verify_basic_auth(request: Request) -> bool:
         logger.error(f"Authentication error: {e}")
         return False
 
-def get_redis_client():
-    """Get Redis client for statement queuing."""
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-    return redis.from_url(
-        redis_url,
-        ssl_cert_reqs=None,
-        decode_responses=True
-    )
-
 @router.post("/statements")
 async def post_statements(
     request: Request,
@@ -95,54 +88,53 @@ async def post_statements(
         )
     
     try:
-        redis_client = get_redis_client()
-        stream_name = "xapi_statements"
-        
         processed_statements = []
-        
+
         for statement in statements:
-            # Generate statement ID if not provided
-            if not statement.id:
-                import uuid
-                statement.id = str(uuid.uuid4())
-            
-            # Add timestamp if not provided
-            if not statement.timestamp:
-                statement.timestamp = datetime.utcnow().isoformat()
-            
-            # Add stored timestamp
-            statement.stored = datetime.utcnow().isoformat()
-            
-            # Convert to dict for Redis
-            statement_dict = statement.dict()
-            
-            # Add to Redis Stream
-            message_id = redis_client.xadd(
-                stream_name,
-                {"data": json.dumps(statement_dict)},
-                maxlen=10000  # Keep last 10,000 statements
+            statement_payload = statement.model_dump()
+            validated_statement = validate_xapi_statement(statement_payload)
+
+            if not validated_statement.id:
+                validated_statement.id = str(uuid.uuid4())
+            if not validated_statement.timestamp:
+                validated_statement.timestamp = datetime.now(timezone.utc)
+            if not validated_statement.stored:
+                validated_statement.stored = datetime.now(timezone.utc)
+
+            publish_result = await publish_statement_async(
+                validated_statement, source="xapi_lrs_post"
             )
-            
-            processed_statements.append({
-                "statement_id": statement.id,
-                "message_id": message_id,
-                "timestamp": statement.timestamp
-            })
-            
-            logger.info(f"Queued xAPI statement {statement.id} to Redis")
-        
+
+            processed_statements.append(
+                {
+                    "statement_id": validated_statement.id,
+                    "message_id": publish_result.get("message_id"),
+                    "timestamp": (
+                        validated_statement.timestamp.isoformat()
+                        if isinstance(validated_statement.timestamp, datetime)
+                        else validated_statement.timestamp
+                    ),
+                }
+            )
+
+            logger.info(
+                "Published xAPI statement %s to Pub/Sub via LRS", validated_statement.id
+            )
+
         return {
             "status": "success",
             "processed_count": len(processed_statements),
             "statements": processed_statements,
-            "message": f"Successfully queued {len(processed_statements)} xAPI statements"
+            "message": f"Successfully published {len(processed_statements)} xAPI statements",
         }
-        
-    except Exception as e:
-        logger.error(f"Error processing xAPI statements: {e}")
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error processing xAPI statements: {exc}")
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing statements: {str(e)}"
+            detail=f"Error processing statements: {str(exc)}",
         )
 
 @router.get("/statements")

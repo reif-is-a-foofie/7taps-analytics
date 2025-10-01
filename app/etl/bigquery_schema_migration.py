@@ -123,8 +123,10 @@ class BigQuerySchemaMigration:
 
         # Extract identifier based on available fields
         if "mbox" in actor:
-            actor_info["actor_id"] = actor["mbox"]
-            actor_info["mbox"] = actor["mbox"]
+            # Normalize email to lowercase for consistency
+            mbox = actor["mbox"].lower() if isinstance(actor["mbox"], str) else actor["mbox"]
+            actor_info["actor_id"] = mbox
+            actor_info["mbox"] = mbox
         elif "mbox_sha1sum" in actor:
             actor_info["actor_id"] = actor["mbox_sha1sum"]
             actor_info["mbox_sha1sum"] = actor["mbox_sha1sum"]
@@ -246,7 +248,10 @@ class BigQuerySchemaMigration:
 
             # Parse timestamp
             try:
-                timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                if timestamp_str and isinstance(timestamp_str, str) and timestamp_str.strip():
+                    timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                else:
+                    timestamp = datetime.now(timezone.utc)
             except:
                 timestamp = datetime.now(timezone.utc)
 
@@ -285,6 +290,12 @@ class BigQuerySchemaMigration:
             result_completion = result.get("completion")
             result_response = result.get("response")
             result_duration = result.get("duration")
+            
+            # Debug logging for result data
+            if statement_id and "test-completion" in statement_id:
+                logger.info(f"🔍 DEBUG: Processing statement {statement_id}")
+                logger.info(f"🔍 DEBUG: Result data: {result}")
+                logger.info(f"🔍 DEBUG: result_success: {result_success}, result_completion: {result_completion}, result_response: {result_response}")
 
             # Extract context information
             context = xapi_statement.get("context", {})
@@ -436,6 +447,21 @@ class BigQuerySchemaMigration:
             logger.error(error_msg)
             self.metrics["errors"].append(error_msg)
             self.metrics["messages_failed"] += 1
+            
+            # Record failed statement for retry
+            try:
+                from app.etl.error_recovery import get_error_recovery
+                error_recovery = get_error_recovery()
+                error_recovery.record_failed_statement(
+                    statement_id=message.message_id,
+                    raw_statement=message_data,
+                    error_message=str(e),
+                    error_type=type(e).__name__,
+                    processing_stage="bigquery_migration",
+                    message_id=message.message_id
+                )
+            except Exception as recovery_error:
+                logger.error(f"Failed to record error for retry: {recovery_error}")
 
     def start_migration(self) -> None:
         """Start the BigQuery migration subscription loop."""
@@ -457,24 +483,17 @@ class BigQuerySchemaMigration:
             except Exception as e:
                 logger.error(f"Error in message callback: {str(e)}")
 
-        # Start the subscription
+        # Start the subscription (non-blocking)
         try:
-            future = self.subscriber.subscribe(self.subscription_path, callback)
-
-            # Keep the main thread alive
-            try:
-                future.result()
-            except KeyboardInterrupt:
-                logger.info("Stopping BigQuery migration...")
-                future.cancel()
-            except Exception as e:
-                logger.error(f"Migration error: {str(e)}")
+            self.future = self.subscriber.subscribe(self.subscription_path, callback)
+            logger.info(f"BigQuery migration subscription started successfully")
+            
+            # Don't block here - let the subscription run in the background
+            # The callback will handle message processing asynchronously
 
         except Exception as e:
             logger.error(f"Failed to start migration subscription: {str(e)}")
-        finally:
             self.running = False
-            self.subscriber.close()
 
     def stop_migration(self) -> None:
         """Stop the migration."""
@@ -485,6 +504,12 @@ class BigQuerySchemaMigration:
         """Get migration status and metrics."""
         uptime = datetime.now(timezone.utc) - self.metrics["start_time"]
 
+        # Convert datetime objects to ISO strings for JSON serialization
+        metrics_copy = self.metrics.copy()
+        if metrics_copy.get("last_message_time"):
+            metrics_copy["last_message_time"] = metrics_copy["last_message_time"].isoformat()
+        metrics_copy["start_time"] = metrics_copy["start_time"].isoformat()
+
         status = {
             "migration_name": "bigquery_schema_migration",
             "topic": self.topic_name,
@@ -492,7 +517,7 @@ class BigQuerySchemaMigration:
             "running": self.running,
             "uptime_seconds": uptime.total_seconds(),
             "subscription_path": self.subscription_path,
-            "metrics": self.metrics.copy(),
+            "metrics": metrics_copy,
             "last_check": datetime.now(timezone.utc).isoformat()
         }
 
@@ -562,7 +587,8 @@ migration = get_migration
 def start_migration_background() -> None:
     """Start the migration in a background thread."""
     def run_migration():
-        migration.start_migration()
+        migration_instance = get_migration()
+        migration_instance.start_migration()
 
     thread = threading.Thread(target=run_migration, daemon=True)
     thread.start()
@@ -577,5 +603,6 @@ def stop_migration() -> None:
 # For testing/development
 if __name__ == "__main__":
     print("Testing BigQuery Schema Migration...")
+    migration = BigQuerySchemaMigration()
     print("Status:", json.dumps(migration.get_migration_status(), indent=2, default=str))
     print("BigQuery Metrics:", json.dumps(migration.get_bigquery_metrics(), indent=2, default=str))

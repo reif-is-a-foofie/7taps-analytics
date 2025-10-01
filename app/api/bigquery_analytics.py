@@ -76,7 +76,7 @@ def cache_result(cache_key: str, result: Dict[str, Any], ttl: int = CACHE_TTL) -
         
         result['cached'] = False
         result['cache_hit'] = False
-        result['cached_at'] = datetime.utcnow().isoformat()
+        result['cached_at'] = datetime.now(timezone.utc).isoformat()
         
         redis_client.setex(cache_key, ttl, json.dumps(result))
         logger.info(f"Cached result for query: {cache_key[:20]}... (TTL: {ttl}s)")

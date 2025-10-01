@@ -5,18 +5,26 @@ This test suite validates existing UI components and new optimizations
 in the production environment.
 """
 
+import json
+import os
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, List
+
 import pytest
 import requests
-import json
-from typing import Dict, Any, List
-from datetime import datetime
-import time
+
+def _utcnow() -> str:
+    """Return current UTC timestamp."""
+    return datetime.now(timezone.utc).isoformat()
+
 
 class ProductionValidator:
     """Comprehensive production validation for UI components and BigQuery integration."""
-    
-    def __init__(self, base_url: str = "https://seventaps-analytics-5135b3a0701a.herokuapp.com"):
-        self.base_url = base_url
+
+    def __init__(self, base_url: str | None = None):
+        default_url = "https://taps-analytics-ui-245712978112.us-central1.run.app"
+        self.base_url = base_url or os.getenv("PRODUCTION_BASE_URL", default_url)
         self.results = []
         self.session = requests.Session()
         self.session.timeout = 30
@@ -28,7 +36,7 @@ class ProductionValidator:
             "success": success,
             "details": details,
             "response_time": response_time,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": _utcnow()
         })
     
     def test_existing_ui_components(self) -> Dict[str, bool]:
@@ -36,10 +44,10 @@ class ProductionValidator:
         print("🔍 Testing Existing UI Components...")
         
         components = {
+            "home": "/",
             "explorer": "/explorer",
-            "chat": "/chat", 
-            "admin": "/ui/admin",
-            "docs": "/docs"
+            "data_import": "/data-import",
+            "docs": "/api/docs"
         }
         
         results = {}
@@ -75,9 +83,9 @@ class ProductionValidator:
         
         endpoints = {
             "connection_status": "/api/analytics/bigquery/connection-status",
-            "query_endpoint": "/api/analytics/bigquery/query",
-            "dashboard_data": "/ui/bigquery-dashboard/data",
-            "dashboard_page": "/ui/bigquery-dashboard"
+            "verb_distribution": "/api/analytics/bigquery/verb-distribution",
+            "bigquery_test": "/api/bigquery/test",
+            "analytics_index": "/api/bigquery/analytics"
         }
         
         results = {}
@@ -115,66 +123,15 @@ class ProductionValidator:
         
         return results
     
-    def test_data_explorer_functionality(self) -> Dict[str, bool]:
-        """Test data explorer functionality."""
-        print("🔍 Testing Data Explorer Functionality...")
-        
-        endpoints = {
-            "lessons": "/api/data-explorer/lessons",
-            "users": "/api/data-explorer/users",
-            "table_data": "/api/data-explorer/table/lessons?limit=10",
-            "table_stats": "/api/data-explorer/stats/lessons"
-        }
-        
-        results = {}
-        
-        for name, endpoint in endpoints.items():
-            try:
-                start_time = time.time()
-                response = self.session.get(f"{self.base_url}{endpoint}")
-                response_time = time.time() - start_time
-                
-                success = response.status_code == 200
-                results[name] = success
-                
-                self.log_result(
-                    f"data_explorer_{name}",
-                    success,
-                    f"Status: {response.status_code}, Time: {response_time:.2f}s",
-                    response_time
-                )
-                
-                print(f"  {'✅' if success else '❌'} {name}: {response.status_code} ({response_time:.2f}s)")
-                
-                # Test response content
-                if success:
-                    try:
-                        data = response.json()
-                        if isinstance(data, dict):
-                            print(f"    Success: {data.get('success', 'N/A')}")
-                            if 'data' in data:
-                                print(f"    Data type: {type(data['data'])}")
-                            if 'lessons' in data:
-                                print(f"    Lessons count: {len(data['lessons'])}")
-                    except:
-                        print(f"    Response: {response.text[:100]}...")
-                
-            except Exception as e:
-                results[name] = False
-                self.log_result(f"data_explorer_{name}", False, str(e))
-                print(f"  ❌ {name}: Error - {str(e)}")
-        
-        return results
-    
     def test_cost_monitoring_endpoints(self) -> Dict[str, bool]:
         """Test cost monitoring endpoints (if implemented)."""
         print("🔍 Testing Cost Monitoring Endpoints...")
         
         endpoints = {
+            "overview": "/api/cost",
+            "health": "/api/cost/health",
             "current_usage": "/api/cost/current-usage",
-            "optimization_recommendations": "/api/cost/optimization-recommendations",
-            "deployment_status": "/api/debug/ui-deployment-status",
-            "bigquery_status": "/api/debug/bigquery-integration-status"
+            "optimization_recommendations": "/api/cost/optimization-recommendations"
         }
         
         results = {}
@@ -295,15 +252,15 @@ class ProductionValidator:
                 "failed_tests": failed_tests,
                 "success_rate": success_rate,
                 "avg_response_time": avg_response_time,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": _utcnow()
             },
             "category_breakdown": categories,
             "detailed_results": self.results,
             "recommendations": self._generate_recommendations(),
             "production_status": {
                 "base_url": self.base_url,
-                "deployment_platform": "Heroku",
-                "validation_date": datetime.utcnow().isoformat()
+                "deployment_platform": "Cloud Run",
+                "validation_date": _utcnow()
             }
         }
         
@@ -346,15 +303,15 @@ class ProductionValidator:
         print("🚀 Starting Comprehensive Production Validation...")
         print("=" * 60)
         print(f"Testing: {self.base_url}")
-        print(f"Time: {datetime.utcnow().isoformat()}")
+        print(f"Time: {_utcnow()}")
         print("=" * 60)
         
         # Run all test suites
         ui_results = self.test_existing_ui_components()
         bigquery_results = self.test_bigquery_integration()
-        explorer_results = self.test_data_explorer_functionality()
         cost_results = self.test_cost_monitoring_endpoints()
         performance_results = self.test_performance_metrics()
+        debug_results = self.test_debug_endpoints()
         
         # Generate final report
         report = self.generate_validation_report()
@@ -374,6 +331,44 @@ class ProductionValidator:
         
         return report
 
+    def test_debug_endpoints(self) -> Dict[str, bool]:
+        """Test production debug health endpoints."""
+        print("🔍 Testing Debug Health Endpoints...")
+
+        endpoints = {
+            "production_validation": "/api/debug/production-validation-status",
+            "cloud_run": "/api/debug/cloud-run-health",
+            "bigquery": "/api/debug/bigquery-integration-health",
+            "cloud_function": "/api/debug/cloud-function-health"
+        }
+
+        results = {}
+
+        for name, endpoint in endpoints.items():
+            try:
+                start_time = time.time()
+                response = self.session.get(f"{self.base_url}{endpoint}")
+                response_time = time.time() - start_time
+
+                success = response.status_code == 200
+                results[name] = success
+
+                self.log_result(
+                    f"debug_{name}",
+                    success,
+                    f"Status: {response.status_code}, Time: {response_time:.2f}s",
+                    response_time
+                )
+
+                print(f"  {'✅' if success else '❌'} {name}: {response.status_code} ({response_time:.2f}s)")
+
+            except Exception as e:
+                results[name] = False
+                self.log_result(f"debug_{name}", False, str(e))
+                print(f"  ❌ {name}: Error - {str(e)}")
+
+        return results
+
 
 def test_production_validation():
     """Main test function for production validation."""
@@ -381,11 +376,14 @@ def test_production_validation():
     report = validator.run_comprehensive_validation()
     
     # Save report
+    os.makedirs("reports/testing_agent", exist_ok=True)
     with open("reports/testing_agent/production_validation_report.json", "w") as f:
+        json.dump(report, f, indent=2)
+    with open("reports/testing_agent/production_validation_final.json", "w") as f:
         json.dump(report, f, indent=2)
     
     # Assert minimum success rate
-    assert report['validation_summary']['success_rate'] >= 50.0, f"Success rate too low: {report['validation_summary']['success_rate']:.1f}%"
+    assert report['validation_summary']['success_rate'] >= 80.0, f"Success rate too low: {report['validation_summary']['success_rate']:.1f}%"
     
     return report
 

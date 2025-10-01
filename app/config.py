@@ -1,20 +1,14 @@
 import os
 from typing import Optional, Dict
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
-    
-    # Database
-    DATABASE_URL: str = "postgresql://analytics_user:analytics_pass@localhost:5432/7taps_analytics"
-    
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
-    
-    # Direct Database Connections (No MCP needed)
-    # PostgreSQL and Redis are accessed directly via psycopg2 and redis-py
-    
+
     # 7taps Configuration
     SEVENTAPS_PRIVATE_KEY_PATH: str = "keys/7taps_private_key.pem"
     SEVENTAPS_PUBLIC_KEY_PATH: str = "keys/7taps_public_key.pem"
@@ -59,25 +53,37 @@ class Settings(BaseSettings):
         "5": "Connection Balance"
     }
     
-    # OpenAI (for NLP)
+    # AI Services
     OPENAI_API_KEY: Optional[str] = None
-    
+    GOOGLE_AI_API_KEY: Optional[str] = None
+    PRIVACY_ADMIN_KEY: Optional[str] = None  # For Gemini API
+
     # Application
     LOG_LEVEL: str = "info"
     PYTHONUNBUFFERED: str = "1"
-    
+
     # Production settings
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
-    
+    DEPLOYMENT_MODE: str = "full"  # "full" or "cloud_run"
+
+    # GCP configuration (shared across deployment targets)
+    GCP_PROJECT_ID: str = "taps-data"
+    GCP_BIGQUERY_DATASET: str = "taps_data"
+    GCP_LOCATION: str = "us-central1"
+    GCP_SERVICE_ACCOUNT_KEY_PATH: str = ""
+    GCP_PUBSUB_TOPIC: str = "xapi-ingestion-topic"
+    GCP_STORAGE_BUCKET: str = "xapi-raw-data"
+
     # Port Configuration (use PORT env var for Cloud Run)
     APP_PORT: int = int(os.getenv("PORT", "8000"))
-    POSTGRES_PORT: int = 5432
     REDIS_PORT: int = 6379
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra='ignore'
+    )
 
     def get_extension_key(self, key_name: str) -> str:
         """Get extension key with dynamic domain support."""
@@ -100,13 +106,6 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
-
-
-def get_database_url() -> str:
-    """Get database URL with fallback for production."""
-    if os.getenv("DATABASE_URL"):
-        return os.getenv("DATABASE_URL")
-    return settings.DATABASE_URL
 
 
 def get_redis_url() -> str:

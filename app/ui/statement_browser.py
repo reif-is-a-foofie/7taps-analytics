@@ -15,6 +15,7 @@ from datetime import datetime
 import os
 
 from app.logging_config import get_logger
+from app.api.xapi import get_recent_statements, get_ingestion_stats
 
 router = APIRouter()
 logger = get_logger("statement_browser")
@@ -35,82 +36,63 @@ class StatementBrowser:
                            search_query: Optional[str] = None) -> Dict[str, Any]:
         """Get xAPI statements with filtering and pagination."""
         try:
-            # Mock statement data for demonstration
-            # In production, this would query the database
-            statements = [
-                {
-                    "id": "statement-001",
-                    "actor": {
-                        "account": {"name": "user1@7taps.com"}
-                    },
-                    "verb": {
-                        "id": "http://adlnet.gov/expapi/verbs/completed"
-                    },
-                    "object": {
-                        "id": "http://7taps.com/activities/course-1",
-                        "objectType": "Activity"
-                    },
-                    "timestamp": "2025-01-05T10:30:00Z",
-                    "result": {
-                        "score": {"raw": 85, "min": 0, "max": 100}
-                    }
-                },
-                {
-                    "id": "statement-002",
-                    "actor": {
-                        "account": {"name": "user2@7taps.com"}
-                    },
-                    "verb": {
-                        "id": "http://adlnet.gov/expapi/verbs/attempted"
-                    },
-                    "object": {
-                        "id": "http://7taps.com/activities/quiz-1",
-                        "objectType": "Activity"
-                    },
-                    "timestamp": "2025-01-05T11:15:00Z",
-                    "result": {
-                        "success": True
-                    }
-                },
-                {
-                    "id": "statement-003",
-                    "actor": {
-                        "account": {"name": "user3@7taps.com"}
-                    },
-                    "verb": {
-                        "id": "http://adlnet.gov/expapi/verbs/experienced"
-                    },
-                    "object": {
-                        "id": "http://7taps.com/activities/video-1",
-                        "objectType": "Activity"
-                    },
-                    "timestamp": "2025-01-05T12:00:00Z"
-                }
-            ]
+            # Get real xAPI statements from the ingestion pipeline
+            all_statements = get_recent_statements(limit=0)  # Get all available
             
             # Apply filters
-            if actor_filter:
-                statements = [s for s in statements if actor_filter.lower() in s.get("actor", {}).get("account", {}).get("name", "").lower()]
-            
-            if verb_filter:
-                statements = [s for s in statements if verb_filter.lower() in s.get("verb", {}).get("id", "").lower()]
-            
-            if object_filter:
-                statements = [s for s in statements if object_filter.lower() in s.get("object", {}).get("id", "").lower()]
-            
-            if search_query:
-                search_lower = search_query.lower()
-                statements = [s for s in statements if 
-                           search_lower in json.dumps(s).lower()]
+            filtered_statements = []
+            for entry in all_statements:
+                statement = entry.get("payload", {})
+                
+                # Actor filter
+                if actor_filter:
+                    actor_name = statement.get("actor", {}).get("account", {}).get("name", "")
+                    if actor_filter.lower() not in actor_name.lower():
+                        continue
+                
+                # Verb filter  
+                if verb_filter:
+                    verb_id = statement.get("verb", {}).get("id", "")
+                    if verb_filter.lower() not in verb_id.lower():
+                        continue
+                
+                # Object filter
+                if object_filter:
+                    object_id = statement.get("object", {}).get("id", "")
+                    if object_filter.lower() not in object_id.lower():
+                        continue
+                
+                # Search query (search in all text fields)
+                if search_query:
+                    search_text = f"{actor_name} {verb_id} {object_id}".lower()
+                    if search_query.lower() not in search_text:
+                        continue
+                
+                filtered_statements.append(entry)
             
             # Pagination
-            total_count = len(statements)
+            total_count = len(filtered_statements)
             start_idx = (page - 1) * limit
             end_idx = start_idx + limit
-            paginated_statements = statements[start_idx:end_idx]
+            page_statements = filtered_statements[start_idx:end_idx]
+            
+            # Format for UI display
+            formatted_statements = []
+            for entry in page_statements:
+                statement = entry.get("payload", {})
+                formatted_statements.append({
+                    "id": statement.get("id", "unknown"),
+                    "actor": statement.get("actor", {}),
+                    "verb": statement.get("verb", {}),
+                    "object": statement.get("object", {}),
+                    "timestamp": statement.get("timestamp", ""),
+                    "result": statement.get("result", {}),
+                    "published_at": entry.get("published_at", ""),
+                    "message_id": entry.get("message_id", "")
+                })
             
             return {
-                "statements": paginated_statements,
+                "statements": formatted_statements,
                 "pagination": {
                     "page": page,
                     "limit": limit,
@@ -172,26 +154,88 @@ class StatementBrowser:
             return {"error": str(e)}
     
     async def get_statement_stats(self) -> Dict[str, Any]:
-        """Get statement statistics."""
+        """Get real statement statistics from ingestion pipeline."""
         try:
-            # Mock statistics
+            # Get real ingestion stats
+            ingestion_stats = get_ingestion_stats()
+            all_statements = get_recent_statements(limit=0)
+            
+            # Calculate real statistics
+            unique_actors = set()
+            unique_activities = set()
+            verb_counts = {}
+            activity_counts = {}
+            completed_count = 0
+            total_score = 0
+            score_count = 0
+            
+            from datetime import datetime, timezone
+            today = datetime.now(timezone.utc).date()
+            statements_today = 0
+            
+            for entry in all_statements:
+                statement = entry.get("payload", {})
+                
+                # Count statements from today
+                timestamp_str = statement.get("timestamp", "")
+                if timestamp_str:
+                    try:
+                        from app.utils.timestamp_utils import parse_timestamp
+                        stmt_date = parse_timestamp(timestamp_str).date()
+                        if stmt_date == today:
+                            statements_today += 1
+                    except:
+                        pass
+                
+                # Track unique actors
+                actor_name = statement.get("actor", {}).get("account", {}).get("name", "")
+                if actor_name:
+                    unique_actors.add(actor_name)
+                
+                # Track unique activities
+                activity_id = statement.get("object", {}).get("id", "")
+                if activity_id:
+                    unique_activities.add(activity_id)
+                    activity_counts[activity_id] = activity_counts.get(activity_id, 0) + 1
+                
+                # Track verbs
+                verb_id = statement.get("verb", {}).get("id", "")
+                if verb_id:
+                    verb_name = verb_id.split("/")[-1]  # Extract verb name from URI
+                    verb_counts[verb_name] = verb_counts.get(verb_name, 0) + 1
+                    
+                    if "completed" in verb_name.lower():
+                        completed_count += 1
+                
+                # Track scores
+                result = statement.get("result", {})
+                if result and "score" in result:
+                    score = result["score"].get("raw")
+                    if score is not None:
+                        total_score += score
+                        score_count += 1
+            
+            # Calculate completion rate and average score
+            total_statements = len(all_statements)
+            completion_rate = (completed_count / total_statements * 100) if total_statements > 0 else 0
+            average_score = (total_score / score_count) if score_count > 0 else 0
+            
+            # Top verbs and activities
+            top_verbs = [{"verb": verb, "count": count} for verb, count in 
+                        sorted(verb_counts.items(), key=lambda x: x[1], reverse=True)[:5]]
+            top_activities = [{"activity": activity.split("/")[-1], "count": count} for activity, count in 
+                            sorted(activity_counts.items(), key=lambda x: x[1], reverse=True)[:5]]
+            
             stats = {
-                "total_statements": 1250,
-                "statements_today": 45,
-                "unique_actors": 89,
-                "unique_activities": 23,
-                "completion_rate": 78.5,
-                "average_score": 82.3,
-                "top_verbs": [
-                    {"verb": "completed", "count": 450},
-                    {"verb": "attempted", "count": 320},
-                    {"verb": "experienced", "count": 280}
-                ],
-                "top_activities": [
-                    {"activity": "course-1", "count": 120},
-                    {"activity": "quiz-1", "count": 95},
-                    {"activity": "video-1", "count": 87}
-                ]
+                "total_statements": total_statements,
+                "statements_today": statements_today,
+                "unique_actors": len(unique_actors),
+                "unique_activities": len(unique_activities),
+                "completion_rate": round(completion_rate, 1),
+                "average_score": round(average_score, 1),
+                "top_verbs": top_verbs,
+                "top_activities": top_activities,
+                "ingestion_stats": ingestion_stats
             }
             
             return stats
@@ -228,7 +272,7 @@ async def statement_browser_page(request: Request,
             "request": request,
             "data": data,
             "stats": stats,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         return templates.TemplateResponse("statement_browser.html", context)
@@ -288,7 +332,7 @@ async def statement_detail_page(request: Request, statement_id: str):
         context = {
             "request": request,
             "statement": statement,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         return templates.TemplateResponse("statement_detail.html", context)

@@ -106,7 +106,7 @@ class UserManager:
             "name": name,
             "role": role,
             "permissions": self.roles[role]["permissions"],
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "last_login": None,
             "status": "active"
         }
@@ -180,21 +180,21 @@ class UserManager:
         # Mock access logs
         logs = [
             {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "user": "admin@7taps.com",
                 "action": "login",
                 "ip": "192.168.1.100",
                 "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             },
             {
-                "timestamp": (datetime.utcnow() - timedelta(minutes=30)).isoformat(),
+                "timestamp": (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat(),
                 "user": "analyst@7taps.com",
                 "action": "export_data",
                 "ip": "192.168.1.101",
                 "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
             },
             {
-                "timestamp": (datetime.utcnow() - timedelta(hours=2)).isoformat(),
+                "timestamp": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat(),
                 "user": "viewer@7taps.com",
                 "action": "view_dashboard",
                 "ip": "192.168.1.102",
@@ -222,7 +222,7 @@ async def user_management_page(request: Request):
             "roles": roles,
             "activity": activity,
             "access_logs": access_logs,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         return templates.TemplateResponse("user_management.html", context)
@@ -328,7 +328,7 @@ async def login_api(email: str = Form(...), password: str = Form(...)):
         # Mock password verification (in production, use proper hashing)
         if password == "password123":  # Mock password
             # Update last login
-            user["last_login"] = datetime.utcnow().isoformat()
+            user["last_login"] = datetime.now(timezone.utc).isoformat()
             
             return {
                 "user": user,

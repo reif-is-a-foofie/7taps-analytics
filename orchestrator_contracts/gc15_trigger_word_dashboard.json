@@ -1,0 +1,27 @@
+{
+  "module": "gc.15_trigger_word_dashboard",
+  "assigned_agent": "ui",
+  "status": "blocked",
+  "depends_on": ["gc.14_trigger_word_alerts"],
+  "description": "Expose trigger-word safety alerts on the operator dashboard with actionable context for recent xAPI statements.",
+  "allowed_files": [
+    "app/ui/dashboard.py",
+    "templates/dashboard.html",
+    "project_management/functionality_improvements.md"
+  ],
+  "ui_requirements": {
+    "panels": "Add a highlighted safety section summarizing counts and listing recent alert events (timestamp, learner alias, trigger excerpt).",
+    "interactions": "Provide links to deep-dive views (e.g., statement browser) using statement IDs returned by the backend.",
+    "accessibility": "Screen-reader friendly markup; color contrast for warning states."
+  },
+  "dependencies": {
+    "api_endpoint": "/api/xapi/alerts/trigger-words"
+  },
+  "tests": [
+    "pytest tests/test_ui_deployment.py"
+  ],
+  "notes": {
+    "refresh_interval": "Poll alerts endpoint every 60s while the dashboard is open.",
+    "escalation_link": "Reserve space for future Ops escalation workflow."
+  }
+}

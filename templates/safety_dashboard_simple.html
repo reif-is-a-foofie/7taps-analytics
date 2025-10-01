@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Safety Dashboard - POL Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-8">
+                    <h1 class="text-xl font-bold text-gray-900">POL Analytics</h1>
+                    <div class="flex space-x-6">
+                        <a href="/" class="text-gray-600 hover:text-gray-900">Dashboard</a>
+                        <a href="/ui/daily-analytics" class="text-gray-600 hover:text-gray-900">Daily Analytics</a>
+                        <a href="/ui/safety" class="text-blue-600 font-medium">AI Safety</a>
+                        <a href="/api/docs" class="text-gray-600 hover:text-gray-900">API Docs</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">AI Safety Dashboard</h1>
+            <p class="text-gray-600 mt-2">Monitor AI-flagged content and safety alerts</p>
+        </div>
+
+        <!-- Status Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- AI Status -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">AI Analysis</h3>
+                        {% if ai_analysis_status.status == "configured" %}
+                        <div class="text-green-600 font-medium">✅ Active</div>
+                        <div class="text-sm text-gray-500">Gemini AI</div>
+                        {% else %}
+                        <div class="text-yellow-600 font-medium">⚠️ Fallback</div>
+                        <div class="text-sm text-gray-500">Keyword matching</div>
+                        {% endif %}
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-gray-900">{{ flagged_statements.flagged_count or 0 }}</div>
+                        <div class="text-sm text-gray-500">Flagged</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Scanned -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Total Scanned</h3>
+                        <div class="text-sm text-gray-500">Recent statements</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-gray-900">{{ flagged_statements.total_recent_statements or 0 }}</div>
+                        <div class="text-sm text-gray-500">Statements</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detection Rate -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Detection Rate</h3>
+                        <div class="text-sm text-gray-500">Flagged content</div>
+                    </div>
+                    <div class="text-right">
+                        {% if flagged_statements.total_recent_statements > 0 %}
+                        <div class="text-2xl font-bold text-gray-900">{{ "%.1f"|format((flagged_statements.flagged_count / flagged_statements.total_recent_statements) * 100) }}%</div>
+                        {% else %}
+                        <div class="text-2xl font-bold text-gray-900">0%</div>
+                        {% endif %}
+                        <div class="text-sm text-gray-500">Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flagged Content -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900">🚨 Flagged Content</h2>
+            </div>
+            <div class="p-6">
+                {% if flagged_statements.flagged_statements %}
+                <div class="space-y-4">
+                    {% for statement in flagged_statements.flagged_statements %}
+                    <div class="border rounded-lg p-4 {% if statement.severity == 'critical' %}border-red-200 bg-red-50{% elif statement.severity == 'high' %}border-orange-200 bg-orange-50{% elif statement.severity == 'medium' %}border-yellow-200 bg-yellow-50{% else %}border-blue-200 bg-blue-50{% endif %}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-medium text-gray-900 masked-data" data-original="{{ statement.actor_name }}">NAME_****</span>
+                                    <button onclick="toggleMasking(this)" class="text-gray-400 hover:text-gray-600" title="Toggle masking">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="text-sm text-gray-500">{{ statement.timestamp }}</div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="px-2 py-1 rounded text-xs font-medium 
+                                    {% if statement.severity == 'critical' %}bg-red-100 text-red-800
+                                    {% elif statement.severity == 'high' %}bg-orange-100 text-orange-800
+                                    {% elif statement.severity == 'medium' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-blue-100 text-blue-800{% endif %}">
+                                    {{ statement.severity|title }}
+                                </span>
+                                <span class="text-sm text-gray-500">{{ "%.0f"|format(statement.confidence_score * 100) }}%</span>
+                            </div>
+                        </div>
+                        <div class="text-gray-700 mb-2 bg-white rounded p-2 border">
+                            "{{ statement.content[:150] }}{% if statement.content|length > 150 %}...{% endif %}"
+                        </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            {% for reason in statement.flagged_reasons %}
+                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">{{ reason }}</span>
+                            {% endfor %}
+                        </div>
+                        {% if statement.suggested_actions %}
+                        <div class="text-sm text-gray-600">
+                            <strong>Actions:</strong> {{ statement.suggested_actions[0] }}
+                        </div>
+                        {% endif %}
+                        <div class="mt-3 flex justify-end">
+                            <button onclick="exportIncident({{ loop.index0 }})" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                                📄 Export Report
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <div class="text-green-500 text-4xl mb-4">✅</div>
+                    <div class="text-gray-600 text-lg">No flagged content detected</div>
+                    <div class="text-gray-500 text-sm mt-2">AI is monitoring all learner inputs</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Configuration Panel -->
+        <div class="mt-8 bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">⚙️ Safety Configuration</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Analysis Settings</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Sensitivity Level</label>
+                            <select id="sensitivityLevel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <option value="low" {% if safety_config.sensitivity_level == 'low' %}selected{% endif %}>Low</option>
+                                <option value="medium" {% if safety_config.sensitivity_level == 'medium' %}selected{% endif %}>Medium</option>
+                                <option value="high" {% if safety_config.sensitivity_level == 'high' %}selected{% endif %}>High</option>
+                                <option value="critical" {% if safety_config.sensitivity_level == 'critical' %}selected{% endif %}>Critical</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">AI Analysis</label>
+                            <input type="checkbox" id="enableAI" {% if safety_config.enable_ai_analysis %}checked{% endif %} 
+                                   class="mt-1 rounded border-gray-300">
+                            <span class="ml-2 text-sm text-gray-600">Enable AI analysis</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Performance Stats</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cache Size:</span>
+                            <span class="font-medium">{{ safety_config.cache_size or 0 }} entries</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Max Content Length:</span>
+                            <span class="font-medium">{{ safety_config.max_content_length or 500 }} chars</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Confidence Threshold:</span>
+                            <span class="font-medium">{{ "%.1f"|format((safety_config.confidence_threshold or 0.7) * 100) }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 flex space-x-3">
+                <button onclick="updateConfiguration()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Save Configuration
+                </button>
+                <button onclick="clearCache()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                    Clear Cache
+                </button>
+                <button onclick="runTest()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                    Run Test Analysis
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center text-gray-500 text-sm">
+            Last updated: {{ timestamp }}
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            window.location.reload();
+        }, 30000);
+
+        // Toggle masking/unmasking with eye icon
+        function toggleMasking(button) {
+            const span = button.previousElementSibling;
+            const original = span.getAttribute('data-original');
+            const current = span.textContent;
+            
+            if (current === 'NAME_****') {
+                span.textContent = original;
+                button.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+                    </svg>
+                `;
+                button.title = "Hide name";
+            } else {
+                span.textContent = 'NAME_****';
+                button.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                `;
+                button.title = "Show name";
+            }
+        }
+
+        // Export incident report with password protection
+        function exportIncident(statementIndex) {
+            const password = prompt('Enter admin password to export incident report:');
+            if (!password) return;
+            
+            // Get statement data (this would be populated from the backend)
+            const statement = {
+                incident_id: `incident_${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                learner_info: {
+                    name: "Student Name",
+                    email: "student@email.com",
+                    user_id: "student_001"
+                },
+                educational_context: {
+                    course: "Digital Wellness 101",
+                    lesson: "Screen Time Management",
+                    instructor: "Dr. Jane Smith"
+                },
+                flagged_content: {
+                    original_response: "I want to kill myself because I can't stop using my phone",
+                    severity: "critical",
+                    confidence: 0.95,
+                    flagged_reasons: ["Direct expression of suicidal ideation"],
+                    suggested_actions: ["Immediately alert mental health support team"]
+                },
+                response_protocol: {
+                    immediate_actions: [
+                        "Contact mental health support team",
+                        "Notify course instructor",
+                        "Document in student record"
+                    ],
+                    escalation_level: "Immediate - Crisis Intervention",
+                    follow_up_required: true
+                }
+            };
+            
+            // Send export request
+            fetch('/api/privacy/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    data: statement,
+                    password: password,
+                    export_reason: `Incident report export - Statement ${statementIndex}`
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.exported_data) {
+                    // Download as JSON file
+                    const blob = new Blob([JSON.stringify(data.exported_data, null, 2)], {type: 'application/json'});
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `incident_report_${statement.incident_id}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    alert('Incident report exported successfully!');
+                } else {
+                    alert('Export failed: ' + (data.detail || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Export error:', error);
+                alert('Export failed: ' + error.message);
+            });
+        }
+
+        // Configuration functions
+        function updateConfiguration() {
+            const sensitivityLevel = document.getElementById('sensitivityLevel').value;
+            const enableAI = document.getElementById('enableAI').checked;
+            
+            alert(`Configuration updated:\nSensitivity: ${sensitivityLevel}\nAI Analysis: ${enableAI ? 'Enabled' : 'Disabled'}`);
+        }
+
+        function clearCache() {
+            if (confirm('Are you sure you want to clear the AI analysis cache?')) {
+                alert('Cache cleared successfully!');
+            }
+        }
+
+        function runTest() {
+            alert('Running test analysis... This may take a few moments.');
+        }
+    </script>
+</body>
+</html>

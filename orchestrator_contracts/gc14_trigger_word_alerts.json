@@ -1,0 +1,35 @@
+{
+  "module": "gc.14_trigger_word_alerts",
+  "assigned_agent": "backend",
+  "status": "pending",
+  "description": "Detect xAPI statements containing pre-defined trigger words, notify stakeholders, and expose a monitoring endpoint for flagged activity.",
+  "allowed_files": [
+    "app/api/xapi.py",
+    "app/api/cloud_function_ingestion.py",
+    "app/api/trigger_word_alerts.py",
+    "project_management/functionality_improvements.md"
+  ],
+  "required_endpoints": [
+    "/api/xapi/alerts/trigger-words",
+    "/api/xapi/recent"
+  ],
+  "deliverables": {
+    "alerts": "Trigger-word matches emit structured notifications (email + structured log) containing statement metadata.",
+    "storage": "Flagged statements buffered for dashboard consumption with 30-day retention (in-memory fallback acceptable until BigQuery wiring).",
+    "observability": "Expose summary counts and latest alerts via existing ingestion status surfaces."
+  },
+  "environment_variables": {
+    "ALERT_TRIGGER_WORDS": "Comma-delimited override for monitored keywords (default includes suicide/self-harm/etc).",
+    "ALERT_EMAIL_RECIPIENTS": "Comma-delimited list of recipients (Reif, Kate, operational aliases).",
+    "ALERT_EMAIL_SENDER": "Optional from address; default to no-reply@practiceoflife.com"
+  },
+  "tests": [
+    "pytest tests/test_xapi_ingestion_pipeline.py",
+    "pytest tests/test_seventaps_webhook.py"
+  ],
+  "notes": {
+    "keywords_base": ["suicide", "self harm", "kill myself", "hurting myself"],
+    "gcp_pipeline": "Trigger detection must run prior to Pub/Sub publish for both API and Cloud Function ingestion paths.",
+    "audit_log": "Summaries appended to project_management/functionality_improvements.md with timestamps and Pub/Sub message ids."
+  }
+}

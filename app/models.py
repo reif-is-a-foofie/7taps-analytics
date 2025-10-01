@@ -3,7 +3,7 @@ xAPI Statement Models for validation and processing.
 """
 
 from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 import json
 
@@ -46,12 +46,14 @@ class xAPIStatement(BaseModel):
     version: Optional[str] = Field(default="1.0.3")
     attachments: Optional[List[Dict[str, Any]]] = None
 
-    @validator('timestamp', 'stored', pre=True)
+    @field_validator('timestamp', 'stored', mode='before')
+    @classmethod
     def parse_datetime(cls, v):
         """Parse datetime strings."""
         if isinstance(v, str):
             try:
-                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+                from app.utils.timestamp_utils import parse_timestamp
+                return parse_timestamp(v)
             except ValueError:
                 return v
         return v
@@ -60,14 +62,14 @@ class xAPIStatement(BaseModel):
         """Convert to dictionary for Redis storage."""
         return {
             'id': self.id,
-            'actor': self.actor.dict(),
-            'verb': self.verb.dict(),
-            'object': self.object.dict(),
+            'actor': self.actor.model_dump(),
+            'verb': self.verb.model_dump(),
+            'object': self.object.model_dump(),
             'result': self.result,
             'context': self.context,
             'timestamp': self.timestamp.isoformat() if self.timestamp else None,
             'stored': self.stored.isoformat() if self.stored else None,
-            'authority': self.authority.dict() if self.authority else None,
+            'authority': self.authority.model_dump() if self.authority else None,
             'version': self.version,
             'attachments': self.attachments
         }
@@ -90,10 +92,12 @@ class xAPIIngestionResponse(BaseModel):
 class xAPIIngestionStatus(BaseModel):
     """Status model for xAPI ingestion endpoint."""
     endpoint_status: str = Field(..., description="Endpoint status")
-    redis_connected: bool = Field(..., description="Redis connection status")
+    publisher_ready: bool = Field(..., description="Whether Pub/Sub publisher is healthy")
+    project_id: str = Field(..., description="Configured GCP project id")
+    pubsub_topic: str = Field(..., description="Configured Pub/Sub topic")
     total_statements_ingested: int = Field(..., description="Total statements processed")
     last_ingestion_time: Optional[datetime] = Field(None, description="Last ingestion timestamp")
-    queue_size: Optional[int] = Field(None, description="Current queue size")
+    last_message_id: Optional[str] = Field(None, description="Most recent Pub/Sub message id")
     error_count: int = Field(default=0, description="Total error count")
 
 

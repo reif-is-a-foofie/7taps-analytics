@@ -1,0 +1,593 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Course Analytics - POL Analytics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .daily-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+
+    .daily-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: white;
+    }
+
+    .daily-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .daily-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+
+    .controls-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .controls-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr auto;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #374151;
+    }
+
+    .form-control {
+        padding: 0.75rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #5a67d8;
+        transform: translateY(-1px);
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+        transform: translateY(-1px);
+    }
+
+    .summary-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+
+    .summary-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .summary-card h3 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        color: #667eea;
+    }
+
+    .summary-card p {
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .insights-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .insights-section h2 {
+        color: #374151;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .insight-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        font-size: 1.1rem;
+        color: #374151;
+    }
+
+    .data-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .data-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .data-card h3 {
+        color: #374151;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .user-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .user-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .user-stats {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .completion-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .badge-completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-partial {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-not-started {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #6b7280;
+        font-style: italic;
+    }
+
+    .error {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+
+    .download-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .download-section h2 {
+        color: #374151;
+        margin-bottom: 1rem;
+    }
+
+    .download-section p {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .daily-container {
+            padding: 1rem;
+        }
+
+        .controls-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .data-section {
+            grid-template-columns: 1fr;
+        }
+
+        .daily-header h1 {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="daily-container">
+    <div class="daily-header">
+        <h1>📊 Daily Course Analytics</h1>
+        <p>Automated daily stats for the 7pm progress email workflow</p>
+    </div>
+
+    <!-- Date and Cohort Controls -->
+    <div class="controls-section">
+        <div class="controls-grid">
+            <div class="form-group">
+                <label for="target-date">Target Date</label>
+                <input type="date" id="target-date" class="form-control" value="{{ today }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="cohort-filter">Cohort/Platform Filter</label>
+                <select id="cohort-filter" class="form-control">
+                    <option value="">All Cohorts</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>&nbsp;</label>
+                <button id="load-data" class="btn btn-primary">
+                    📈 Load Analytics
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label>&nbsp;</label>
+                <button id="download-csv" class="btn btn-success" disabled>
+                    📥 Download CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div id="summary-section" class="summary-section" style="display: none;">
+        <div class="summary-card">
+            <h3 id="total-users">-</h3>
+            <p>Total Active Users</p>
+        </div>
+        <div class="summary-card">
+            <h3 id="completed-users">-</h3>
+            <p>Completed Course</p>
+        </div>
+        <div class="summary-card">
+            <h3 id="incomplete-users">-</h3>
+            <p>Need Follow-up</p>
+        </div>
+        <div class="summary-card">
+            <h3 id="completion-rate">-</h3>
+            <p>Completion Rate</p>
+        </div>
+    </div>
+
+    <!-- Daily Insights -->
+    <div id="insights-section" class="insights-section" style="display: none;">
+        <h2>💡 Today's Key Insights</h2>
+        <div id="insights-list">
+            <!-- Insights will be populated here -->
+        </div>
+    </div>
+
+    <!-- User Data -->
+    <div id="data-section" class="data-section" style="display: none;">
+        <!-- Completed Users -->
+        <div class="data-card">
+            <h3>✅ Completed Users</h3>
+            <div id="completed-list" class="user-list">
+                <!-- Completed users will be populated here -->
+            </div>
+        </div>
+
+        <!-- Incomplete Users -->
+        <div class="data-card">
+            <h3>⚠️ Users Needing Follow-up</h3>
+            <div id="incomplete-list" class="user-list">
+                <!-- Incomplete users will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Section -->
+    <div id="download-section" class="download-section" style="display: none;">
+        <h2>📊 Export Daily Report</h2>
+        <p>Download a comprehensive CSV with all user progress data for your daily progress email workflow.</p>
+        <button id="download-csv-main" class="btn btn-success">
+            📥 Download Complete Report (CSV)
+        </button>
+    </div>
+
+    <!-- Loading/Error States -->
+    <div id="loading" class="loading" style="display: none;">
+        Loading daily analytics data...
+    </div>
+    
+    <div id="error" class="error" style="display: none;">
+        <!-- Error messages will appear here -->
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const targetDate = document.getElementById('target-date');
+    const cohortFilter = document.getElementById('cohort-filter');
+    const loadDataBtn = document.getElementById('load-data');
+    const downloadCsvBtn = document.getElementById('download-csv');
+    const downloadCsvMainBtn = document.getElementById('download-csv-main');
+    
+    const summarySection = document.getElementById('summary-section');
+    const insightsSection = document.getElementById('insights-section');
+    const dataSection = document.getElementById('data-section');
+    const downloadSection = document.getElementById('download-section');
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+
+    // Load available cohorts on page load
+    loadCohorts();
+
+    // Event listeners
+    loadDataBtn.addEventListener('click', loadDailyAnalytics);
+    downloadCsvBtn.addEventListener('click', downloadCSV);
+    downloadCsvMainBtn.addEventListener('click', downloadCSV);
+
+    async function loadCohorts() {
+        try {
+            const response = await fetch('/ui/api/daily-analytics/cohorts');
+            const data = await response.json();
+            
+            if (data.success) {
+                cohortFilter.innerHTML = '<option value="">All Cohorts</option>';
+                data.cohorts.forEach(cohort => {
+                    const option = document.createElement('option');
+                    option.value = cohort.context_platform;
+                    option.textContent = `${cohort.context_platform} (${cohort.user_count} users)`;
+                    cohortFilter.appendChild(option);
+                });
+            }
+        } catch (err) {
+            console.warn('Failed to load cohorts:', err);
+        }
+    }
+
+    async function loadDailyAnalytics() {
+        const date = targetDate.value;
+        const cohort = cohortFilter.value;
+
+        if (!date) {
+            showError('Please select a target date');
+            return;
+        }
+
+        showLoading(true);
+        hideError();
+        hideSections();
+
+        try {
+            const params = new URLSearchParams({ date });
+            if (cohort) params.append('cohort', cohort);
+
+            const response = await fetch(`/ui/api/daily-analytics/data?${params}`);
+            const data = await response.json();
+
+            if (data.success) {
+                displayAnalytics(data);
+                downloadCsvBtn.disabled = false;
+            } else {
+                showError(data.error || 'Failed to load analytics data');
+            }
+        } catch (err) {
+            showError('Network error: ' + err.message);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function displayAnalytics(data) {
+        // Update summary cards
+        document.getElementById('total-users').textContent = data.summary.total_users;
+        document.getElementById('completed-users').textContent = data.summary.completed_users;
+        document.getElementById('incomplete-users').textContent = data.summary.incomplete_users;
+        document.getElementById('completion-rate').textContent = data.summary.completion_rate + '%';
+
+        // Display insights
+        const insightsList = document.getElementById('insights-list');
+        insightsList.innerHTML = '';
+        data.insights.forEach(insight => {
+            const div = document.createElement('div');
+            div.className = 'insight-item';
+            div.textContent = insight;
+            insightsList.appendChild(div);
+        });
+
+        // Display completed users
+        const completedList = document.getElementById('completed-list');
+        completedList.innerHTML = '';
+        data.completed_users.forEach(user => {
+            completedList.appendChild(createUserItem(user));
+        });
+
+        // Display incomplete users
+        const incompleteList = document.getElementById('incomplete-list');
+        incompleteList.innerHTML = '';
+        data.incomplete_users.forEach(user => {
+            incompleteList.appendChild(createUserItem(user));
+        });
+
+        // Show all sections
+        summarySection.style.display = 'grid';
+        insightsSection.style.display = 'block';
+        dataSection.style.display = 'grid';
+        downloadSection.style.display = 'block';
+    }
+
+    function createUserItem(user) {
+        const div = document.createElement('div');
+        div.className = 'user-item';
+
+        const userInfo = document.createElement('div');
+        userInfo.className = 'user-info';
+        
+        const userName = document.createElement('div');
+        userName.className = 'user-name';
+        userName.textContent = user.user_name || user.actor_id;
+        
+        const userStats = document.createElement('div');
+        userStats.className = 'user-stats';
+        userStats.textContent = `${user.completed_activities}/${user.total_activities} activities • ${user.context_platform || 'Unknown platform'}`;
+        
+        userInfo.appendChild(userName);
+        userInfo.appendChild(userStats);
+
+        const badge = document.createElement('span');
+        badge.className = `completion-badge badge-${user.completion_status.toLowerCase().replace(' ', '-')}`;
+        badge.textContent = user.completion_status;
+
+        div.appendChild(userInfo);
+        div.appendChild(badge);
+
+        return div;
+    }
+
+    async function downloadCSV() {
+        const date = targetDate.value;
+        const cohort = cohortFilter.value;
+
+        if (!date) {
+            showError('Please select a target date first');
+            return;
+        }
+
+        try {
+            const params = new URLSearchParams({ date });
+            if (cohort) params.append('cohort', cohort);
+
+            const response = await fetch(`/ui/api/daily-analytics/csv?${params}`);
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `daily_progress_${date}${cohort ? '_' + cohort : ''}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                const errorData = await response.json();
+                showError(errorData.detail || 'Failed to download CSV');
+            }
+        } catch (err) {
+            showError('Download failed: ' + err.message);
+        }
+    }
+
+    function showLoading(show) {
+        loading.style.display = show ? 'block' : 'none';
+    }
+
+    function showError(message) {
+        error.textContent = message;
+        error.style.display = 'block';
+    }
+
+    function hideError() {
+        error.style.display = 'none';
+    }
+
+    function hideSections() {
+        summarySection.style.display = 'none';
+        insightsSection.style.display = 'none';
+        dataSection.style.display = 'none';
+        downloadSection.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
+

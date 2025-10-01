@@ -6,21 +6,20 @@ with Basic authentication using username and password.
 """
 
 import os
-import json
 import hashlib
 import hmac
 import base64
-from datetime import datetime
-from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.responses import JSONResponse
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
-import httpx
 
-# Import xAPI models
-from app.models import xAPIStatement, xAPIIngestionResponse
+from app.api.xapi import publish_statement_async, validate_xapi_statement
+from app.api.ai_flagged_content import analyze_xapi_statement_content
+from app.logging_config import get_logger
 
 router = APIRouter()
+logger = get_logger("seventaps")
 
 # Global variables for tracking
 webhook_stats = {
@@ -31,9 +30,17 @@ webhook_stats = {
     "authentication_failures": 0
 }
 
+# Global list to store all incoming xAPI statements for debugging
+all_incoming_statements = []
+MAX_STATEMENTS_LOG = 1000  # Keep last 1000 statements
+
+# Global statement deduplication cache (in production, use Redis)
+processed_statements = set()
+MAX_CACHE_SIZE = 10000  # Prevent memory leaks
+
 # 7taps Basic Authentication credentials
-SEVENTAPS_USERNAME = os.getenv("SEVENTAPS_USERNAME", "7taps_user")
-SEVENTAPS_PASSWORD = os.getenv("SEVENTAPS_PASSWORD", "7taps_password_2025")
+SEVENTAPS_USERNAME = os.getenv("SEVENTAPS_USERNAME", "7taps.team")
+SEVENTAPS_PASSWORD = os.getenv("SEVENTAPS_PASSWORD", "PracticeofLife")
 
 
 class SevenTapsWebhookPayload(BaseModel):
@@ -42,6 +49,70 @@ class SevenTapsWebhookPayload(BaseModel):
     timestamp: datetime = Field(..., description="Event timestamp")
     data: Dict[str, Any] = Field(..., description="Event data payload")
     webhook_id: Optional[str] = Field(None, description="7taps webhook identifier")
+
+
+async def store_incoming_statement_to_bigquery(statement: Dict[str, Any], source: str = "7taps_webhook") -> None:
+    """Store all incoming xAPI statements directly to BigQuery for immediate visibility."""
+    try:
+        from app.config.gcp_config import gcp_config
+        from google.cloud import bigquery
+        
+        # Extract key information
+        verb_id = statement.get("verb", {}).get("id", "unknown")
+        verb_display = statement.get("verb", {}).get("display", {}).get("en-US", "unknown")
+        object_id = statement.get("object", {}).get("id", "unknown")
+        object_name = statement.get("object", {}).get("definition", {}).get("name", {}).get("en-US", "unknown")
+        actor_name = statement.get("actor", {}).get("name", "unknown")
+        actor_mbox = statement.get("actor", {}).get("mbox", "unknown")
+        statement_id = statement.get("id", "no-id")
+        timestamp = statement.get("timestamp", datetime.now().isoformat())
+        
+        # Parse timestamp using centralized utility
+        from app.utils.timestamp_utils import parse_timestamp, format_human_readable
+        parsed_timestamp = parse_timestamp(timestamp)
+        formatted_timestamp = format_human_readable(timestamp)
+        
+        # Extract result information
+        result = statement.get("result", {})
+        result_completion = result.get("completion", False)
+        result_success = result.get("success", False)
+        result_score_scaled = result.get("score", {}).get("scaled")
+        result_response = result.get("response")
+        
+        # Create row for BigQuery
+        row = {
+            "timestamp": parsed_timestamp.isoformat(),
+            "statement_id": statement_id,
+            "actor_name": actor_name,
+            "actor_mbox": actor_mbox,
+            "verb_id": verb_id,
+            "verb_display": verb_display,
+            "object_id": object_id,
+            "object_name": object_name,
+            "result_completion": result_completion,
+            "result_success": result_success,
+            "result_score_scaled": result_score_scaled,
+            "result_response": result_response,
+            "raw_statement": statement,
+            "source": source
+        }
+        
+        # Insert into BigQuery
+        client = gcp_config.bigquery_client
+        table_id = f"{gcp_config.project_id}.{gcp_config.bigquery_dataset}.raw_xapi_statements"
+        table = client.get_table(table_id)
+        
+        errors = client.insert_rows(table, [row])
+        if errors:
+            print(f"❌ Failed to store incoming statement to BigQuery: {errors}")
+        else:
+            print(f"✅ Stored incoming statement to BigQuery: {verb_display} | {object_name} | Actor: {actor_name}")
+            if "completed" in verb_display.lower():
+                print(f"  🎯 COMPLETION STATEMENT STORED: {statement_id}")
+                
+    except Exception as e:
+        print(f"❌ Error storing incoming statement to BigQuery: {e}")
+        # Don't fail the main operation if BigQuery storage fails
 
 
 def verify_basic_auth(request: Request) -> bool:
@@ -63,7 +134,9 @@ def verify_basic_auth(request: Request) -> bool:
         credentials = base64.b64decode(auth_header[6:]).decode('utf-8')
         username, password = credentials.split(':', 1)
         
-        # Verify credentials
+        # Verify credentials  
+        print(f"🔐 Auth attempt: username='{username}', expected='{SEVENTAPS_USERNAME}'")
+        print(f"🔐 Auth attempt: password='{password}', expected='{SEVENTAPS_PASSWORD}'")
         return username == SEVENTAPS_USERNAME and password == SEVENTAPS_PASSWORD
         
     except Exception as e:
@@ -112,25 +185,124 @@ async def authenticate_7taps_request(request: Request) -> bool:
         True if authentication successful, False otherwise
     """
     try:
-        # Primary authentication: Basic Auth
+        # Primary authentication: Basic Auth (doesn't need request body)
         if verify_basic_auth(request):
             return True
         
-        # Fallback: HMAC webhook secret (if configured)
-        body = await request.body()
-        body_str = body.decode('utf-8')
-        signature = request.headers.get("X-7taps-Signature", "")
-        
-        if signature and verify_webhook_secret(body_str, signature):
-            return True
+        # For now, skip HMAC fallback to avoid request.body() issues
+        # TODO: Implement HMAC authentication properly if needed
         
         webhook_stats["authentication_failures"] += 1
         return False
-        
     except Exception as e:
-        print(f"Authentication error: {e}")
+        print(f"❌ Authentication error: {e}")
         webhook_stats["authentication_failures"] += 1
         return False
+
+
+async def _publish_7taps_statements(
+    statements: List[Dict[str, Any]], *, source: str
+) -> List[Dict[str, Any]]:
+    """Validate and publish statements originating from 7taps."""
+    processed: List[Dict[str, Any]] = []
+    seen_statement_ids = set()
+
+    for statement_data in statements:
+        statement_id = statement_data.get("id")
+        
+        # Check for duplicate statement IDs in this batch
+        if statement_id in seen_statement_ids:
+            logger.warning(f"Duplicate statement ID detected in batch: {statement_id}, skipping")
+            processed.append({
+                "statement_id": statement_id,
+                "status": "duplicate",
+                "message": "Statement already processed in this batch"
+            })
+            continue
+        
+        # Check for globally processed statements
+        if statement_id in processed_statements:
+            logger.warning(f"Statement ID already processed globally: {statement_id}, skipping")
+            processed.append({
+                "statement_id": statement_id,
+                "status": "duplicate",
+                "message": "Statement already processed previously"
+            })
+            continue
+        
+        seen_statement_ids.add(statement_id)
+        processed_statements.add(statement_id)
+        
+        # Prevent memory leaks by limiting cache size
+        if len(processed_statements) > MAX_CACHE_SIZE:
+            # Remove oldest entries (simple approach - in production use Redis with TTL)
+            processed_statements.clear()
+            logger.info("Cleared statement deduplication cache to prevent memory leaks")
+        
+        # Normalize user email addresses
+        if "actor" in statement_data and "mbox" in statement_data["actor"]:
+            mbox = statement_data["actor"]["mbox"]
+            if mbox and mbox.startswith("mailto:"):
+                # Normalize email to lowercase
+                email = mbox.replace("mailto:", "").lower()
+                statement_data["actor"]["mbox"] = f"mailto:{email}"
+                
+                # Also normalize the name field if it matches the email
+                if "name" in statement_data["actor"] and statement_data["actor"]["name"]:
+                    name_email = statement_data["actor"]["name"].lower()
+                    if name_email == email:
+                        statement_data["actor"]["name"] = email
+        try:
+            statement = validate_xapi_statement(statement_data)
+            publish_result = await publish_statement_async(statement, source=source)
+
+            processed.append(
+                {
+                    "statement_id": statement.id,
+                    "message_id": publish_result.get("message_id"),
+                    "timestamp": (
+                        statement.timestamp.isoformat()
+                        if statement.timestamp
+                        else datetime.now(timezone.utc).isoformat()
+                    ),
+                }
+            )
+        except HTTPException:
+            raise
+        except Exception as exc:  # pragma: no cover - defensive logging
+            processed.append(
+                {
+                    "statement_id": statement_data.get("id", "unknown"),
+                    "error": str(exc),
+                }
+            )
+
+    # Wake ETL processors after publishing all statements
+    if processed:
+        await _wake_etl_processors()
+
+    return processed
+
+
+async def _wake_etl_processors():
+    """Trigger ETL processors to wake up and process any pending messages."""
+    try:
+        import httpx
+        
+        # Get the service URL (same service, internal call)
+        service_url = "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app"
+        
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # Trigger ETL processing via a lightweight endpoint
+            response = await client.post(f"{service_url}/api/etl/trigger-processing")
+            if response.status_code == 200:
+                logger.info("Successfully triggered ETL processors from 7taps webhook")
+            else:
+                logger.warning(f"ETL trigger returned status {response.status_code}")
+                
+    except Exception as e:
+        logger.warning(f"Failed to trigger ETL processors from 7taps webhook: {e}")
+        # Don't fail the main operation if ETL wake fails
 
 
 @router.post("/statements")
@@ -143,7 +315,7 @@ async def receive_7taps_webhook(request: Request):
     """
     try:
         webhook_stats["total_requests"] += 1
-        webhook_stats["last_request_time"] = datetime.utcnow()
+        webhook_stats["last_request_time"] = datetime.now(timezone.utc)
         
         # Authenticate request
         if not await authenticate_7taps_request(request):
@@ -153,8 +325,17 @@ async def receive_7taps_webhook(request: Request):
                 headers={"WWW-Authenticate": "Basic"}
             )
         
-        # Parse request body
-        body = await request.json()
+        # Parse request body with proper error handling
+        try:
+            body = await request.json()
+        except Exception as json_error:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Invalid JSON in request body",
+                    "error": str(json_error)
+                }
+            )
         
         # Handle both single statement and array of statements
         if isinstance(body, list):
@@ -168,65 +349,34 @@ async def receive_7taps_webhook(request: Request):
                 # Direct xAPI statement
                 statements = [body]
         
-        processed_statements = []
-        
-        for statement_data in statements:
-            # Log the xAPI statement
-            print(f"🎉 xAPI STATEMENT RECEIVED: {statement_data}")
+        # Log all incoming statements for debugging
+        print(f"🔍 [7TAPS DEBUG] Received {len(statements)} statement(s) via POST")
+        for i, statement in enumerate(statements):
+            verb_id = statement.get("verb", {}).get("id", "unknown")
+            object_id = statement.get("object", {}).get("id", "unknown")
+            actor_name = statement.get("actor", {}).get("name", "unknown")
+            statement_id = statement.get("id", f"no-id-{i}")
             
-            # Queue xAPI statement to Redis Streams for ETL processing
+            print(f"  📝 Statement {i+1}: {verb_id} | {object_id} | Actor: {actor_name} | ID: {statement_id}")
+            
+            # Run AI content analysis on each statement
             try:
-                import redis
-                import uuid
-                
-                # Get Redis client with proper SSL configuration
-                redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-                
-                # Configure Redis client based on URL
-                if redis_url.startswith("rediss://"):
-                    # SSL Redis connection
-                    redis_client = redis.from_url(
-                        redis_url,
-                        ssl_cert_reqs=None,  # Disable SSL certificate verification
-                        decode_responses=True
-                    )
-                else:
-                    # Non-SSL Redis connection
-                    redis_client = redis.from_url(
-                        redis_url,
-                        decode_responses=True
-                    )
-                
-                # Prepare statement data for Redis
-                statement_id = statement_data.get("id", str(uuid.uuid4()))
-                statement_data["id"] = statement_id
-                
-                # Add metadata
-                statement_data["webhook_source"] = "7taps"
-                statement_data["ingested_at"] = datetime.utcnow().isoformat()
-                
-                # Add to Redis Stream
-                stream_name = "xapi_statements"
-                message_id = redis_client.xadd(
-                    stream_name,
-                    {"data": json.dumps(statement_data)},
-                    maxlen=10000  # Keep last 10k messages
-                )
-                
-                print(f"✅ xAPI statement queued to Redis Stream: {message_id}")
-                
-                processed_statements.append({
-                    "statement_id": statement_id,
-                    "message_id": message_id,
-                    "timestamp": statement_data.get("timestamp", datetime.utcnow().isoformat())
-                })
-                
+                ai_analysis = await analyze_xapi_statement_content(statement)
+                if ai_analysis.get("is_flagged", False):
+                    print(f"  🚨 FLAGGED CONTENT: {statement_id}")
+                    print(f"     Severity: {ai_analysis.get('severity', 'unknown')}")
+                    print(f"     Reasons: {ai_analysis.get('flagged_reasons', [])}")
             except Exception as e:
-                print(f"❌ Error queuing to Redis: {e}")
-                processed_statements.append({
-                    "statement_id": statement_data.get("id", "unknown"),
-                    "error": str(e)
-                })
+                print(f"  ⚠️ AI analysis failed for {statement_id}: {e}")
+            
+            # Special logging for completion statements
+            if "completed" in verb_id.lower():
+                print(f"  ✅ COMPLETION DETECTED: {statement_id}")
+                print(f"     Full statement: {statement}")
+        
+        processed_statements = await _publish_7taps_statements(
+            statements, source="7taps_webhook_post"
+        )
         
         webhook_stats["successful_requests"] += 1
         
@@ -235,7 +385,7 @@ async def receive_7taps_webhook(request: Request):
             "processed_count": len(processed_statements),
             "statements": processed_statements,
             "message": f"Successfully queued {len(processed_statements)} xAPI statements from 7taps",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
     except HTTPException:
@@ -259,7 +409,7 @@ async def receive_7taps_webhook_put(request: Request, statementId: str = None):
     """
     try:
         webhook_stats["total_requests"] += 1
-        webhook_stats["last_request_time"] = datetime.utcnow()
+        webhook_stats["last_request_time"] = datetime.now(timezone.utc)
         
         # Authenticate request
         if not await authenticate_7taps_request(request):
@@ -269,8 +419,17 @@ async def receive_7taps_webhook_put(request: Request, statementId: str = None):
                 headers={"WWW-Authenticate": "Basic"}
             )
         
-        # Parse request body
-        body = await request.json()
+        # Parse request body with proper error handling
+        try:
+            body = await request.json()
+        except Exception as json_error:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Invalid JSON in request body",
+                    "error": str(json_error)
+                }
+            )
         
         # Handle both single statement and array of statements
         if isinstance(body, list):
@@ -284,69 +443,38 @@ async def receive_7taps_webhook_put(request: Request, statementId: str = None):
                 # Direct xAPI statement
                 statements = [body]
         
-        processed_statements = []
-        
-        for statement_data in statements:
-            # Log the xAPI statement
-            print(f"🎉 xAPI STATEMENT RECEIVED (PUT): {statement_data}")
+        if statementId:
+            for statement in statements:
+                statement.setdefault("id", statementId)
+
+        # Log all incoming statements for debugging
+        print(f"🔍 [7TAPS DEBUG] Received {len(statements)} statement(s) via PUT")
+        for i, statement in enumerate(statements):
+            verb_id = statement.get("verb", {}).get("id", "unknown")
+            object_id = statement.get("object", {}).get("id", "unknown")
+            actor_name = statement.get("actor", {}).get("name", "unknown")
+            statement_id = statement.get("id", f"no-id-{i}")
             
-            # Use provided statementId if available, otherwise use statement's own id
-            if statementId and not statement_data.get("id"):
-                statement_data["id"] = statementId
+            print(f"  📝 Statement {i+1}: {verb_id} | {object_id} | Actor: {actor_name} | ID: {statement_id}")
             
-            # Queue xAPI statement to Redis Streams for ETL processing
+            # Run AI content analysis on each statement
             try:
-                import redis
-                import uuid
-                
-                # Get Redis client with proper SSL configuration
-                redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-                
-                # Configure Redis client based on URL
-                if redis_url.startswith("rediss://"):
-                    # SSL Redis connection
-                    redis_client = redis.from_url(
-                        redis_url,
-                        ssl_cert_reqs=None,  # Disable SSL certificate verification
-                        decode_responses=True
-                    )
-                else:
-                    # Non-SSL Redis connection
-                    redis_client = redis.from_url(
-                        redis_url,
-                        decode_responses=True
-                    )
-                
-                # Prepare statement data for Redis
-                statement_id = statement_data.get("id", str(uuid.uuid4()))
-                statement_data["id"] = statement_id
-                
-                # Add metadata
-                statement_data["webhook_source"] = "7taps"
-                statement_data["ingested_at"] = datetime.utcnow().isoformat()
-                
-                # Add to Redis Stream
-                stream_name = "xapi_statements"
-                message_id = redis_client.xadd(
-                    stream_name,
-                    {"data": json.dumps(statement_data)},
-                    maxlen=10000  # Keep last 10k messages
-                )
-                
-                print(f"✅ xAPI statement queued to Redis Stream (PUT): {message_id}")
-                
-                processed_statements.append({
-                    "statement_id": statement_id,
-                    "message_id": message_id,
-                    "timestamp": statement_data.get("timestamp", datetime.utcnow().isoformat())
-                })
-                
+                ai_analysis = await analyze_xapi_statement_content(statement)
+                if ai_analysis.get("is_flagged", False):
+                    print(f"  🚨 FLAGGED CONTENT: {statement_id}")
+                    print(f"     Severity: {ai_analysis.get('severity', 'unknown')}")
+                    print(f"     Reasons: {ai_analysis.get('flagged_reasons', [])}")
             except Exception as e:
-                print(f"❌ Error queuing to Redis (PUT): {e}")
-                processed_statements.append({
-                    "statement_id": statement_data.get("id", "unknown"),
-                    "error": str(e)
-                })
+                print(f"  ⚠️ AI analysis failed for {statement_id}: {e}")
+            
+            # Special logging for completion statements
+            if "completed" in verb_id.lower():
+                print(f"  ✅ COMPLETION DETECTED: {statement_id}")
+                print(f"     Full statement: {statement}")
+
+        processed_statements = await _publish_7taps_statements(
+            statements, source="7taps_webhook_put"
+        )
         
         webhook_stats["successful_requests"] += 1
         
@@ -355,7 +483,7 @@ async def receive_7taps_webhook_put(request: Request, statementId: str = None):
             "processed_count": len(processed_statements),
             "statements": processed_statements,
             "message": f"Successfully queued {len(processed_statements)} xAPI statements from 7taps (PUT)",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
     except HTTPException:
@@ -409,7 +537,7 @@ async def get_webhook_stats():
     """
     return {
         "webhook_stats": webhook_stats,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "success_rate": (
             webhook_stats["successful_requests"] / webhook_stats["total_requests"]
             if webhook_stats["total_requests"] > 0 else 0

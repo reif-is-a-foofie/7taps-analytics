@@ -55,8 +55,10 @@ async def ingest_xapi_statements(statements: List[Dict[str, Any]]) -> IngestionR
     """Ingest xAPI statements through the standard xAPI endpoint."""
     
     try:
-        # Get the xAPI endpoint URL
-        xapi_endpoint = os.getenv("XAPI_ENDPOINT", "https://seventaps-analytics-5135b3a0701a.herokuapp.com/api/xapi/statements")
+        # Get the xAPI endpoint URL (default to local service)
+        api_base = os.getenv("API_BASE_URL", "").rstrip("/")
+        default_endpoint = f"{api_base}/api/xapi/statements" if api_base else "http://localhost:8000/api/xapi/statements"
+        xapi_endpoint = os.getenv("XAPI_ENDPOINT", default_endpoint)
         
         # Use HTTP client for batch ingestion
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -108,12 +110,17 @@ async def ingest_xapi_statements(statements: List[Dict[str, Any]]) -> IngestionR
 async def convert_csv_to_xapi(request: CSVToXAPIRequest):
     """Convert CSV data to xAPI statements."""
     
+    # Validate input
+    if not request.csv_data or not request.csv_data.strip():
+        raise HTTPException(status_code=400, detail="CSV data cannot be empty")
+    
     try:
         # Parse base timestamp if provided
         base_timestamp = None
         if request.base_timestamp:
             try:
-                base_timestamp = datetime.fromisoformat(request.base_timestamp.replace('Z', '+00:00'))
+                from app.utils.timestamp_utils import parse_timestamp
+                base_timestamp = parse_timestamp(request.base_timestamp)
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid timestamp format. Use ISO format.")
         
@@ -266,7 +273,8 @@ async def batch_ingest_csv_data(
         base_timestamp_dt = None
         if base_timestamp:
             try:
-                base_timestamp_dt = datetime.fromisoformat(base_timestamp.replace('Z', '+00:00'))
+                from app.utils.timestamp_utils import parse_timestamp
+                base_timestamp_dt = parse_timestamp(base_timestamp)
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid timestamp format.")
         
@@ -279,7 +287,7 @@ async def batch_ingest_csv_data(
             "success": True,
             "message": f"Background ingestion started for {len(xapi_statements)} statements",
             "statements_count": len(xapi_statements),
-            "task_id": f"batch_ingest_{datetime.utcnow().isoformat()}"
+            "task_id": f"batch_ingest_{datetime.now(timezone.utc).isoformat()}"
         }
         
     except Exception as e:

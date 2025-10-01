@@ -8,10 +8,9 @@ visualization and real-time data display.
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from typing import Dict, Any, List
+from typing import Dict, Any
 import httpx
-import json
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 from app.logging_config import get_logger
@@ -28,59 +27,44 @@ class DashboardManager:
         if api_base_url:
             self.api_base = api_base_url.rstrip("/") + "/api"
         else:
-            # Use localhost for development
-            self.api_base = "http://localhost:8000/api"
+            # Use proper base URL for environment
+            if os.getenv("ENVIRONMENT") == "development":
+                self.api_base = "http://localhost:8000/api"
+            else:
+                self.api_base = "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api"
 
     async def get_dashboard_metrics(self) -> Dict[str, Any]:
-        """Get comprehensive dashboard metrics."""
+        """Get comprehensive dashboard metrics with real data."""
         try:
             async with httpx.AsyncClient() as client:
-                # Get health metrics
+                health_data: Dict[str, Any] = {"status": "unknown"}
+                alerts_data: Dict[str, Any] = {}
+
                 health_response = await client.get(f"{self.api_base}/health/detailed")
-                health_data = health_response.json() if health_response.status_code == 200 else {"status": "unknown"}
+                if health_response.status_code == 200:
+                    health_data = health_response.json()
 
-                # Get database metrics (mock data for now)
-                db_metrics = {
-                    "total_users": 150,
-                    "total_activities": 2500,
-                    "total_responses": 1800,
-                    "total_lessons": 50,  # Changed from total_questions to total_lessons
-                    "completion_rate": 78.5,
-                    "active_users_today": 45,
-                    "avg_session_duration": 12.3
-                }
-
-                # Get learning analytics
-                analytics_data = {
-                    "lesson_completion": [
-                        {"lesson": "Lesson 1", "completed": 85, "total": 120},
-                        {"lesson": "Lesson 2", "completed": 92, "total": 118},
-                        {"lesson": "Lesson 3", "completed": 78, "total": 125}
-                    ],
-                    "activity_trends": [
-                        {"date": "2024-01-01", "activities": 45, "users": 12},
-                        {"date": "2024-01-02", "activities": 67, "users": 18},
-                        {"date": "2024-01-03", "activities": 89, "users": 23}
-                    ],
-                    "response_distribution": [
-                        {"type": "Multiple Choice", "count": 450},
-                        {"type": "Text Response", "count": 380},
-                        {"type": "Rating", "count": 290}
-                    ]
-                }
+                alerts_response = await client.get(
+                    f"{self.api_base}/xapi/alerts/trigger-words",
+                    params={"limit": 25},
+                )
+                if alerts_response.status_code == 200:
+                    alerts_data = alerts_response.json()
 
                 return {
                     "health": health_data,
-                    "metrics": db_metrics,
-                    "analytics": analytics_data,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "metrics": {},
+                    "trigger_word_alerts": alerts_data,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
 
         except Exception as e:
             logger.error("Failed to get dashboard metrics", error=e)
             return {
-                "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "health": {"status": "error"},
+                "metrics": {},
+                "trigger_word_alerts": {},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
 # Global dashboard manager
@@ -90,15 +74,14 @@ dashboard_manager = DashboardManager()
 async def analytics_dashboard(request: Request):
     """Serve the analytics dashboard."""
     try:
-        # Get dashboard data
         dashboard_data = await dashboard_manager.get_dashboard_metrics()
 
         context = {
             "request": request,
-            "dashboard_data": json.dumps(dashboard_data),
-            "timestamp": datetime.utcnow().isoformat(),
+            "dashboard_data": dashboard_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "active_page": "dashboard",
-            "title": "Analytics Dashboard"
+            "title": "Analytics Dashboard",
         }
 
         return templates.TemplateResponse("dashboard.html", context)
@@ -126,5 +109,5 @@ async def dashboard_health():
             "/ui/dashboard",
             "/api/dashboard/metrics"
         ],
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }

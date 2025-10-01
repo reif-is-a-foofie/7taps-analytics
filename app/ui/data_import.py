@@ -313,17 +313,18 @@ async def data_import_page(request: Request):
                     
                     statsDiv.innerHTML = `
                         <strong>📊 Current Statistics:</strong><br>
-                        Total Statements: ${stats.total_statements}<br>
-                        Total Actors: ${stats.total_actors}<br>
-                        Total Activities: ${stats.total_activities}<br>
-                        Total Verbs: ${stats.total_verbs}<br>
+                        Total Statements Queued: ${stats.total_statements}<br>
+                        Polls Imported: ${stats.polls_imported}<br>
+                        Audio Imported: ${stats.audio_imported}<br>
+                        Focus Group Statements: ${stats.focus_group_imported}<br>
                         <br>
                         <strong>Data Sources:</strong><br>
                         • xAPI Ingestion: Live data from 7taps<br>
                         • Polls Import: CSV data uploads<br>
                         • Audio Upload: Voice recordings<br>
+                        • Focus Group Import: CSV cohorts<br>
                         <br>
-                        Last Updated: ${new Date(stats.last_updated).toLocaleString()}
+                        Last Updated: ${stats.last_updated ? new Date(stats.last_updated).toLocaleString() : 'N/A'}
                     `;
                 } catch (error) {
                     statsDiv.innerHTML = `<strong>❌ Error loading stats:</strong> ${error.message}`;

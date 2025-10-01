@@ -30,6 +30,9 @@ RUN mkdir -p /app/logs && chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
+# Default deployment mode for containerized environments
+ENV DEPLOYMENT_MODE=cloud_run
+
 # Expose port (Cloud Run sets PORT=8080)
 EXPOSE 8080
 
@@ -37,5 +40,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD sh -c 'curl -f http://localhost:${PORT:-8080}/api/health || exit 1'
 
-# Run the application with production settings (bind to PORT env var for Cloud Run)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"] 
+# Run the unified FastAPI application
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"]
