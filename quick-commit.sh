@@ -27,6 +27,15 @@ echo ""
 echo "📊 Git Status:"
 git status --short
 
+# Run pre-deployment tests
+echo ""
+echo "🧪 Running pre-deployment tests..."
+if ! python3 test_pre_deployment.py; then
+    echo "❌ Tests failed! Fix issues before committing."
+    echo "💡 Run 'python3 test_pre_deployment.py' to see details"
+    exit 1
+fi
+
 # Add all changes
 echo ""
 echo "📦 Staging all changes..."
