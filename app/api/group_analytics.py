@@ -133,7 +133,7 @@ class GroupAnalyticsManager:
         """Get lesson distribution from database."""
         try:
             # Load the original focus group CSV data
-            import pandas as pd
+            # import pandas as pd  # Removed - heavy dependency for production
             from io import StringIO
             
             data_file = Path("data/focus_group_import.json")
@@ -171,7 +171,7 @@ class GroupAnalyticsManager:
         """Get card type distribution from focus group data."""
         try:
             # Load the original focus group CSV data
-            import pandas as pd
+            # import pandas as pd  # Removed - heavy dependency for production
             from io import StringIO
             
             data_file = Path("data/focus_group_import.json")

@@ -9,7 +9,7 @@ import logging
 import hashlib
 import json
 import os
-import redis
+# import redis  # Removed - not used in production
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 from app.config.gcp_config import get_gcp_config

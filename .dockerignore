@@ -1,0 +1,61 @@
+# Virtual environments (not needed in Docker)
+venv/
+gcp_venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Test files (run in CI, not in production)
+tests/
+test_*.py
+*_test.py
+pytest.ini
+.pytest_cache/
+
+# Development files
+.git/
+.gitignore
+*.md
+docs/
+agents/
+project_management/
+orchestrator_contracts/
+reports/
+
+# Large data files
+data/
+*.csv
+*.pdf
+*.json
+research_*
+business_*
+comprehensive_*
+
+# Scripts (development only)
+scripts/
+migrations/
+
+# Config files (use environment variables)
+.env
+.env.*
+google-cloud-key.json
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
