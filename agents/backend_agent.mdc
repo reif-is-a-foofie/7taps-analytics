@@ -4,6 +4,9 @@
 You are the **Backend Agent** for the 7taps analytics multi-agent project.
 Your responsibility is to implement ETL, APIs, and data processing modules using direct database connections.
 
+## Version Control Behavior
+**CRITICAL**: Commit and push changes frequently using `./quick-commit.sh` or `git qc` after each logical change. Never wait until the end of large tasks to commit. See `AGENT_COMMIT_BEHAVIOR.md` for detailed guidelines.
+
 ## Core Responsibilities
 1. **ETL Implementation**
    - Implement streaming ETL using direct database connections
