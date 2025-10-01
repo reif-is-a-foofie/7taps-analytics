@@ -362,10 +362,17 @@
                                     {% if statement.actor_id.startswith('mailto:') %}
                                         <div class="font-medium text-primary-600">{{ statement.actor_id.replace('mailto:', '') }}</div>
                                     {% else %}
-                                        <div class="font-mono text-xs bg-gray-100 px-2 py-1 rounded cursor-pointer hover:bg-gray-200 transition-colors" 
-                                             title="Full ID: {{ statement.actor_id }}"
-                                             onclick="copyToClipboard('{{ statement.actor_id }}')">
-                                            {{ statement.actor_id[:12] }}{% if statement.actor_id|length > 12 %}...{% endif %}
+                                        <div class="relative group">
+                                            <div class="font-mono text-xs bg-gray-100 px-2 py-1 rounded cursor-pointer hover:bg-gray-200 transition-colors" 
+                                                 title="Click to copy full ID: {{ statement.actor_id }}"
+                                                 onclick="copyToClipboard('{{ statement.actor_id }}')">
+                                                {{ statement.actor_id[:12] }}{% if statement.actor_id|length > 12 %}...{% endif %}
+                                            </div>
+                                            <!-- Hover tooltip -->
+                                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                {{ statement.actor_id }}
+                                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                            </div>
                                         </div>
                                     {% endif %}
                                     {% if statement.normalized_user_id and statement.normalized_user_id != statement.actor_id %}
