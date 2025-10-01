@@ -7,7 +7,7 @@ steps:
       - -lc
       - |
         pip install -q -r requirements-production.txt && \
-        python -c "import app.main_lean; print('✅ Lean app imports successfully')"
+        python -c "import app.main_ultra_lean; print('✅ Ultra-lean app imports successfully')"
 
   # Build lean container
   - name: 'gcr.io/cloud-builders/docker'
@@ -50,7 +50,7 @@ steps:
       - '--concurrency'
       - '100'  # Higher concurrency for lean app
       - '--timeout'
-      - '300'
+      - '600'
       - '--set-env-vars'
       - 'DEPLOYMENT_MODE=cloud_run'
       - '--set-env-vars'

@@ -11,8 +11,22 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.config import settings
-from app.logging_config import get_logger
+# Import with fallbacks for lean deployment
+try:
+    from app.config import settings
+except ImportError:
+    # Fallback config for lean deployment
+    class Settings:
+        ENVIRONMENT = "production"
+        DEPLOYMENT_MODE = "cloud_run"
+    settings = Settings()
+
+try:
+    from app.logging_config import get_logger
+    logger = get_logger("lean_production")
+except ImportError:
+    import logging
+    logger = logging.getLogger("lean_production")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -69,10 +83,17 @@ async def data_explorer_lean(request: Request):
         return await data_explorer(request, limit=25)
     except Exception as e:
         logger.error(f"Data explorer error: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": "Data explorer temporarily unavailable"
-        })
+        # Return simple HTML instead of template
+        return HTMLResponse("""
+        <html>
+        <head><title>Data Explorer</title></head>
+        <body>
+            <h1>Data Explorer</h1>
+            <p>Data explorer temporarily unavailable. Please try again later.</p>
+            <p><a href="/api/health">Check Health</a></p>
+        </body>
+        </html>
+        """)
 
 @app.get("/ui/safety", response_class=HTMLResponse)
 async def safety_dashboard_lean(request: Request):
@@ -82,10 +103,16 @@ async def safety_dashboard_lean(request: Request):
         return await get_safety_dashboard(request)
     except Exception as e:
         logger.error(f"Safety dashboard error: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": "Safety dashboard temporarily unavailable"
-        })
+        return HTMLResponse("""
+        <html>
+        <head><title>Safety Dashboard</title></head>
+        <body>
+            <h1>Safety Dashboard</h1>
+            <p>Safety dashboard temporarily unavailable. Please try again later.</p>
+            <p><a href="/api/health">Check Health</a></p>
+        </body>
+        </html>
+        """)
 
 # ============================================================================
 # ESSENTIAL API ENDPOINTS
