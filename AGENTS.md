@@ -85,6 +85,7 @@
 - Templates use Jinja2 with Tailwind-style utility classes; mirror existing `templates/production_dashboard.html` patterns.
 - Keep functions short; factor shared GCP logic into `app/config/` helpers or `app/api/utils/` if created.
 - Apply `black` + `isort` before committing (per `.cursorrules`).
+- **CRITICAL**: Commit and push changes frequently using `./quick-commit.sh` or `git qc` after each logical change. Never wait until the end of large tasks to commit.
 
 ## Data & Observability
 - Health endpoints: `/health`, `/api/health`, `/api/status`.

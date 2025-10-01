@@ -5,6 +5,9 @@ This project is an experimental integration with [7taps](https://7taps.com), des
 
 Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps lesson data → Cloud Functions → Pub/Sub → BigQuery → Analytics dashboards with AI-driven query generation.
 
+## 🤖 For AI Agents
+**IMPORTANT**: This project uses frequent commits. See [`AGENT_REMINDER.md`](AGENT_REMINDER.md) for critical commit behavior guidelines. Use `./quick-commit.sh` or `git qc` after each logical change.
+
 ---
 
 ## 🚀 What It Does
