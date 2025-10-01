@@ -7,7 +7,7 @@ echo "⚡ Ultra-Fast Lean Deployment"
 echo "============================="
 
 PROJECT_URL="https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app"
-TIMEOUT=180  # 3 minutes for lean deployment
+TIMEOUT=600  # 10 minutes for lean deployment
 
 echo "🎯 Target: Lean Production Build"
 echo "🌐 URL: $PROJECT_URL"
