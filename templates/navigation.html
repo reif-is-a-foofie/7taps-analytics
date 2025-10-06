@@ -1,0 +1,174 @@
+<!-- Navigation Sidebar Component -->
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-title">POL Analytics</div>
+        <div class="sidebar-subtitle">Practice of Life Platform</div>
+    </div>
+    
+    <div class="nav-section">
+        <div class="nav-section-title">Main Apps</div>
+        <a href="/" class="nav-item {{ 'active' if active_page == 'dashboard' else '' }}" data-app="dashboard">
+            <span class="nav-item-icon">📊</span>
+            Analytics Dashboard
+        </a>
+        <a href="/ui/statement-browser" class="nav-item {{ 'active' if active_page == 'statement_browser' else '' }}" data-app="statement_browser">
+            <span class="nav-item-icon">🔍</span>
+            Statement Browser
+        </a>
+        <a href="/ui/bigquery-dashboard" class="nav-item {{ 'active' if active_page == 'bigquery_dashboard' else '' }}" data-app="bigquery_dashboard">
+            <span class="nav-item-icon">📈</span>
+            BigQuery Dashboard
+        </a>
+        <a href="/data-import" class="nav-item {{ 'active' if active_page == 'data_import' else '' }}" data-app="data_import">
+            <span class="nav-item-icon">📥</span>
+            Data Import
+        </a>
+        <a href="/docs" class="nav-item {{ 'active' if active_page == 'docs' else '' }}" data-app="docs">
+            <span class="nav-item-icon">📚</span>
+            API Documentation
+        </a>
+    </div>
+    
+    <div class="nav-section">
+        <div class="nav-section-title">System</div>
+        <a href="/health" class="nav-item">
+            <span class="nav-item-icon">💚</span>
+            Health Check
+        </a>
+        <a href="/ui/test-xapi-ingestion" class="nav-item {{ 'active' if active_page == 'test_xapi_ingestion' else '' }}" data-app="test_xapi_ingestion">
+            <span class="nav-item-icon">🔧</span>
+            xAPI Ingestion Status
+        </a>
+        <a href="/ui/recent-pubsub" class="nav-item {{ 'active' if active_page == 'recent_pubsub' else '' }}" data-app="recent_pubsub">
+            <span class="nav-item-icon">📡</span>
+            Recent Pub/Sub Feed
+        </a>
+    </div>
+</nav>
+
+<script>
+// Navigation System JavaScript
+class NavigationSystem {
+    constructor() {
+        this.currentApp = this.getCurrentApp();
+        this.navItems = document.querySelectorAll('.nav-item[data-app]');
+        this.init();
+    }
+    
+    getCurrentApp() {
+        const path = window.location.pathname;
+        if (path === '/') return 'dashboard';
+        if (path === '/docs') return 'docs';
+        if (path.startsWith('/ui/statement-browser')) return 'statement_browser';
+        if (path.startsWith('/ui/bigquery-dashboard')) return 'bigquery_dashboard';
+        if (path.startsWith('/data-import')) return 'data_import';
+        if (path.startsWith('/ui/test-xapi-ingestion')) return 'test_xapi_ingestion';
+        if (path.startsWith('/ui/recent-pubsub')) return 'recent_pubsub';
+        return 'dashboard';
+    }
+    
+    init() {
+        this.updateActiveState();
+        this.addEventListeners();
+    }
+    
+    updateActiveState() {
+        this.navItems.forEach(item => {
+            const app = item.getAttribute('data-app');
+            if (app === this.currentApp) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+    
+    addEventListeners() {
+        this.navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                const app = item.getAttribute('data-app');
+                this.navigate(app);
+            });
+        });
+    }
+    
+    navigate(app) {
+        const urls = {
+            'dashboard': '/',
+            'statement_browser': '/ui/statement-browser',
+            'bigquery_dashboard': '/ui/bigquery-dashboard',
+            'data_import': '/data-import',
+            'docs': '/docs',
+            'test_xapi_ingestion': '/ui/test-xapi-ingestion',
+            'recent_pubsub': '/ui/recent-pubsub'
+        };
+        
+        const url = urls[app];
+        if (url) {
+            window.location.href = url;
+        }
+    }
+    
+    getNavigation() {
+        return {
+            items: [
+                {
+                    label: 'Analytics Dashboard',
+                    url: '/',
+                    icon: 'dashboard',
+                    app: 'dashboard',
+                    active: this.currentApp === 'dashboard'
+                },
+                {
+                    label: 'Statement Browser',
+                    url: '/ui/statement-browser',
+                    icon: 'browser',
+                    app: 'statement_browser',
+                    active: this.currentApp === 'statement_browser'
+                },
+                {
+                    label: 'BigQuery Dashboard',
+                    url: '/ui/bigquery-dashboard',
+                    icon: 'analytics',
+                    app: 'bigquery_dashboard',
+                    active: this.currentApp === 'bigquery_dashboard'
+                },
+                {
+                    label: 'Data Import',
+                    url: '/data-import',
+                    icon: 'import',
+                    app: 'data_import',
+                    active: this.currentApp === 'data_import'
+                },
+                {
+                    label: 'API Documentation',
+                    url: '/docs',
+                    icon: 'docs',
+                    app: 'docs',
+                    active: this.currentApp === 'docs'
+                },
+                {
+                    label: 'xAPI Ingestion Status',
+                    url: '/ui/test-xapi-ingestion',
+                    icon: 'ingestion',
+                    app: 'test_xapi_ingestion',
+                    active: this.currentApp === 'test_xapi_ingestion'
+                },
+                {
+                    label: 'Recent Pub/Sub Feed',
+                    url: '/ui/recent-pubsub',
+                    icon: 'feed',
+                    app: 'recent_pubsub',
+                    active: this.currentApp === 'recent_pubsub'
+                }
+            ],
+            current_app: this.currentApp
+        };
+    }
+}
+
+// Initialize navigation system when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.navigationSystem = new NavigationSystem();
+});
+</script>

@@ -1,126 +1,183 @@
-# 7taps Analytics - Enhanced Safety Management
+# 7taps Analytics
 
-Instead of basic CRUD, this system provides **intelligent safety management** that integrates with your existing Gemini AI setup to deliver:
+**Turn raw xAPI firehoses into human-readable insights.**
+This project is an experimental integration with [7taps](https://7taps.com), designed to show how learning data can be ingested, normalized, and explored across different levels of technical expertise.
 
-- **Smart word filtering** with AI-powered suggestions
-- **Real-time content analysis** combining rule-based and AI detection
-- **Pattern recognition** to stay ahead of emerging threats
-- **Usage analytics** to optimize your filter effectiveness
+Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps lesson data → Cloud Functions → Pub/Sub → BigQuery → Analytics dashboards with AI-driven query generation.
+
+## 🤖 For AI Agents
+**IMPORTANT**: This project uses frequent commits. See [`AGENT_REMINDER.md`](AGENT_REMINDER.md) for critical commit behavior guidelines. Use `./quick-commit.sh` or `git qc` after each logical change.
+
+---
+
+## 🚀 What It Does
+
+1. **Ingest xAPI statements via Cloud Functions**
+   * Receives raw xAPI `POST` statements from 7taps via Google Cloud Function
+   * Publishes statements to Pub/Sub for reliable event streaming
+   * Always-on architecture with zero cold start issues
+
+2. **Archive Raw Data to Cloud Storage**
+   * Pub/Sub subscriber archives raw JSON payloads to Cloud Storage
+   * Provides permanent backup and replay capabilities
+   * Decouples ingestion from downstream processing
+
+3. **Transform & Load to BigQuery**
+   * Pub/Sub subscriber transforms raw xAPI into structured BigQuery tables:
+     * `users` - learner profiles and metadata
+     * `lessons` - course content and progression
+     * `questions` - individual prompts and assessments
+     * `user_responses` - freeform text and poll answers
+     * `user_activities` - completion events and engagement
+   * Serverless ETL with automatic scaling
+
+4. **Serve Analytics from BigQuery**
+   * Provides endpoints for common queries against BigQuery:
+     * Who completed which lessons?
+     * Which users are dropping off?
+     * What themes show up in freeform responses?
+     * Engagement patterns and sentiment analysis
+
+5. **Explore the Data**
+   Multiple "tiers" of access depending on technical comfort level:
+   * **API-first:** raw curl requests to `/api/` endpoints
+   * **BigQuery Console:** run queries directly against structured data
+   * **Data Explorer UI:** filter responses without writing SQL
+   * **Analytics Dashboards:** BigQuery-powered visualizations
+   * **AI Agent (September):** ask natural language questions, generate SQL automatically, and visualize results
+
+---
+
+## 🛠️ Tech Stack
+
+* **Ingestion:** Google Cloud Functions (Python runtime)
+* **Event Streaming:** Google Cloud Pub/Sub
+* **Data Storage:** Google Cloud Storage (raw data archive)
+* **Analytics Database:** Google BigQuery (structured data warehouse)
+* **Backend:** Python, FastAPI for API endpoints
+* **Analytics UI:** BigQuery-powered dashboards and visualizations
+* **AI Layer:** OpenAI API (GPT-3.5), natural language query processing
+* **Integration:** xAPI → Cloud Functions → Pub/Sub → BigQuery ETL
+* **Deployment:** Google Cloud Platform (serverless)
+
+---
+
+## 🧩 Example Use Cases
+
+* **Engagement Tracking**: "Which users completed lesson 5 on time?"
+* **Content Insights**: "Show me all responses mentioning 'sleep'"
+* **Cohort Analysis**: "What freeform answers are trending across my learners?"
+* **Sentiment Monitoring**: flag problematic words or shifts in tone
+* **Natural Language Queries**: "Which learners are most likely to churn?"
+* **Dropoff Analysis**: "Where are users losing engagement in the course?"
+
+---
+
+## 📂 Repo Structure
+
+```
+7taps-analytics/
+├── app/                   # Application code
+│   ├── api/              # FastAPI endpoints for data access
+│   ├── etl/              # Pub/Sub ETL processors
+│   ├── ui/               # Admin interfaces and dashboards
+│   └── main.py           # Application entry point
+├── project_management/    # Contracts, reports, and project tracking
+│   ├── contracts/        # Orchestrator contracts for all modules
+│   └── progress_reports/ # Deployment and testing reports
+├── workers/              # Dramatiq workers for background jobs
+├── templates/            # HTML templates for web interfaces
+├── scripts/              # Utility scripts and database tools
+├── tests/                # Test suites and validation
+├── config/               # Docker and deployment configuration
+├── docs/                 # Documentation and guides
+├── plan.md               # Development plan and deployment process
+└── README.md             # This file
+```
+
+---
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### Google Cloud Deployment
+See `plan.md` for complete deployment instructions. Quick setup:
+
 ```bash
-pip install -r requirements.txt
+# 1. Install dependencies
+pip3 install google-cloud-pubsub google-cloud-storage google-cloud-bigquery
+
+# 2. Authenticate with GCP
+gcloud auth activate-service-account --key-file=google-cloud-key.json
+gcloud config set project taps-data
+
+# 3. Deploy infrastructure
+python3 scripts/deploy_gcp_python_only.py
+
+# 4. Deploy Cloud Function
+gcloud functions deploy cloud-ingest-xapi --runtime python39 --trigger-http --allow-unauthenticated --source app/api --entry-point cloud_ingest_xapi --no-gen2
 ```
 
-### 2. Configure Gemini Integration
-Update your Gemini API key in `app/safety_api.py`:
-```python
-# Replace with your actual Gemini API key
-gemini = GeminiSafetyIntegration(api_key="your-actual-gemini-api-key")
-```
+### Access Points
+* **Cloud Function:** https://us-central1-taps-data.cloudfunctions.net/cloud-ingest-xapi
+* **GCP Console:** https://console.cloud.google.com/functions/list?project=taps-data
+* **BigQuery:** https://console.cloud.google.com/bigquery?project=taps-data
 
-### 3. Run the API
-```bash
-cd app
-python main.py
-```
+### Natural Language Queries
+Try asking September (the AI agent) questions like:
+* "Show engagement dropoff"
+* "Find problematic users"
+* "Energy levels over time"
+* "Screen time patterns"
+* "Learning priorities"
+* "Reflection themes"
 
-### 4. Access the UI
-Open `http://localhost:8000/static/safety-words.html`
+---
 
-## 🧠 Key Features
+## 🧠 AI-Powered Analytics
 
-### Intelligent Word Management
-- **CRUD operations** for filtered words with categories and severity levels
-- **Bulk operations** for managing multiple words at once
-- **Smart suggestions** from Gemini AI based on content patterns
-- **Usage analytics** to track filter effectiveness
+The system includes **September**, an AI analytics assistant that can:
+* **Understand natural language** - Ask "sleep" and get sleep-related insights
+* **Generate SQL automatically** - Converts questions to database queries
+* **Create visualizations** - Plotly charts for engagement, sentiment, and behavior
+* **Provide contextual analysis** - Explains patterns and trends in the data
 
-### Enhanced Content Analysis
-- **Dual-layer detection**: Rule-based filters + Gemini AI analysis
-- **Contextual understanding** beyond simple keyword matching
-- **Confidence scoring** for more nuanced decision making
-- **Pattern recognition** to identify emerging threats
+September has access to the complete database context and can answer questions about:
+* User engagement patterns
+* Content effectiveness
+* Behavioral insights
+* Sentiment analysis
+* Learning priorities
 
-### Advanced Safety Dashboard
-- **Real-time filtering controls** with instant feedback
-- **Category-based organization** (profanity, harassment, hate speech, etc.)
-- **Severity-based prioritization** (1-5 scale)
-- **Statistics and analytics** for safety performance
+---
 
-## 📊 API Endpoints
+## ⚠️ Notes
 
-### Word Management
-- `GET /api/safety/words` - List filtered words with filtering options
-- `POST /api/safety/words` - Create new filtered word
-- `PUT /api/safety/words/{id}` - Update existing word
-- `DELETE /api/safety/words/{id}` - Remove word from filters
-- `POST /api/safety/words/bulk` - Bulk create words
+* **Experimental project** - This repo is exploratory and designed for learning/demo purposes
+* **Authentication:** Cloud Function endpoints are configured for demo purposes
+* **Data scope:** focused on 7taps course completion and user engagement data
+* **Development:** coordinated through JSON contracts in `project_management/contracts/`
+* **Security:** GCP service account key located at `google-cloud-key.json` (never commit to version control)
 
-### AI-Powered Features
-- `GET /api/safety/suggestions` - Get Gemini AI word suggestions
-- `POST /api/safety/suggestions/apply` - Apply selected suggestions
-- `POST /api/safety/analyze/enhanced` - Enhanced content analysis
-- `GET /api/safety/stats` - Safety statistics and analytics
+---
 
-## 🔧 Integration with Your Existing System
+## 🌱 Future Directions
 
-This system is designed to **enhance** your existing safety dashboard at `https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/ui/safety` by:
+* Enhanced BigQuery ML models for predictive analytics
+* Multi-tenant, secure deployment with Cloud IAM
+* Automated lesson metadata sync via 7taps API
+* RAG (Retrieval-Augmented Generation) for true self-learning agents
+* Real-time streaming analytics with Dataflow
+* Auto-scaling Cloud Functions based on ingestion volume
 
-1. **Extending your Gemini AI** with intelligent word suggestions
-2. **Adding CRUD capabilities** for your filtered word list
-3. **Providing enhanced analysis** that works alongside your current system
-4. **Maintaining compatibility** with your existing safety configuration
+---
 
-## 🎯 Usage Examples
+## 👤 Author
 
-### Add a New Filtered Word
-```python
-import requests
+Built by [Reif Tauati](https://github.com/reif-is-a-foofie)
+Exploring integrations, AI agents, and ways to make data actually useful.
 
-response = requests.post("http://localhost:8000/api/safety/words", json={
-    "word": "inappropriate_content",
-    "category": "inappropriate",
-    "severity": 3,
-    "is_active": True
-})
-```
+---
 
-### Get AI Suggestions
-```python
-suggestions = requests.get("http://localhost:8000/api/safety/suggestions")
-# Returns Gemini-powered suggestions based on your content patterns
-```
+## 📄 License
 
-### Enhanced Content Analysis
-```python
-analysis = requests.post("http://localhost:8000/api/safety/analyze/enhanced", 
-                        json={"content": "Content to analyze"})
-# Returns both rule-based matches and Gemini AI insights
-```
-
-## 🔒 Security Considerations
-
-- **API keys**: Store your Gemini API key securely (use environment variables)
-- **Rate limiting**: Implement rate limiting for production use
-- **Input validation**: All inputs are validated and sanitized
-- **CORS**: Configure CORS properly for your domain in production
-
-## 🚀 Production Deployment
-
-1. **Database**: Replace in-memory storage with PostgreSQL
-2. **Authentication**: Add proper authentication/authorization
-3. **Rate limiting**: Implement rate limiting middleware
-4. **Monitoring**: Add logging and monitoring
-5. **Scaling**: Use async processing for high-volume analysis
-
-## 📈 Next Steps
-
-1. **Integrate with your existing Gemini setup** by updating the API key
-2. **Deploy alongside your current system** for enhanced capabilities
-3. **Monitor effectiveness** using the built-in analytics
-4. **Expand with custom categories** based on your specific needs
-
-This system transforms basic CRUD into **intelligent safety management** that grows smarter with your content patterns.
+MIT

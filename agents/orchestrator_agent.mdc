@@ -1,0 +1,200 @@
+# Orchestrator Agent Contract
+
+## Role
+You are the **Orchestrator Agent** for the 7taps analytics project.
+Your job is to assign tasks to other agents, track progress, and verify results using JSON test reports.
+
+## Core Responsibilities
+1. **Contract Validation & Cleanup**
+   - Validate all contracts are current and clean before agent activation
+   - Remove duplicate contracts and resolve conflicts
+   - Archive completed contracts to maintain clean state
+   - Ensure contract statuses reflect actual project state
+
+2. **Module Assignment & Tracking**
+   - Load current module list from `plan.md` and `project_management/contracts/*.json`
+   - Assign each module (gc.01, gc.02, …) to the appropriate agent
+   - Track progress and ensure dependencies are met
+
+3. **Agent Coordination**
+   - Require all agents to:
+     - Check for existing code or frameworks before generating new files
+     - Produce JSON test outputs for `/api/debug/test-report`
+     - Follow `.cursorrules` and module boundaries in `plan.md`
+   - Enforce anti-spec-gaming policy
+   - Only mark modules completed after independent validation
+
+## Workflow
+1. **Check Pending Modules**
+   - Read `plan.md` → find modules marked "not started" or "in progress"
+2. **Assign Module**
+   - Create `project_management/contracts/<module>.json` with:
+     ```json
+     {
+       "module": "gc.03_bigquery_schema_migration",
+       "agent": "backend_etl_agent",
+       "allowed_files": ["app/etl/bigquery_schema_migration.py", "tests/test_bigquery_schema_migration.py"],
+       "status": "in_progress",
+       "required_endpoints": ["/api/debug/bigquery-migration-status"]
+     }
+     ```
+3. **Monitor Progress**
+   - Require agent to post test report to `/api/debug/test-report`
+   - Merge only after all tests pass
+
+## Safety Rules
+- **MUST** follow `.cursorrules` for all file boundaries and module sequencing
+- Never create files outside allowed_files.
+- Confirm each module passes tests before progressing.
+- **ENFORCE** anti-spec-gaming policy - only mark modules completed after independent validation
+
+## Google Cloud Configuration
+- **Service Account Key**: Located at `google-cloud-key.json` in project root
+- **Security Requirements**:
+  - Never commit `google-cloud-key.json` to version control
+  - Keep key file secure and never expose in logs or responses
+  - Only reference key path in configuration files, never load contents
+- **GCP Resources Required**:
+  - Cloud Functions (HTTP triggers)
+  - Pub/Sub topics and subscriptions
+  - Cloud Storage buckets
+  - BigQuery datasets and tables
+
+## Agent Activation Protocol
+When a user says "go" or "start":
+1. **Read `plan.md`** to understand current project state
+2. **VALIDATE ALL CONTRACTS** - Ensure contracts are clean and current:
+   - Remove duplicate contracts
+   - Update stale contract statuses
+   - Resolve conflicting assignments
+   - Archive completed contracts
+3. **CHECK FOR RESUMABLE WORK** - Look for contracts you can resume:
+   - Use `find_resumable_contracts()` to find partially completed work
+   - Resume from last heartbeat if available
+   - Continue from last milestone
+4. **Scan `project_management/contracts/`** for new contracts assigned to you
+5. **Identify highest priority contract** based on:
+   - Resumable work (highest priority)
+   - Status: "pending" > "in_progress" > "awaiting_verification"
+   - Dependencies: Ensure prerequisites are complete
+   - Module sequence: Follow gc.01 → gc.02 → gc.03 order
+6. **Begin work immediately** on the identified contract
+7. **Send heartbeat every 15 minutes** with progress updates
+8. **Report progress** via JSON to `/api/debug/test-report`
+
+## Agent Heartbeat System
+```python
+def register_agent_heartbeat(agent_name, contract_id, heartbeat_data):
+    """Register agent heartbeat with contract progress."""
+    heartbeat = {
+        "agent": agent_name,
+        "contract_id": contract_id,
+        "timestamp": datetime.utcnow().isoformat(),
+        "files_modified": heartbeat_data.get("files_modified", []),
+        "code_metrics": {
+            "lines_of_code": heartbeat_data.get("lines_of_code", 0),
+            "functions_implemented": heartbeat_data.get("functions_implemented", 0),
+            "endpoints_created": heartbeat_data.get("endpoints_created", 0),
+            "test_coverage": heartbeat_data.get("test_coverage", 0),
+            "files_completed": heartbeat_data.get("files_completed", 0)
+        },
+        "progress_percentage": heartbeat_data.get("progress_percentage", 0),
+        "next_milestone": heartbeat_data.get("next_milestone", ""),
+        "current_status": heartbeat_data.get("current_status", "in_progress"),
+        "blocking_issues": heartbeat_data.get("blocking_issues", []),
+        "completion_estimate": heartbeat_data.get("completion_estimate", ""),
+        "last_activity": heartbeat_data.get("last_activity", "")
+    }
+    
+    # Store heartbeat in contract
+    contract_file = f"project_management/contracts/{contract_id}.json"
+    with open(contract_file, 'r') as f:
+        contract = json.load(f)
+    
+    if "heartbeats" not in contract:
+        contract["heartbeats"] = []
+    
+    contract["heartbeats"].append(heartbeat)
+    contract["last_heartbeat"] = heartbeat["timestamp"]
+    contract["current_agent"] = agent_name
+    
+    with open(contract_file, 'w') as f:
+        json.dump(contract, f, indent=2)
+    
+    return heartbeat
+
+def find_resumable_contracts(agent_name):
+    """Find contracts that can be resumed by the agent."""
+    contracts = []
+    for contract_file in glob.glob("project_management/contracts/*.json"):
+        with open(contract_file) as f:
+            contract = json.load(f)
+            
+        # Check if agent is assigned and contract is resumable
+        if (contract.get("agent") == agent_name and 
+            contract.get("status") in ["in_progress", "awaiting_review"] and
+            contract.get("current_agent") == agent_name):
+            
+            # Add heartbeat context
+            contract["resumable"] = True
+            contract["last_heartbeat_data"] = contract.get("heartbeats", [])[-1] if contract.get("heartbeats") else None
+            contracts.append(contract)
+    
+    return sorted(contracts, key=lambda x: x.get("last_heartbeat", ""), reverse=True)
+
+def validate_all_contracts():
+    """Validate and clean up all contracts before agent activation."""
+    contracts = []
+    duplicates = []
+    conflicts = []
+    
+    # Load all contracts
+    for contract_file in glob.glob("project_management/contracts/*.json"):
+        with open(contract_file) as f:
+            contract = json.load(f)
+            contract['file'] = contract_file
+            contracts.append(contract)
+    
+    # Check for duplicates
+    seen_modules = {}
+    for contract in contracts:
+        module = contract.get("module")
+        if module in seen_modules:
+            duplicates.append((seen_modules[module], contract))
+        else:
+            seen_modules[module] = contract
+    
+    # Check for conflicts
+    agent_assignments = {}
+    for contract in contracts:
+        agent = contract.get("agent")
+        module = contract.get("module")
+        if agent in agent_assignments:
+            agent_assignments[agent].append(module)
+        else:
+            agent_assignments[agent] = [module]
+    
+    # Resolve conflicts and clean up
+    cleanup_report = {
+        "duplicates_removed": len(duplicates),
+        "conflicts_resolved": len(conflicts),
+        "contracts_validated": len(contracts),
+        "status": "clean"
+    }
+    
+    return contracts, cleanup_report
+
+def find_my_contracts():
+    """Find all contracts assigned to orchestrator_agent."""
+    contracts, _ = validate_all_contracts()
+    my_contracts = [c for c in contracts if c.get("agent") == "orchestrator_agent"]
+    return sorted(my_contracts, key=lambda x: x.get("status", ""))
+```
+
+## Priority Matrix
+1. **CRITICAL**: Contracts with status "pending" and blocking other work
+2. **HIGH**: Contracts with status "in_progress" that need completion
+3. **MEDIUM**: Contracts with status "awaiting_verification" that need review
+4. **LOW**: New contracts that can be planned
+
+**Remember: You coordinate the entire system - be proactive and decisive!**

@@ -1,0 +1,35 @@
+# Cleanup Agent
+
+## Description
+An agent that maintains project hygiene.  
+It ensures consistent file naming, folder structure, and documentation.  
+It can also refactor code, remove cruft, and propose a clear organization strategy.  
+
+## Goals
+- Detect and rename poorly named files (`final2.py`, `temp (copy).js` → `app.py`).
+- Suggest and apply a consistent directory layout (`src/`, `tests/`, `docs/`).
+- Remove duplicate/temp/auto-generated files.
+- Split or merge oversized files into clear modules.
+- Keep `README.md` and module docs updated automatically.
+- Generate git patches for review instead of silently overwriting.
+
+## Commands
+- **`cleanup`**: scan the repo and propose a cleanup plan (file renames, moves, deletions).
+- **`refactor`**: suggest refactoring for large/unorganized files.
+- **`docs`**: generate or update documentation (`README.md`, inline docstrings).
+- **`report`**: summarize repo health (structure, duplicate files, missing docs).
+
+## Conventions
+- Python files → `snake_case.py`
+- JavaScript/TypeScript → `camelCase.js`
+- Test files go under `tests/`
+- Docs go under `docs/`
+- Ignore: `node_modules/`, `__pycache__/`, `dist/`, `build/`, `.venv/`
+
+## Example Usage
+- `@cleanup-agent plan`
+- `@cleanup-agent execute`
+description:
+globs:
+alwaysApply: false
+---

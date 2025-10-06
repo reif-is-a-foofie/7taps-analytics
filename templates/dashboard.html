@@ -1,0 +1,1165 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #ffffff;
+            --card-bg: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            font-weight: 600;
+            line-height: 1.2;
+            margin: 0;
+            overflow: visible;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .nav-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .nav-link:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        .chart-container {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+            width: 48%;
+            height: 400px;
+            position: relative;
+            float: left;
+            margin-right: 2%;
+        }
+        
+        .chart-container:nth-child(even) {
+            float: right;
+            margin-right: 0;
+        }
+        
+        .chart-container canvas {
+            max-height: 320px;
+            width: 100% !important;
+            height: auto !important;
+        }
+        
+        #charts-container {
+            width: 100%;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        #charts-container::after {
+            content: '';
+            display: table;
+            clear: both;
+        }
+        
+        /* Responsive design for smaller screens */
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+                margin: 1rem 0;
+            }
+            
+            .chart-container canvas {
+                max-height: 220px;
+            }
+        }
+        
+        .chart-info {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .chart-title {
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .safety-alerts {
+            margin: 2rem 0;
+        }
+
+        .safety-card {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .safety-card h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+
+        .safety-card p {
+            color: var(--text-secondary);
+            margin: 0.25rem 0 0;
+        }
+
+        .safety-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .summary-metric {
+            display: flex;
+            flex-direction: column;
+            min-width: 140px;
+        }
+
+        .summary-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .summary-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .summary-value.alert-critical {
+            color: var(--danger-color);
+        }
+
+        .trigger-words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .trigger-word-pill {
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .trigger-word-pill.ready {
+            background: #ecfeff;
+            border-color: #67e8f9;
+            color: #0c4a6e;
+        }
+
+        .trigger-word-pill.scanned {
+            background: #ecfdf3;
+            border-color: #86efac;
+            color: #065f46;
+        }
+
+        .safety-alert-list {
+            margin-top: 1.75rem;
+        }
+
+        .safety-alert-item {
+            border-top: 1px solid var(--border-color);
+            padding: 1rem 0;
+        }
+
+        .safety-alert-item:first-child {
+            border-top: none;
+        }
+
+        .safety-alert-item h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .safety-alert-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .safety-alert-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .safety-alert-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .safety-alert-link:hover {
+            text-decoration: underline;
+        }
+
+        .safety-empty {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-secondary);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .safety-error {
+            padding: 1rem;
+            border-radius: 8px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            font-size: 0.9rem;
+        }
+        
+        .stat-card h3 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0.5rem 0;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5855eb;
+        }
+        
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .chart-card {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-card h3 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .problematic-users-table {
+            overflow-x: auto;
+        }
+        
+        .problematic-users-table table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .problematic-users-table th,
+        .problematic-users-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .problematic-users-table th {
+            background: var(--card-bg);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-badge.critical {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .charts-section {
+            padding: 2rem;
+        }
+        
+        .chart-card {
+            background: var(--bg-color);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .chart-card h3 {
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            padding: 1rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: var(--danger-color);
+            background: #fee2e2;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1024px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .chart-card {
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .chart-container {
+                height: 350px;
+                padding: 0.75rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            
+            .chart-card {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .chart-container {
+                height: 300px;
+                padding: 0.5rem;
+            }
+            
+            .chart-card h3 {
+                font-size: 1.1rem;
+                margin-bottom: 1rem;
+            }
+        }
+
+    </style>
+{% endblock %}
+
+{% block content %}
+
+<div class="header">
+    <h1>POL Analytics Dashboard</h1>
+    <p>Digital wellness insights, mindfulness analytics, and engagement tracking for Practice of Life learning experiences</p>
+    
+    <div class="group-picker-container" style="margin-top: 1rem;">
+        <label for="groupSelect" style="margin-right: 0.5rem; font-weight: 500;">Group:</label>
+        <select id="groupSelect" onchange="updateDashboardGroup()" style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: white;">
+            <option value="all">All Groups</option>
+            <option value="Focus Group 1">Focus Group 1 (7 learners)</option>
+            <option value="Focus Group 2">Focus Group 2 (8 learners)</option>
+        </select>
+    </div>
+</div>
+
+<div id="trigger-alerts-container" class="safety-alerts">
+    <div class="loading">Loading safety alerts&hellip;</div>
+</div>
+
+<div id="stats-container" class="stats">
+    <div class="loading">Loading analytics dashboard...</div>
+</div>
+
+<div id="charts-container">
+    <!-- Charts will be loaded here -->
+</div>
+
+{% endblock %}
+    
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const initialDashboardData = {{ dashboard_data | tojson }};
+        let triggerWordRefreshTimer = null;
+
+        // Initialize dashboard with real data
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTriggerWordAlerts(initialDashboardData ? initialDashboardData.trigger_word_alerts : null);
+            startTriggerWordRefresh();
+            loadDashboardWithGroup('all');
+        });
+
+        function startTriggerWordRefresh() {
+            refreshTriggerWordAlerts();
+            if (triggerWordRefreshTimer) {
+                clearInterval(triggerWordRefreshTimer);
+            }
+            triggerWordRefreshTimer = setInterval(refreshTriggerWordAlerts, 60000);
+        }
+
+        async function refreshTriggerWordAlerts() {
+            const container = document.getElementById('trigger-alerts-container');
+            if (!container) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/xapi/alerts/trigger-words?limit=25');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                renderTriggerWordAlerts(data);
+            } catch (error) {
+                console.error('Failed to refresh trigger word alerts', error);
+
+                if (!container.dataset.loaded) {
+                    container.innerHTML = `
+                        <div class="safety-card">
+                            <div class="safety-error">
+                                <strong>Safety alerts unavailable.</strong>
+                                <p>Please try again shortly.</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (!container.querySelector('.safety-error-inline')) {
+                    const inlineNotice = document.createElement('p');
+                    inlineNotice.className = 'safety-error safety-error-inline';
+                    inlineNotice.textContent = 'Latest safety feed refresh failed; displaying last known alerts.';
+                    container.appendChild(inlineNotice);
+                }
+            }
+        }
+
+        function renderTriggerWordAlerts(data) {
+            const container = document.getElementById('trigger-alerts-container');
+            if (!container) {
+                return;
+            }
+
+            container.dataset.loaded = 'true';
+
+            const summary = data && data.summary ? data.summary : {};
+            const configuredWords = Array.isArray(data && data.trigger_words) ? data.trigger_words : [];
+            const alerts = Array.isArray(data && data.alerts) ? data.alerts.slice(0, 5) : [];
+
+            const totalAlerts = summary.total_recent_alerts || 0;
+            const retentionDays = summary.retention_days || 30;
+            const latestAlertTimestamp = summary.latest_alert ? formatAlertTimestamp(summary.latest_alert.detected_at) : 'None';
+            const configuredCount = configuredWords.length || (Array.isArray(summary.trigger_words) ? summary.trigger_words.length : 0);
+
+            const triggerWordMarkup = configuredWords.length
+                ? configuredWords.map(buildTriggerWordPill).join('')
+                : '<span class="trigger-word-pill">No trigger words configured</span>';
+
+            const alertsMarkup = alerts.length
+                ? alerts.map(buildSafetyAlertItem).join('')
+                : `<div class="safety-empty">No alerts detected in the last ${retentionDays} days.</div>`;
+
+            container.innerHTML = `
+                <div class="safety-card">
+                    <h2>Safety &amp; Trigger Alerts</h2>
+                    <p>Monitoring sensitive language across incoming xAPI statements.</p>
+                    <div class="safety-summary">
+                        <div class="summary-metric">
+                            <span class="summary-label">Active Trigger Words</span>
+                            <span class="summary-value">${configuredCount}</span>
+                        </div>
+                        <div class="summary-metric">
+                            <span class="summary-label">Alerts (Last ${retentionDays} Days)</span>
+                            <span class="summary-value ${totalAlerts > 0 ? 'alert-critical' : ''}">${totalAlerts}</span>
+                        </div>
+                        <div class="summary-metric">
+                            <span class="summary-label">Most Recent Alert</span>
+                            <span class="summary-value">${totalAlerts > 0 ? latestAlertTimestamp : 'None'}</span>
+                        </div>
+                    </div>
+                    <div class="trigger-words-list">${triggerWordMarkup}</div>
+                    <div class="safety-alert-list">${alertsMarkup}</div>
+                </div>
+            `;
+
+            const inlineNotice = container.querySelector('.safety-error-inline');
+            if (inlineNotice) {
+                inlineNotice.remove();
+            }
+        }
+
+        function buildTriggerWordPill(wordEntry) {
+            const word = typeof wordEntry === 'string' ? wordEntry : (wordEntry.word || '');
+            const addedAt = typeof wordEntry === 'object' && wordEntry && wordEntry.added_at ? formatAlertTimestamp(wordEntry.added_at) : null;
+            const retroComplete = typeof wordEntry === 'object' && wordEntry && wordEntry.retro_scan_complete;
+            const statusClass = retroComplete ? 'scanned' : 'ready';
+            const tooltip = addedAt ? `Configured ${addedAt}` : 'Configured trigger word';
+            return `<span class="trigger-word-pill ${statusClass}" title="${escapeHtml(tooltip)}">${escapeHtml(word)}</span>`;
+        }
+
+        function buildSafetyAlertItem(alert) {
+            const matches = Array.isArray(alert.matches) && alert.matches.length
+                ? alert.matches.map(escapeHtml).join(', ')
+                : 'Trigger detected';
+            const detectedAt = formatAlertTimestamp(alert.detected_at);
+            const actor = describeActor(alert.statement);
+            const scope = alert.detection_scope ? alert.detection_scope.charAt(0).toUpperCase() + alert.detection_scope.slice(1) : 'Realtime';
+            const source = alert.source ? alert.source.replace('_', ' ') : 'Unknown source';
+            const statementId = alert.statement_id ? escapeHtml(alert.statement_id) : null;
+            const statementLink = statementId
+                ? `<a class="safety-alert-link" href="/ui/statement-browser?search=${encodeURIComponent(alert.statement_id)}">View in Statement Browser</a>`
+                : '';
+
+            return `
+                <div class="safety-alert-item">
+                    <h4>${matches}</h4>
+                    <div class="safety-alert-meta">
+                        <span><strong>Detected:</strong> ${detectedAt}</span>
+                        <span><strong>Actor:</strong> ${escapeHtml(actor)}</span>
+                        <span><strong>Scope:</strong> ${escapeHtml(scope)}</span>
+                        <span><strong>Source:</strong> ${escapeHtml(source)}</span>
+                        ${statementId ? `<span><strong>Statement ID:</strong> ${statementId}</span>` : ''}
+                    </div>
+                    ${statementLink}
+                </div>
+            `;
+        }
+
+        function describeActor(statement) {
+            if (!statement || typeof statement !== 'object') {
+                return 'Unknown actor';
+            }
+
+            const actor = statement.actor || {};
+            if (actor.name) {
+                return actor.name;
+            }
+            if (actor.mbox) {
+                return actor.mbox.replace('mailto:', '');
+            }
+            if (actor.account && actor.account.name) {
+                return actor.account.name;
+            }
+            return 'Unknown actor';
+        }
+
+        function formatAlertTimestamp(rawValue) {
+            if (!rawValue) {
+                return 'Unknown';
+            }
+            const date = new Date(rawValue);
+            if (Number.isNaN(date.getTime())) {
+                return rawValue;
+            }
+            return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+        }
+
+        function escapeHtml(value) {
+            if (value === undefined || value === null) {
+                return '';
+            }
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+
+        async function loadDashboard() {
+            const statsContainer = document.getElementById('stats-container');
+            const chartsContainer = document.getElementById('charts-container');
+            
+            try {
+                // Get real data from API
+                const response = await fetch('/api/dashboard/metrics');
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                const metrics = data.metrics || {};
+                displayStats(metrics);
+                displayCharts(metrics);
+                
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                statsContainer.innerHTML = '<div class="error">Error loading dashboard data</div>';
+                chartsContainer.innerHTML = '<div class="error">Error loading charts</div>';
+            }
+        }
+        
+        function displayStats(metrics) {
+            const statsContainer = document.getElementById('stats-container');
+            
+            const statsHtml = `
+                <div class="stat-card">
+                    <div class="stat-number">${metrics.total_users || 0}</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${metrics.total_responses || 0}</div>
+                    <div class="stat-label">Total Responses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${metrics.total_groups || 0}</div>
+                    <div class="stat-label">Groups</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${(metrics.completion_rate || 0).toFixed(1)}%</div>
+                    <div class="stat-label">Completion Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${(metrics.avg_responses_per_user || 0).toFixed(1)}</div>
+                    <div class="stat-label">Avg Responses/User</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${metrics.active_users_today || 0}</div>
+                    <div class="stat-label">Active Users Today</div>
+                </div>
+            `;
+            
+            statsContainer.innerHTML = statsHtml;
+        }
+        
+        function displayCharts(metrics) {
+            const chartsContainer = document.getElementById('charts-container');
+            
+            if (!metrics) {
+                chartsContainer.innerHTML = '<div class="error">No chart data available</div>';
+                return;
+            }
+            
+            // Create a grid layout for charts
+            chartsContainer.innerHTML = '<div class="chart-grid"></div>';
+            const chartGrid = chartsContainer.querySelector('.chart-grid');
+            
+            // Create lesson distribution chart
+            if (metrics.lesson_distribution && Object.keys(metrics.lesson_distribution).length > 0) {
+                const chartCard = document.createElement('div');
+                chartCard.className = 'chart-card';
+                chartCard.innerHTML = `
+                    <h3>Lesson Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-lesson-distribution"></canvas>
+                    </div>
+                `;
+                chartGrid.appendChild(chartCard);
+            }
+            
+            // Create card type distribution chart
+            if (metrics.card_type_distribution && Object.keys(metrics.card_type_distribution).length > 0) {
+                const chartCard = document.createElement('div');
+                chartCard.className = 'chart-card';
+                chartCard.innerHTML = `
+                    <h3>Card Type Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-card-types"></canvas>
+                    </div>
+                `;
+                chartGrid.appendChild(chartCard);
+            }
+            
+            // Create group comparison chart
+            if (metrics.groups_data && Object.keys(metrics.groups_data).length > 1) {
+                const chartCard = document.createElement('div');
+                chartCard.className = 'chart-card';
+                chartCard.innerHTML = `
+                    <h3>Group Comparison</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-group-comparison"></canvas>
+                    </div>
+                `;
+                chartGrid.appendChild(chartCard);
+            }
+            
+            // Create most active users chart
+            if (metrics.response_patterns && metrics.response_patterns.most_active_users && metrics.response_patterns.most_active_users.length > 0) {
+                const chartCard = document.createElement('div');
+                chartCard.className = 'chart-card';
+                chartCard.innerHTML = `
+                    <h3>Most Active Users</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-active-users"></canvas>
+                    </div>
+                `;
+                chartGrid.appendChild(chartCard);
+            }
+            
+            // Render charts with proper spacing
+            setTimeout(() => {
+                if (metrics.lesson_distribution) renderLessonDistributionChart(metrics.lesson_distribution);
+            }, 200);
+            setTimeout(() => {
+                if (metrics.card_type_distribution) renderCardTypeChart(metrics.card_type_distribution);
+            }, 400);
+            setTimeout(() => {
+                if (metrics.groups_data) renderGroupComparisonChart(metrics.groups_data);
+            }, 600);
+            setTimeout(() => {
+                if (metrics.response_patterns && metrics.response_patterns.most_active_users) renderActiveUsersChart(metrics.response_patterns.most_active_users);
+            }, 800);
+        }
+        
+        function renderLessonDistributionChart(data) {
+            const ctx = document.getElementById('chart-lesson-distribution');
+            if (!ctx) return;
+            
+            // Data now comes with normalized lesson names as keys
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Responses',
+                        data: values,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Responses'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderCardTypeChart(data) {
+            const ctx = document.getElementById('chart-card-types');
+            if (!ctx) return;
+            
+            const labels = Object.keys(data);
+            const counts = Object.values(data);
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: [
+                            'rgba(99, 102, 241, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(139, 92, 246, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(99, 102, 241, 1)',
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(239, 68, 68, 1)',
+                            'rgba(245, 158, 11, 1)',
+                            'rgba(139, 92, 246, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderGroupComparisonChart(data) {
+            const ctx = document.getElementById('chart-group-comparison');
+            if (!ctx) return;
+            
+            const labels = Object.keys(data);
+            const userCounts = Object.values(data).map(group => group.user_count);
+            const responseCounts = Object.values(data).map(group => group.response_count);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Users',
+                        data: userCounts,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Responses',
+                        data: responseCounts,
+                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Count'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderActiveUsersChart(data) {
+            const ctx = document.getElementById('chart-active-users');
+            if (!ctx) return;
+            
+            const labels = data.slice(0, 10).map(user => user.name);
+            const responseCounts = data.slice(0, 10).map(user => user.response_count);
+            
+            new Chart(ctx, {
+                type: 'horizontalBar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Responses',
+                        data: responseCounts,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Responses'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Group picker functionality
+        function updateDashboardGroup() {
+            const groupSelect = document.getElementById('groupSelect');
+            const selectedGroup = groupSelect.value;
+            
+            console.log('Selected group:', selectedGroup);
+            
+            // Update the dashboard data based on selected group
+            loadDashboardWithGroup(selectedGroup);
+        }
+        
+        async function loadDashboardWithGroup(group = 'all') {
+            const statsContainer = document.getElementById('stats-container');
+            
+            try {
+                // Show loading state
+                statsContainer.innerHTML = '<div class="loading">Loading analytics for ' + (group === 'all' ? 'all groups' : group) + '...</div>';
+                
+                // Fetch group-specific data from the group analytics API
+                const response = await fetch(`/group-analytics/dashboard?group=${group}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update the stats display with group data
+                updateStatsDisplay(data, group);
+                
+            } catch (error) {
+                console.error('Error loading group dashboard data:', error);
+                statsContainer.innerHTML = `
+                    <div class="error">
+                        <h3>Error Loading Group Data</h3>
+                        <p>Could not load analytics for ${group === 'all' ? 'all groups' : group}. Please try again.</p>
+                        <button onclick="loadDashboardWithGroup('${group}')" class="btn">Retry</button>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateStatsDisplay(data, group) {
+            const statsContainer = document.getElementById('stats-container');
+            
+            statsContainer.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Users</h3>
+                        <div class="stat-value">${data.total_users || 0}</div>
+                        <div class="stat-label">${group === 'all' ? 'All Groups' : group}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Responses</h3>
+                        <div class="stat-value">${data.total_responses || 0}</div>
+                        <div class="stat-label">Learning Activities</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Groups</h3>
+                        <div class="stat-value">${data.groups_count || 0}</div>
+                        <div class="stat-label">Active Cohorts</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Completion Rate</h3>
+                        <div class="stat-value">${data.completion_rate || '0.0'}%</div>
+                        <div class="stat-label">Average Progress</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg Responses/User</h3>
+                        <div class="stat-value">${data.avg_responses_per_user || '0.0'}</div>
+                        <div class="stat-label">Engagement Level</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Active Users Today</h3>
+                        <div class="stat-value">${data.active_users_today || 0}</div>
+                        <div class="stat-label">Current Activity</div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+{% endblock %} 

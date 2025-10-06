@@ -1,0 +1,72 @@
+{
+  "Focus Group 1": {
+    "users": [
+      {
+        "name": "Audrey Todd",
+        "response_count": 13
+      },
+      {
+        "name": "August Rinehart",
+        "response_count": 40
+      },
+      {
+        "name": "Charlie Monaghan",
+        "response_count": 12
+      },
+      {
+        "name": "Devin Mulac",
+        "response_count": 65
+      },
+      {
+        "name": "Fatima Bugaighis",
+        "response_count": 82
+      },
+      {
+        "name": "Hugo Crainich",
+        "response_count": 41
+      },
+      {
+        "name": "Keira Boyle",
+        "response_count": 8
+      }
+    ],
+    "response_count": 261
+  },
+  "Focus Group 2": {
+    "users": [
+      {
+        "name": "Lucy Esquivel",
+        "response_count": 4
+      },
+      {
+        "name": "Quinn Ledak",
+        "response_count": 47
+      },
+      {
+        "name": "Anonymous learner 3",
+        "response_count": 5
+      },
+      {
+        "name": "Anonymous learner 2",
+        "response_count": 17
+      },
+      {
+        "name": "Anonymous learner 4",
+        "response_count": 19
+      },
+      {
+        "name": "Nevin Morton",
+        "response_count": 5
+      },
+      {
+        "name": "Ryan Austin",
+        "response_count": 1
+      },
+      {
+        "name": "Anonymous learner 5",
+        "response_count": 14
+      }
+    ],
+    "response_count": 112
+  }
+}

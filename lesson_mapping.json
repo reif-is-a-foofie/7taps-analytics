@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-09-17T01:52:24.525140+00:00",
+  "lessons": {
+    "1": {
+      "lesson_number": 1,
+      "lesson_name": "You're Here. Start Strong",
+      "lesson_url": "https://courses.practiceoflife.com/BppNeFkyEYF9",
+      "description": "Beginning your digital wellness journey with awareness and intention",
+      "display_name": "1. You're Here. Start Strong"
+    },
+    "2": {
+      "lesson_number": 2,
+      "lesson_name": "Where is Your Attention Going?",
+      "lesson_url": "https://courses.practiceoflife.com/GOOqyTkVqnIk",
+      "description": "Understanding and directing your attention in the digital age",
+      "display_name": "2. Where is Your Attention Going?"
+    },
+    "3": {
+      "lesson_number": 3,
+      "lesson_name": "Own Your Mindset",
+      "lesson_url": "https://courses.practiceoflife.com/VyyZZTDxpncL",
+      "description": "Developing a healthy mindset around technology and productivity",
+      "display_name": "3. Own Your Mindset"
+    },
+    "4": {
+      "lesson_number": 4,
+      "lesson_name": "Future Proof Your Health",
+      "lesson_url": "https://courses.practiceoflife.com/krQ47COePqsY",
+      "description": "Building sustainable health habits for long-term wellness",
+      "display_name": "4. Future Proof Your Health"
+    },
+    "5": {
+      "lesson_number": 5,
+      "lesson_name": "Reclaim Your Rest",
+      "lesson_url": "https://courses.practiceoflife.com/4r2P3hAaMxUd",
+      "description": "Optimizing sleep and recovery for better digital wellness",
+      "display_name": "5. Reclaim Your Rest"
+    },
+    "6": {
+      "lesson_number": 6,
+      "lesson_name": "Focus = Superpower",
+      "lesson_url": "https://courses.practiceoflife.com/5EGM9Sj2n6To",
+      "description": "Harnessing deep focus as your productivity superpower",
+      "display_name": "6. Focus = Superpower"
+    },
+    "7": {
+      "lesson_number": 7,
+      "lesson_name": "Social Media + You",
+      "lesson_url": "https://courses.practiceoflife.com/Eqdrni4QVvsa",
+      "description": "Building a healthy relationship with social media",
+      "display_name": "7. Social Media + You"
+    },
+    "8": {
+      "lesson_number": 8,
+      "lesson_name": "Less Stress. More Calm",
+      "lesson_url": "https://courses.practiceoflife.com/xxVEAHPYYOfn",
+      "description": "Managing stress and finding calm in a connected world",
+      "display_name": "8. Less Stress. More Calm"
+    },
+    "9": {
+      "lesson_number": 9,
+      "lesson_name": "Boost IRL Connection",
+      "lesson_url": "https://courses.practiceoflife.com/BpgMMfkyEWuv",
+      "description": "Strengthening real-life relationships and connections",
+      "display_name": "9. Boost IRL Connection"
+    },
+    "10": {
+      "lesson_number": 10,
+      "lesson_name": "Celebrate Your Wins",
+      "lesson_url": "https://courses.practiceoflife.com/qaybLiEMwZh0",
+      "description": "Acknowledging progress and building sustainable habits",
+      "display_name": "10. Celebrate Your Wins"
+    }
+  }
+}

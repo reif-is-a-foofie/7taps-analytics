@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - POL Analytics</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+        .status-card.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .statement-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .statement-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .statement-id {
+            font-weight: bold;
+            color: #667eea;
+        }
+        .statement-timestamp {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .statement-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .detail-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 0.9em;
+        }
+        .detail-value {
+            color: #212529;
+            word-break: break-all;
+        }
+        .completion-highlight {
+            background: #d4edda !important;
+            border-left: 4px solid #28a745;
+        }
+        .raw-statement {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .no-data {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Raw Incoming Statements Debug</h1>
+        
+        <div class="controls">
+            <div>
+                <a href="/data-explorer" class="btn">← Back to Data Explorer</a>
+                <a href="/" class="btn">🏠 Dashboard</a>
+            </div>
+            <div>
+                <span>Showing {{ raw_statements|length }} of {{ total_count }} statements</span>
+                <a href="?limit=50" class="btn">Show 50</a>
+                <a href="?limit=100" class="btn">Show 100</a>
+            </div>
+        </div>
+
+        {% if system_status %}
+        <div class="status-card {% if not system_status.etl_processor.running %}error{% endif %}">
+            <h3>🔄 ETL Processor Status</h3>
+            <p><strong>Status:</strong> {% if system_status.etl_processor.running %}🟢 Running{% else %}🔴 Stopped{% endif %}</p>
+            <p><strong>Uptime:</strong> {{ system_status.etl_processor.uptime }}</p>
+            <p><strong>Processing Stats:</strong> Received: {{ system_status.etl_processor.messages_received }}, 
+               Processed: {{ system_status.etl_processor.messages_processed }}, 
+               Failed: {{ system_status.etl_processor.messages_failed }}</p>
+            {% if system_status.etl_processor.errors %}
+            <p><strong>Recent Errors:</strong></p>
+            <ul>
+                {% for error in system_status.etl_processor.errors[-3:] %}
+                <li style="color: #dc3545; font-size: 0.9em;">{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_count }}</div>
+                <div class="stat-label">Total Raw Statements</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ raw_statements|selectattr('result_completion', 'equalto', True)|list|length }}</div>
+                <div class="stat-label">Completion Statements</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ raw_statements|selectattr('result_success', 'equalto', True)|list|length }}</div>
+                <div class="stat-label">Success Statements</div>
+            </div>
+        </div>
+
+        {% if raw_statements %}
+            {% for statement in raw_statements %}
+            <div class="statement-card {% if statement.result_completion %}completion-highlight{% endif %}">
+                <div class="statement-header">
+                    <div class="statement-id">ID: {{ statement.statement_id or 'No ID' }}</div>
+                    <div class="statement-timestamp">{{ statement.timestamp }}</div>
+                </div>
+                
+                <div class="statement-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Actor</div>
+                        <div class="detail-value">{{ statement.actor_name or 'Unknown' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Verb</div>
+                        <div class="detail-value">{{ statement.verb_id or 'Unknown' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Object</div>
+                        <div class="detail-value">{{ statement.object_name or statement.object_id or 'Unknown' }}</div>
+                    </div>
+                </div>
+
+                {% if statement.result_completion or statement.result_success %}
+                <div class="statement-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Completion</div>
+                        <div class="detail-value">{% if statement.result_completion %}✅ True{% else %}❌ False{% endif %}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Success</div>
+                        <div class="detail-value">{% if statement.result_success %}✅ True{% else %}❌ False{% endif %}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Type</div>
+                        <div class="detail-value">{% if statement.result_completion %}🎯 Completion{% elif statement.result_success %}✅ Success{% else %}📝 Other{% endif %}</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if statement.raw_statement %}
+                <div>
+                    <div class="detail-label">Raw Statement JSON:</div>
+                    <div class="raw-statement">{{ statement.raw_statement }}</div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-data">
+                <h3>No Raw Statements Found</h3>
+                <p>No raw incoming statements have been recorded yet.</p>
+                <p>This could mean:</p>
+                <ul style="text-align: left; display: inline-block;">
+                    <li>No xAPI statements have been received from 7taps</li>
+                    <li>Statements are being processed but not stored in raw format</li>
+                    <li>The raw storage table doesn't exist yet</li>
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
