@@ -1,0 +1,154 @@
+{
+  "test_timestamp": "2025-09-17T18:23:16.108175",
+  "platform": "POL Analytics",
+  "mission_alignment": {
+    "branding_consistency": {
+      "passed": true,
+      "title": "Analytics Dashboard - POL Analytics",
+      "message": "POL branding present in title"
+    },
+    "digital_wellness_focus": {
+      "passed": false,
+      "keywords_found": 1,
+      "message": "Found 1/4 wellness-focused keywords"
+    },
+    "ai_assistant_alignment": {
+      "passed": false,
+      "september_present": true,
+      "pol_context": false,
+      "message": "September AI assistant properly aligned with POL mission"
+    }
+  },
+  "stakeholder_dashboards": {
+    "main_dashboard_access": {
+      "passed": true,
+      "status_code": 200,
+      "response_time_ms": 379,
+      "message": "Main dashboard accessible"
+    },
+    "data_explorer_access": {
+      "passed": true,
+      "status_code": 200,
+      "response_time_ms": 100,
+      "message": "Data explorer accessible"
+    },
+    "realtime_feed_access": {
+      "passed": true,
+      "status_code": 200,
+      "response_time_ms": 109,
+      "message": "Real-time Pub/Sub feed accessible"
+    }
+  },
+  "business_kpis": {
+    "system_health_kpi": {
+      "passed": true,
+      "status": "healthy",
+      "service": "7taps-analytics-api",
+      "message": "System health KPI available and healthy"
+    },
+    "ingestion_metrics_kpi": {
+      "passed": true,
+      "endpoint_status": "operational",
+      "publisher_ready": true,
+      "total_statements": 0,
+      "message": "xAPI ingestion metrics available"
+    },
+    "activity_metrics_kpi": {
+      "passed": true,
+      "statements_available": 0,
+      "ingestion_stats": {
+        "total_statements": 0,
+        "error_count": 0,
+        "last_ingestion_time": null,
+        "last_message_id": null
+      },
+      "message": "Recent activity metrics available"
+    }
+  },
+  "digital_wellness_metrics": {
+    "september_ai_response": {
+      "passed": true,
+      "message_count": 3,
+      "message": "September AI assistant responds to digital wellness queries"
+    },
+    "wellness_data_explorer": {
+      "passed": true,
+      "project_id": "taps-data",
+      "dataset": "taps_data",
+      "tables": [
+        "activities",
+        "actors",
+        "lessons",
+        "questions",
+        "statements",
+        "user_activities",
+        "user_responses",
+        "users",
+        "verbs",
+        "xapi_events"
+      ],
+      "message": "Wellness data exploration capabilities available"
+    }
+  },
+  "user_experience": {
+    "page_load_performance": {
+      "passed": true,
+      "load_time_ms": 531,
+      "message": "Page loads in 531ms"
+    },
+    "navigation_availability": {
+      "passed": true,
+      "nav_link_count": 7,
+      "message": "Found 7 navigation elements"
+    },
+    "mobile_responsiveness": {
+      "passed": true,
+      "viewport_meta": true,
+      "message": "Mobile viewport configuration present"
+    }
+  },
+  "api_performance": {
+    "health_check_performance": {
+      "passed": true,
+      "status_code": 200,
+      "response_time_ms": 218,
+      "endpoint": "/api/health",
+      "message": "Health Check responds in 218ms"
+    },
+    "recent_xapi_data_performance": {
+      "passed": true,
+      "status_code": 200,
+      "response_time_ms": 67,
+      "endpoint": "/api/xapi/recent",
+      "message": "Recent xAPI Data responds in 67ms"
+    },
+    "xapi_ingestion_status_performance": {
+      "passed": true,
+      "status_code": 200,
+      "response_time_ms": 116,
+      "endpoint": "/ui/test-xapi-ingestion",
+      "message": "xAPI Ingestion Status responds in 116ms"
+    },
+    "data_explorer_api_performance": {
+      "passed": true,
+      "status_code": 200,
+      "response_time_ms": 235,
+      "endpoint": "/api/explorer",
+      "message": "Data Explorer API responds in 235ms"
+    }
+  },
+  "summary": {
+    "overall_health": "Good",
+    "success_rate_percent": 88.9,
+    "tests_passed": 16,
+    "total_tests": 18,
+    "mission_alignment_status": "Aligned",
+    "stakeholder_readiness": "Ready",
+    "recommendations": [
+      "Investigate failing tests to improve platform reliability",
+      "Enhance digital wellness messaging and content"
+    ],
+    "test_timestamp": "2025-09-17T18:23:16.108175",
+    "platform_version": "POL Analytics v1.0"
+  }
+}

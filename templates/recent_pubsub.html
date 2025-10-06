@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .feed-container {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .feed-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .feed-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .feed-summary {
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .summary-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 160px;
+    }
+
+    .summary-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .summary-value {
+        font-size: 1.35rem;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+
+    .feed-table-wrapper {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead {
+        background: #f1f5f9;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    th, td {
+        padding: 0.9rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: top;
+    }
+
+    tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary-color);
+    }
+
+    .payload-preview {
+        font-family: "SFMono-Regular", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.78rem;
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 0.75rem;
+        border-radius: 8px;
+        max-width: 380px;
+        overflow-x: auto;
+    }
+
+    .limit-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .limit-selector form {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    select {
+        padding: 0.35rem 0.6rem;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        background: white;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+    }
+
+    .timestamp {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .actor-id {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .verb-id, .object-id {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        display: block;
+        margin-top: 0.2rem;
+        word-break: break-word;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feed-container">
+    <div class="feed-header">
+        <h1>Recent Pub/Sub Publications</h1>
+        <div class="limit-selector">
+            <form method="get" action="">
+                <label for="limit">Show latest</label>
+                <select id="limit" name="limit" onchange="this.form.submit()">
+                    {% for option in [10, 25, 50, 100] %}
+                        <option value="{{ option }}" {% if option == limit %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+                <span>statements</span>
+            </form>
+        </div>
+    </div>
+
+    <div class="feed-summary">
+        <div class="summary-item">
+            <span class="summary-label">Total Statements Ingested</span>
+            <span class="summary-value">{{ ingestion_stats.total_statements }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Last Message ID</span>
+            <span class="summary-value" style="font-size: 1rem;">{{ ingestion_stats.last_message_id or '—' }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Errors Recorded</span>
+            <span class="summary-value" style="color: {{ 'var(--danger-color)' if ingestion_stats.error_count else 'var(--success-color)' }};">
+                {{ ingestion_stats.error_count }}
+            </span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Feed Size</span>
+            <span class="summary-value">{{ entries|length }} / {{ available or entries|length }}</span>
+        </div>
+    </div>
+
+    <div class="feed-table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 18%">Published</th>
+                    <th style="width: 15%">Statement</th>
+                    <th style="width: 15%">Actor / Verb / Object</th>
+                    <th>Payload</th>
+                    <th style="width: 10%">Message ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if entries %}
+                    {% for entry in entries %}
+                        {% set payload = entry.payload %}
+                        <tr>
+                            <td>
+                                <div class="timestamp">{{ entry.published_at }}</div>
+                                <div class="status-pill">{{ payload.ingestion_source or 'api' }}</div>
+                            </td>
+                            <td>
+                                <div class="actor-id">{{ entry.statement_id }}</div>
+                                <div class="timestamp">{{ payload.ingested_at }}</div>
+                            </td>
+                            <td>
+                                {% set actor = payload.actor %}
+                                {% if actor %}
+                                    <div class="actor-id">{{ actor.account.name if actor.account and actor.account.name else actor.mbox or actor.name or '—' }}</div>
+                                {% else %}
+                                    <div class="actor-id">—</div>
+                                {% endif %}
+                                <span class="verb-id">{{ payload.verb.id if payload.verb else '—' }}</span>
+                                <span class="object-id">{{ payload.object.id if payload.object else '—' }}</span>
+                            </td>
+                            <td>
+                                <pre class="payload-preview">{{ payload | tojson(indent=2) }}</pre>
+                            </td>
+                            <td>
+                                <div class="timestamp">{{ entry.message_id or '—' }}</div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            No statements have been published yet. Once new xAPI events arrive, they will appear here instantly.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

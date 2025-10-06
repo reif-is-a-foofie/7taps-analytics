@@ -1,0 +1,155 @@
+{
+  "validation_summary": {
+    "total_tests": 16,
+    "passed_tests": 15,
+    "failed_tests": 1,
+    "success_rate": 93.75,
+    "avg_response_time": 1.3870570361614227,
+    "timestamp": "2025-09-29T22:10:17.645164+00:00"
+  },
+  "category_breakdown": {
+    "ui": {
+      "passed": 3,
+      "failed": 1,
+      "total": 4
+    },
+    "bigquery": {
+      "passed": 4,
+      "failed": 0,
+      "total": 4
+    },
+    "cost": {
+      "passed": 4,
+      "failed": 0,
+      "total": 4
+    },
+    "debug": {
+      "passed": 4,
+      "failed": 0,
+      "total": 4
+    }
+  },
+  "detailed_results": [
+    {
+      "test": "ui_component_home",
+      "success": true,
+      "details": "Status: 200, Time: 0.37s",
+      "response_time": 0.3655407428741455,
+      "timestamp": "2025-09-29T22:09:54.508512+00:00"
+    },
+    {
+      "test": "ui_component_explorer",
+      "success": false,
+      "details": "Status: 500, Time: 0.07s",
+      "response_time": 0.06501412391662598,
+      "timestamp": "2025-09-29T22:09:54.573628+00:00"
+    },
+    {
+      "test": "ui_component_data_import",
+      "success": true,
+      "details": "Status: 200, Time: 0.06s",
+      "response_time": 0.05851602554321289,
+      "timestamp": "2025-09-29T22:09:54.632236+00:00"
+    },
+    {
+      "test": "ui_component_docs",
+      "success": true,
+      "details": "Status: 200, Time: 0.05s",
+      "response_time": 0.04853415489196777,
+      "timestamp": "2025-09-29T22:09:54.680869+00:00"
+    },
+    {
+      "test": "bigquery_connection_status",
+      "success": true,
+      "details": "Status: 200, Time: 1.81s",
+      "response_time": 1.8118810653686523,
+      "timestamp": "2025-09-29T22:09:56.492924+00:00"
+    },
+    {
+      "test": "bigquery_verb_distribution",
+      "success": true,
+      "details": "Status: 200, Time: 0.61s",
+      "response_time": 0.614098072052002,
+      "timestamp": "2025-09-29T22:09:57.107304+00:00"
+    },
+    {
+      "test": "bigquery_bigquery_test",
+      "success": true,
+      "details": "Status: 200, Time: 0.12s",
+      "response_time": 0.11905193328857422,
+      "timestamp": "2025-09-29T22:09:57.226615+00:00"
+    },
+    {
+      "test": "bigquery_analytics_index",
+      "success": true,
+      "details": "Status: 200, Time: 1.31s",
+      "response_time": 1.3141319751739502,
+      "timestamp": "2025-09-29T22:09:58.540900+00:00"
+    },
+    {
+      "test": "cost_monitoring_overview",
+      "success": true,
+      "details": "Status: 200 (Implemented), Time: 0.64s",
+      "response_time": 0.6439549922943115,
+      "timestamp": "2025-09-29T22:09:59.185159+00:00"
+    },
+    {
+      "test": "cost_monitoring_health",
+      "success": true,
+      "details": "Status: 200 (Implemented), Time: 0.20s",
+      "response_time": 0.20065712928771973,
+      "timestamp": "2025-09-29T22:09:59.385936+00:00"
+    },
+    {
+      "test": "cost_monitoring_current_usage",
+      "success": true,
+      "details": "Status: 200 (Implemented), Time: 1.20s",
+      "response_time": 1.1985220909118652,
+      "timestamp": "2025-09-29T22:10:00.584580+00:00"
+    },
+    {
+      "test": "cost_monitoring_optimization_recommendations",
+      "success": true,
+      "details": "Status: 200 (Implemented), Time: 2.23s",
+      "response_time": 2.2263967990875244,
+      "timestamp": "2025-09-29T22:10:02.811100+00:00"
+    },
+    {
+      "test": "debug_production_validation",
+      "success": true,
+      "details": "Status: 200, Time: 9.44s",
+      "response_time": 9.440366983413696,
+      "timestamp": "2025-09-29T22:10:13.558453+00:00"
+    },
+    {
+      "test": "debug_cloud_run",
+      "success": true,
+      "details": "Status: 200, Time: 2.90s",
+      "response_time": 2.8988547325134277,
+      "timestamp": "2025-09-29T22:10:16.457407+00:00"
+    },
+    {
+      "test": "debug_bigquery",
+      "success": true,
+      "details": "Status: 200, Time: 1.07s",
+      "response_time": 1.0676839351654053,
+      "timestamp": "2025-09-29T22:10:17.525196+00:00"
+    },
+    {
+      "test": "debug_cloud_function",
+      "success": true,
+      "details": "Status: 200, Time: 0.12s",
+      "response_time": 0.11970782279968262,
+      "timestamp": "2025-09-29T22:10:17.644999+00:00"
+    }
+  ],
+  "recommendations": [
+    "Fix failing UI components before deploying new features",
+    "Optimize slow endpoints - several taking over 3 seconds"
+  ],
+  "production_status": {
+    "base_url": "https://taps-analytics-ui-245712978112.us-central1.run.app",
+    "deployment_platform": "Cloud Run",
+    "validation_date": "2025-09-29T22:10:17.645196+00:00"
+  }
+}

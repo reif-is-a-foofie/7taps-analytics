@@ -1,0 +1,125 @@
+# DevOps Agent Contract
+
+## Role
+You are the DevOps Agent for the 7taps Analytics project.
+Your mission: implement secure, reliable CI/CD; manage Cloud Run deploys, IAM, Artifact Registry, Secret Manager, and Monitoring alert policies.
+
+## Core Responsibilities
+1. CI/CD and Deployments
+   - Maintain Cloud Build pipelines and quality gates
+   - Deploy to Cloud Run with explicit service accounts and stable configs
+2. Registry and Images
+   - Migrate and operate on Artifact Registry images
+3. Secrets and Configuration
+   - Manage sensitive configuration via Secret Manager (no literals in repo/build files)
+4. IAM and Least Privilege
+   - Ensure minimal roles on service accounts; document changes
+5. Monitoring and Alerting
+   - Create alert policies (5xx, latency, Pub/Sub backlog, BigQuery job errors)
+6. Documentation and Handoffs
+   - Update docs and progress reports; enable reproducible operations
+
+## Safety Rules
+- MUST follow `.cursorrules` and per‑contract `allowed_files` boundaries
+- Never embed secrets or service account key contents in code, logs, or responses
+- Prefer parameterization (build substitutions) over hardcoding
+- Validate with targeted tests before deploying
+
+## Workflow
+1. Validate contracts and dependencies
+2. Pick a contract assigned to `devops_agent` with status `pending` or `in_progress`
+3. Implement minimal, reversible changes; prefer staged rollouts
+4. Run pre‑deploy tests (pytest gates, dry runs)
+5. Deploy to staging or production as specified
+6. Send heartbeat every 15 minutes during active work
+7. Produce a progress report JSON when milestones are reached
+
+## Agent Activation Protocol
+1. Scan `project_management/contracts/*.json` for contracts where `agent == "devops_agent"`
+2. Respect `dependencies` before starting
+3. Begin with highest priority (blocking, pending, or resumable)
+4. Record heartbeats and file changes as you work
+5. Post validation results to `/api/debug/test-report` if the app is running
+
+## Agent Heartbeat System
+```python
+from datetime import datetime
+import glob, json
+
+def register_agent_heartbeat(agent_name, contract_id, heartbeat_data):
+    """Register devops_agent heartbeat with contract progress."""
+    heartbeat = {
+        "agent": agent_name,
+        "contract_id": contract_id,
+        "timestamp": datetime.utcnow().isoformat(),
+        "files_modified": heartbeat_data.get("files_modified", []),
+        "code_metrics": {
+            "lines_of_code": heartbeat_data.get("lines_of_code", 0),
+            "functions_implemented": heartbeat_data.get("functions_implemented", 0),
+            "endpoints_created": heartbeat_data.get("endpoints_created", 0),
+            "test_coverage": heartbeat_data.get("test_coverage", 0),
+            "files_completed": heartbeat_data.get("files_completed", 0)
+        },
+        "progress_percentage": heartbeat_data.get("progress_percentage", 0),
+        "next_milestone": heartbeat_data.get("next_milestone", ""),
+        "current_status": heartbeat_data.get("current_status", "in_progress"),
+        "blocking_issues": heartbeat_data.get("blocking_issues", []),
+        "completion_estimate": heartbeat_data.get("completion_estimate", ""),
+        "last_activity": heartbeat_data.get("last_activity", "")
+    }
+
+    contract_file = f"project_management/contracts/{contract_id}.json"
+    with open(contract_file, 'r') as f:
+        contract = json.load(f)
+
+    if "heartbeats" not in contract:
+        contract["heartbeats"] = []
+
+    contract["heartbeats"].append(heartbeat)
+    contract["last_heartbeat"] = heartbeat["timestamp"]
+    contract["current_agent"] = agent_name
+
+    with open(contract_file, 'w') as f:
+        json.dump(contract, f, indent=2)
+
+    return heartbeat
+
+def find_resumable_contracts(agent_name="devops_agent"):
+    """Find contracts that can be resumed by devops_agent."""
+    contracts = []
+    for contract_path in glob.glob("project_management/contracts/*.json"):
+        with open(contract_path) as f:
+            contract = json.load(f)
+            contract['file'] = contract_path
+
+        if (contract.get("agent") == agent_name and
+            contract.get("status") in ["in_progress", "awaiting_review"] and
+            contract.get("current_agent") == agent_name):
+            contract["resumable"] = True
+            contract["last_heartbeat_data"] = contract.get("heartbeats", [])[-1] if contract.get("heartbeats") else None
+            contracts.append(contract)
+
+    return sorted(contracts, key=lambda x: x.get("last_heartbeat", ""), reverse=True)
+
+def find_my_contracts():
+    """Find all contracts assigned to devops_agent."""
+    matches = []
+    for contract_path in glob.glob("project_management/contracts/*.json"):
+        with open(contract_path) as f:
+            contract = json.load(f)
+        if contract.get("agent") == "devops_agent":
+            matches.append(contract)
+    return sorted(matches, key=lambda x: x.get("status", ""))
+```
+
+## GCP Operational Guidelines
+- Cloud Build: use pre‑deploy test gates; prefer build substitutions for SAs and image tags
+- Cloud Run: explicit `--service-account`, `--port 8080`, and allow‑unauth configs per environment policy
+- Artifact Registry: use regional repos; tag immutably and prefer digests for prod
+- Secret Manager: use `--set-secrets`; document creation/rotation
+- Monitoring: create alert policies with clear thresholds, owners, and channels
+
+## Completion Criteria
+- Contract completion only after independent validation (testing_agent) or agreed manual checks
+- Produce a succinct progress report JSON per contract under `project_management/progress_reports/`
+

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - POL Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e'
+                        },
+                        success: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a'
+                        },
+                        warning: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706'
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            500: '#ef4444',
+                            600: '#dc2626'
+                        },
+                        info: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#3b82f6',
+                            600: '#2563eb'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-3">
+                <div class="flex items-center space-x-6">
+                    <a href="/" class="text-xl font-bold text-primary-600">POL Analytics</a>
+                    <div class="flex space-x-4">
+                        <a href="/ui/data-explorer" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">Dashboard</a>
+                        <a href="/ui/daily-analytics" class="text-sm font-medium text-primary-600 border-b-2 border-primary-600 pb-1">Daily Analytics</a>
+                        <a href="/ui/safety" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">Flagged Language</a>
+                        <a href="/api-docs" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">API Docs</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <div class="glass-effect shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Daily Course Analytics</h1>
+                        <p class="text-sm text-gray-600">Automated daily stats for the 7pm progress email workflow</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refreshBtn" class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors">
+                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Controls Section -->
+        <div class="glass-effect rounded-xl p-6 mb-8 card-hover">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Target Date</label>
+                    <input type="date" id="targetDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" value="{{ target_date or '' }}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Group Filter</label>
+                    <select id="groupFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                        <option value="">All Groups</option>
+                        {% for group in available_groups %}
+                        <option value="{{ group.name }}" {% if group.name == group %}selected{% endif %}>{{ group.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="loadAnalyticsBtn" class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors">
+                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Load Analytics
+                    </button>
+                    <button id="downloadCsvBtn" class="px-4 py-2 bg-success-600 text-white rounded-md hover:bg-success-700 transition-colors">
+                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="glass-effect rounded-xl p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total Active Users</p>
+                        <p class="text-3xl font-bold text-gray-900" id="totalUsers">{{ total_users or 0 }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Completed Course</p>
+                        <p class="text-3xl font-bold text-success-600" id="completedUsers">{{ completed_users or 0 }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-success-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Need Follow-up</p>
+                        <p class="text-3xl font-bold text-warning-600" id="needFollowup">{{ need_followup or 0 }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-warning-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Completion Rate</p>
+                        <p class="text-3xl font-bold text-info-600" id="completionRate">{{ completion_rate or '0%' }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-info-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-info-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insights Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Completed Users -->
+            <div class="glass-effect rounded-xl p-6 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                        <svg class="w-5 h-5 text-success-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Completed Users
+                    </h3>
+                    <span class="text-sm text-gray-500" id="completedCount">{{ completed_users|length or 0 }} users</span>
+                </div>
+                <div class="space-y-3" id="completedUsersList">
+                    {% if completed_users %}
+                        {% for user in completed_users %}
+                        <div class="flex items-center justify-between p-3 bg-success-50 rounded-lg">
+                            <div class="flex-1">
+                                <p class="font-medium text-gray-900">{{ user.email or user.actor_id }}</p>
+                                <p class="text-sm text-gray-600">{{ user.completed_activities }}/{{ user.total_activities }} activities • {{ user.platform or 'Unknown' }}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium bg-success-100 text-success-800 rounded-full">Completed</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500 text-center py-4">No completed users found</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Users Needing Follow-up -->
+            <div class="glass-effect rounded-xl p-6 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                        <svg class="w-5 h-5 text-warning-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                        Users Needing Follow-up
+                    </h3>
+                    <span class="text-sm text-gray-500" id="followupCount">{{ need_followup_users|length or 0 }} users</span>
+                </div>
+                <div class="space-y-3" id="followupUsersList">
+                    {% if need_followup_users %}
+                        {% for user in need_followup_users %}
+                        <div class="flex items-center justify-between p-3 bg-warning-50 rounded-lg">
+                            <div class="flex-1">
+                                <p class="font-medium text-gray-900">{{ user.email or user.actor_id }}</p>
+                                <p class="text-sm text-gray-600">{{ user.completed_activities or 0 }}/{{ user.total_activities or 0 }} activities • {{ user.platform or 'Unknown' }}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium bg-warning-100 text-warning-800 rounded-full">
+                                {% if user.completed_activities == 0 %}Not Started{% else %}In Progress{% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500 text-center py-4">No users need follow-up</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="glass-effect rounded-xl p-6 card-hover">
+            <div class="text-center">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">📊 Export Daily Report</h3>
+                <p class="text-gray-600 mb-4">Download a comprehensive CSV with all user progress data for your daily progress email workflow.</p>
+                <button id="downloadReportBtn" class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Download Complete Report (CSV)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-gray-700">Loading daily analytics data...</span>
+        </div>
+    </div>
+
+    <script>
+        // Set default date to today
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('targetDate');
+            if (!dateInput.value) {
+                dateInput.value = today;
+            }
+        });
+
+        // Load Analytics Button
+        document.getElementById('loadAnalyticsBtn').addEventListener('click', function() {
+            const targetDate = document.getElementById('targetDate').value;
+            const cohortFilter = document.getElementById('cohortFilter').value;
+            
+            if (!targetDate) {
+                alert('Please select a target date');
+                return;
+            }
+            
+            showLoading();
+            
+            // Build URL with parameters
+            const params = new URLSearchParams({
+                target_date: targetDate
+            });
+            if (cohortFilter) {
+                params.append('cohort', cohortFilter);
+            }
+            
+            // Reload page with new parameters
+            window.location.href = `/ui/daily-analytics?${params.toString()}`;
+        });
+
+        // Download CSV Button
+        document.getElementById('downloadCsvBtn').addEventListener('click', function() {
+            const targetDate = document.getElementById('targetDate').value;
+            const cohortFilter = document.getElementById('cohortFilter').value;
+            
+            if (!targetDate) {
+                alert('Please select a target date');
+                return;
+            }
+            
+            const params = new URLSearchParams({
+                target_date: targetDate,
+                format: 'csv'
+            });
+            if (cohortFilter) {
+                params.append('cohort', cohortFilter);
+            }
+            
+            window.open(`/ui/daily-analytics/download?${params.toString()}`, '_blank');
+        });
+
+        // Download Report Button
+        document.getElementById('downloadReportBtn').addEventListener('click', function() {
+            const targetDate = document.getElementById('targetDate').value;
+            const cohortFilter = document.getElementById('cohortFilter').value;
+            
+            if (!targetDate) {
+                alert('Please select a target date');
+                return;
+            }
+            
+            const params = new URLSearchParams({
+                target_date: targetDate,
+                format: 'csv'
+            });
+            if (cohortFilter) {
+                params.append('cohort', cohortFilter);
+            }
+            
+            window.open(`/ui/daily-analytics/download?${params.toString()}`, '_blank');
+        });
+
+        // Refresh Button
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            window.location.reload();
+        });
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        // Hide loading when page is fully loaded
+        window.addEventListener('load', function() {
+            hideLoading();
+        });
+    </script>
+</body>
+</html>

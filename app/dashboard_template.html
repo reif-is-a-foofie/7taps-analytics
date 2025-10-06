@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7taps Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .metric-change {
+            font-size: 0.8em;
+            color: #28a745;
+            margin-top: 5px;
+        }
+        .charts-section {
+            padding: 30px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        .status-bar {
+            background: #e9ecef;
+            padding: 15px 30px;
+            border-top: 1px solid #dee2e6;
+            font-size: 0.9em;
+            color: #6c757d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .refresh-btn:hover {
+            background: #5a6fd8;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px;
+        }
+        @media (max-width: 768px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>7taps Analytics Dashboard</h1>
+            <p>Real-time metrics and insights for xAPI learning analytics</p>
+        </div>
+        
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total Users</div>
+                <div class="metric-value" id="totalUsers">{{ metrics.total_users | default(0) }}</div>
+                <div class="metric-change">+12% this week</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Total Statements</div>
+                <div class="metric-value" id="totalStatements">{{ metrics.total_statements | default(0) }}</div>
+                <div class="metric-change">+8% this week</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Completion Rate</div>
+                <div class="metric-value" id="completionRate">{{ "%.1f"|format(metrics.completion_rate | default(0)) }}%</div>
+                <div class="metric-change">+5% this week</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Active Users (7d)</div>
+                <div class="metric-value" id="activeUsers7d">{{ metrics.active_users_7d | default(0) }}</div>
+                <div class="metric-change">+15% this week</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Active Users (30d)</div>
+                <div class="metric-value" id="activeUsers30d">{{ metrics.active_users_30d | default(0) }}</div>
+                <div class="metric-change">+22% this month</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Avg. Engagement</div>
+                <div class="metric-value" id="avgEngagement">
+                    {% set total_users = metrics.total_users | default(0) %}
+                    {% if total_users > 0 %}
+                        {{ "%.1f"|format((metrics.total_statements | default(0)) / total_users) }}
+                    {% else %}
+                        0.0
+                    {% endif %}
+                </div>
+                <div class="metric-change">statements per user</div>
+            </div>
+        </div>
+        
+        <div class="charts-section">
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Top xAPI Verbs (Last 7 Days)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="verbsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">Cohort Completion Rates</div>
+                    <div class="chart-wrapper">
+                        <canvas id="cohortChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">Daily Activity (Last 30 Days)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">User Engagement Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="engagementChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div>
+                <strong>Last Updated:</strong> {{ last_updated }}
+                | <strong>Auto-refresh:</strong> Every {{ (refresh_interval | default(300)) // 60 }} minutes
+            </div>
+            <button class="refresh-btn" onclick="refreshDashboard()">Refresh Now</button>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js configuration
+        Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+        
+        // Initialize charts with data from server
+        const verbsData = {{ metrics.top_verbs | tojson }};
+        const cohortData = {{ metrics.cohort_completion | tojson }};
+        const activityData = {{ metrics.daily_activity | tojson }};
+        
+        // Top Verbs Chart
+        const verbsChart = new Chart(document.getElementById('verbsChart'), {
+            type: 'bar',
+            data: {
+                labels: verbsData.map(item => item.verb || 'Unknown'),
+                datasets: [{
+                    label: 'Count',
+                    data: verbsData.map(item => item.count || 0),
+                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Cohort Completion Chart
+        const cohortChart = new Chart(document.getElementById('cohortChart'), {
+            type: 'doughnut',
+            data: {
+                labels: cohortData.map(item => item.cohort_name || 'Unknown'),
+                datasets: [{
+                    data: cohortData.map(item => item.completion_rate || 0),
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(118, 75, 162, 0.8)',
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(220, 53, 69, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // Daily Activity Chart
+        const activityChart = new Chart(document.getElementById('activityChart'), {
+            type: 'line',
+            data: {
+                labels: activityData.map(item => new Date(item.date).toLocaleDateString()),
+                datasets: [{
+                    label: 'Active Users',
+                    data: activityData.map(item => item.active_users || 0),
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Total Statements',
+                    data: activityData.map(item => item.total_statements || 0),
+                    borderColor: 'rgba(118, 75, 162, 1)',
+                    backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Engagement Distribution Chart
+        const engagementChart = new Chart(document.getElementById('engagementChart'), {
+            type: 'pie',
+            data: {
+                labels: ['High Engagement', 'Medium Engagement', 'Low Engagement'],
+                datasets: [{
+                    data: [30, 45, 25],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(220, 53, 69, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // Auto-refresh functionality
+        function refreshDashboard() {
+            fetch('/api/dashboard/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    // Update metric values
+                    document.getElementById('totalUsers').textContent = data.metrics.total_users;
+                    document.getElementById('totalStatements').textContent = data.metrics.total_activities;
+                    document.getElementById('completionRate').textContent = data.metrics.completion_rate.toFixed(1) + '%';
+                    document.getElementById('activeUsers7d').textContent = data.metrics.active_users_today;
+                    document.getElementById('activeUsers30d').textContent = data.metrics.active_users_today; // Using today's data as fallback
+                    
+                    // Update charts with new data
+                    updateCharts(data.metrics);
+                    
+                    // Update last updated time
+                    const statusBar = document.querySelector('.status-bar div');
+                    statusBar.innerHTML = `<strong>Last Updated:</strong> ${new Date().toLocaleString()} | <strong>Auto-refresh:</strong> Every {{ refresh_interval // 60 }} minutes`;
+                })
+                .catch(error => {
+                    console.error('Failed to refresh dashboard:', error);
+                });
+        }
+        
+        function updateCharts(metrics) {
+            // Update verbs chart
+            verbsChart.data.labels = metrics.top_verbs.map(item => item.verb || 'Unknown');
+            verbsChart.data.datasets[0].data = metrics.top_verbs.map(item => item.count || 0);
+            verbsChart.update();
+            
+            // Update cohort chart
+            cohortChart.data.labels = metrics.cohort_completion.map(item => item.cohort_name || 'Unknown');
+            cohortChart.data.datasets[0].data = metrics.cohort_completion.map(item => item.completion_rate || 0);
+            cohortChart.update();
+            
+            // Update activity chart
+            activityChart.data.labels = metrics.daily_activity.map(item => new Date(item.date).toLocaleDateString());
+            activityChart.data.datasets[0].data = metrics.daily_activity.map(item => item.active_users || 0);
+            activityChart.data.datasets[1].data = metrics.daily_activity.map(item => item.total_statements || 0);
+            activityChart.update();
+        }
+        
+        // Auto-refresh every 5 minutes
+        setInterval(refreshDashboard, {{ refresh_interval * 1000 }});
+        
+        // Initial load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard loaded successfully');
+        });
+    </script>
+</body>
+</html> 

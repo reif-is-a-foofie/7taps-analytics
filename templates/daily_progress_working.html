@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Progress - 7pm Email Prep</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-8">
+                    <h1 class="text-xl font-bold text-gray-900">POL Analytics</h1>
+                    <div class="flex space-x-6">
+                        <a href="/" class="text-gray-600 hover:text-gray-900">Dashboard</a>
+                        <a href="/ui/safety" class="text-gray-600 hover:text-gray-900">AI Safety</a>
+                        <a href="/ui/etl-dashboard" class="text-gray-600 hover:text-gray-900">ETL Data</a>
+                        <a href="/ui/daily-progress" class="text-blue-600 font-medium">Daily Progress</a>
+                        <a href="/api/docs" class="text-gray-600 hover:text-gray-900">API Docs</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Daily Progress - 7pm Email Prep</h1>
+            <p class="text-gray-600 mt-2">{{ target_date }} • {{ group }}</p>
+            
+            <!-- Cohort Selection -->
+            <div class="mt-4 flex space-x-4">
+                <select id="cohortSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All Groups</option>
+                    <option value="7taps" {% if group == "7taps" %}selected{% endif %}>7taps Platform</option>
+                    <option value="test" {% if group == "test" %}selected{% endif %}>Test Group</option>
+                </select>
+                <button onclick="changeCohort()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                    Filter Cohort
+                </button>
+                <input type="date" id="dateSelect" value="{{ target_date }}" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <button onclick="changeDate()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                    Change Date
+                </button>
+            </div>
+        </div>
+
+        {% if data.success %}
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Total Learners</h3>
+                        <div class="text-sm text-gray-500">Active today</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-gray-900">{{ data.summary.total_users if data.summary else 0 }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Completed</h3>
+                        <div class="text-sm text-gray-500">Lessons finished</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-green-600">{{ data.summary.completed_users }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Partial</h3>
+                        <div class="text-sm text-gray-500">Started but not done</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-yellow-600">{{ data.summary.partial_users }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Completion Rate</h3>
+                        <div class="text-sm text-gray-500">Overall progress</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-blue-600">{{ data.summary.completion_rate }}%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Insights for Email -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900">📧 Key Insights for 7pm Email</h2>
+            </div>
+            <div class="p-6">
+                {% if data.insights %}
+                <ul class="space-y-3">
+                    {% for insight in data.insights %}
+                    <li class="flex items-start space-x-3">
+                        <span class="text-lg">{{ insight.split()[0] }}</span>
+                        <span class="text-gray-700">{{ insight.split(' ', 1)[1] if ' ' in insight else insight }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-gray-500">No insights available for today's data.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quote-Worthy Responses -->
+        {% if data.quote_worthy %}
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900">💬 Quote-Worthy Responses</h2>
+            </div>
+            <div class="p-6">
+                {% for quote in data.quote_worthy %}
+                <div class="border-l-4 border-blue-500 pl-4 mb-4">
+                    <p class="text-gray-700 italic">"{{ quote.response }}"</p>
+                    <p class="text-sm text-gray-500 mt-1">— {{ quote.user }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Email Action Buttons -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">📧 7pm Email Actions</h2>
+            <div class="flex justify-center space-x-4">
+                <button onclick="generateEmailSummary()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium">
+                    📧 Generate Email Summary
+                </button>
+                <button onclick="copyInsights()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium">
+                    📋 Copy Insights
+                </button>
+            </div>
+        </div>
+        
+        {% else %}
+        <!-- Error State -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-red-800">Error Loading Data</h2>
+            <p class="text-red-600 mt-2">{{ data.error if data.error else "Unknown error occurred" }}</p>
+            <p class="text-gray-500 mt-2">Try selecting a different date or cohort.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function changeCohort() {
+            const cohort = document.getElementById('cohortSelect').value;
+            const date = document.getElementById('dateSelect').value;
+            
+            let url = `/ui/daily-progress?date=${date}`;
+            if (cohort) {
+                url += `&group=${cohort}`;
+            }
+            
+            window.location.href = url;
+        }
+        
+        function changeDate() {
+            const date = document.getElementById('dateSelect').value;
+            const cohort = document.getElementById('cohortSelect').value;
+            
+            let url = `/ui/daily-progress?date=${date}`;
+            if (cohort) {
+                url += `&group=${cohort}`;
+            }
+            
+            window.location.href = url;
+        }
+        
+        function generateEmailSummary() {
+            const insights = {{ data.insights|tojson }};
+            const summary = {
+                date: "{{ target_date }}",
+                group: "{{ group }}",
+                completion_rate: "{{ data.summary.completion_rate }}%",
+                key_insights: insights
+            };
+            
+            const emailText = `
+📧 Daily Progress Email Summary - {{ target_date }}
+
+Completion Rate: {{ data.summary.completion_rate }}%
+Total Learners: {{ data.summary.total_users }}
+
+Key Insights:
+${insights.map(insight => `• ${insight}`).join('\n')}
+
+Ready for 7pm email!
+            `.trim();
+            
+            navigator.clipboard.writeText(emailText).then(() => {
+                alert('Email summary copied to clipboard!');
+            });
+        }
+
+        function copyInsights() {
+            const insights = {{ data.insights|tojson }};
+            const insightsText = insights.join('\n');
+            
+            navigator.clipboard.writeText(insightsText).then(() => {
+                alert('Insights copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>

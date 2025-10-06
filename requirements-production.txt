@@ -1,0 +1,30 @@
+# Core FastAPI dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic-settings>=2.0.0
+python-multipart>=0.0.6
+
+# Google Cloud (essential only)
+google-cloud-pubsub>=2.31.1
+google-cloud-storage>=3.3.1
+google-cloud-bigquery>=3.37.0
+google-auth>=2.40.3
+google-generativeai>=0.3.2
+
+# HTTP client
+httpx>=0.25.0
+
+# Logging
+structlog>=23.0.0
+
+# Templates
+Jinja2>=3.1.0
+
+# Timezone
+pytz>=2023.3
+
+# Environment
+python-dotenv>=1.0.0
+
+# Essential utilities
+psutil>=5.9.0

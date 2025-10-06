@@ -1,0 +1,1171 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #6366f1;
+        --secondary-color: #10b981;
+        --accent-color: #f59e0b;
+        --danger-color: #ef4444;
+        --bg-color: #ffffff;
+        --card-bg: #f8fafc;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        --success-bg: #f0fdf4;
+        --warning-bg: #fffbeb;
+        --error-bg: #fef2f2;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .header h1 {
+        color: var(--primary-color);
+        font-size: 2.5rem;
+        font-weight: 600;
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    .connection-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .connection-status.connected {
+        background: var(--success-bg);
+        color: #16a34a;
+    }
+
+    .connection-status.error {
+        background: var(--error-bg);
+        color: #dc2626;
+    }
+
+    .connection-status.unknown {
+        background: var(--warning-bg);
+        color: #92400e;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .nav-link {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--primary-color);
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--bg-color);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    .stat-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+
+    .charts-section {
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .chart-card {
+        background: var(--bg-color);
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--border-color);
+    }
+
+    .chart-card h3 {
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        font-size: 1.3rem;
+        font-weight: 600;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .chart-controls {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #5855eb;
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: var(--card-bg);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+        background: #e2e8f0;
+    }
+
+    .btn-success {
+        background: var(--secondary-color);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+    }
+
+    .query-section {
+        background: var(--card-bg);
+        padding: 2rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 2rem;
+    }
+
+    .query-input {
+        width: 100%;
+        min-height: 120px;
+        padding: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        resize: vertical;
+    }
+
+    .query-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+
+    .loading::after {
+        content: '';
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border-color);
+        border-radius: 50%;
+        border-top-color: var(--primary-color);
+        animation: spin 1s ease-in-out infinite;
+        margin-left: 0.5rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .error {
+        background: var(--error-bg);
+        border: 1px solid #fecaca;
+        color: #dc2626;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .success {
+        background: var(--success-bg);
+        border: 1px solid #bbf7d0;
+        color: #16a34a;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        margin-top: 1rem;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-table th {
+        background: var(--card-bg);
+        font-weight: 600;
+        color: var(--text-primary);
+        position: sticky;
+        top: 0;
+    }
+
+    .data-table tr:hover {
+        background: var(--card-bg);
+    }
+
+    .execution-info {
+        background: var(--card-bg);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .metric-value {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+
+    /* Cost Monitoring Styles */
+    .cost-monitoring-section {
+        margin-bottom: 2rem;
+    }
+
+    .cost-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .cost-metric {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: var(--card-shadow);
+    }
+
+    .cost-metric .metric-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .cost-metric .metric-label {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .cost-metric.alert {
+        border-color: var(--danger-color);
+        background: var(--error-bg);
+    }
+
+    .cost-metric.alert .metric-value {
+        color: var(--danger-color);
+    }
+
+    .cost-metric.warning {
+        border-color: var(--accent-color);
+        background: var(--warning-bg);
+    }
+
+    .cost-metric.warning .metric-value {
+        color: var(--accent-color);
+    }
+
+    .optimization-score {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .score-bar {
+        flex: 1;
+        height: 8px;
+        background: var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .score-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--danger-color) 0%, var(--accent-color) 50%, var(--secondary-color) 100%);
+        transition: width 0.3s ease;
+    }
+
+    .recommendations {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .recommendations h4 {
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .recommendations ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    .recommendations li {
+        padding: 0.25rem 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .recommendations li:before {
+        content: "💡 ";
+        margin-right: 0.5rem;
+    }
+
+    /* Responsive design */
+    @media (max-width: 1024px) {
+        .chart-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .chart-card {
+            padding: 1.5rem;
+        }
+
+        .chart-container {
+            height: 350px;
+            padding: 0.75rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 1rem;
+        }
+
+        .header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+        }
+
+        .chart-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .btn {
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .chart-container {
+            height: 300px;
+            padding: 0.5rem;
+        }
+
+        .query-section {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header">
+        <h1>📊 BigQuery Analytics Dashboard</h1>
+        <div class="nav-links">
+            <a href="/ui/db-terminal" class="nav-link">Database Terminal</a>
+            <a href="/ui/admin" class="nav-link">Admin Panel</a>
+        </div>
+    </div>
+
+    <div id="connection-status" class="connection-status unknown">
+        <span id="status-icon">⏳</span>
+        <span id="status-text">Checking connection...</span>
+    </div>
+
+    <!-- Cost Monitoring Section -->
+    <div class="cost-monitoring-section">
+        <h2 class="section-title">💰 Cost Monitoring</h2>
+        <div id="cost-metrics" class="cost-grid">
+            <div class="loading">Loading cost metrics...</div>
+        </div>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div id="stats-container" class="stats-grid">
+        <div class="loading">Loading dashboard statistics...</div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+        <h2 class="section-title">📈 Analytics Overview</h2>
+        <div id="charts-container" class="chart-grid">
+            <div class="loading">Loading charts...</div>
+        </div>
+    </div>
+
+    <!-- Custom Query Section -->
+    <div class="query-section">
+        <h2 class="section-title">🔍 Custom Query Interface</h2>
+        <div class="chart-controls">
+            <textarea
+                id="custom-query"
+                class="query-input"
+                placeholder="Enter your BigQuery SQL query here...
+
+Example queries:
+SELECT verb_display, COUNT(*) as frequency
+FROM `your-project.your-dataset.statements`
+WHERE verb_display IS NOT NULL
+GROUP BY verb_display
+ORDER BY frequency DESC
+LIMIT 10;
+
+SELECT DATE(timestamp) as date, COUNT(*) as activities
+FROM `your-project.your-dataset.statements`
+WHERE timestamp >= '2024-01-01'
+GROUP BY DATE(timestamp)
+ORDER BY date;"></textarea>
+            <select id="chart-type" class="btn btn-secondary">
+                <option value="table">📊 Table</option>
+                <option value="bar">📊 Bar Chart</option>
+                <option value="line">📈 Line Chart</option>
+                <option value="pie">🥧 Pie Chart</option>
+            </select>
+            <button id="execute-query" class="btn btn-primary">
+                🚀 Execute Query
+            </button>
+            <button id="clear-results" class="btn btn-secondary">
+                🗑️ Clear
+            </button>
+        </div>
+
+        <div id="query-results" style="display: none;">
+            <div id="query-status"></div>
+            <div id="results-container"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Global variables
+    let dashboardData = {};
+    let charts = {};
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboard();
+    });
+
+    async function loadDashboard() {
+        try {
+            const response = await fetch('/ui/bigquery-dashboard/data');
+            const data = await response.json();
+
+            dashboardData = data;
+            updateConnectionStatus(data.connection_status);
+            displayStats(data);
+            displayCharts(data);
+            await loadCostMetrics();
+
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+            showError('Failed to load dashboard data: ' + error.message);
+        }
+    }
+
+    async function loadCostMetrics() {
+        try {
+            const response = await fetch('/api/cost/current-usage');
+            const costData = await response.json();
+            displayCostMetrics(costData);
+        } catch (error) {
+            console.error('Error loading cost metrics:', error);
+            document.getElementById('cost-metrics').innerHTML = 
+                '<div class="error">Failed to load cost metrics</div>';
+        }
+    }
+
+    function displayCostMetrics(costData) {
+        const container = document.getElementById('cost-metrics');
+        
+        const currentUsageClass = costData.current_usage > 10 ? 'alert' : 
+                                 costData.current_usage > 5 ? 'warning' : '';
+        
+        const optimizationClass = costData.optimization_score < 60 ? 'alert' : 
+                                 costData.optimization_score < 80 ? 'warning' : '';
+
+        container.innerHTML = `
+            <div class="cost-metric ${currentUsageClass}">
+                <div class="metric-value">$${costData.current_usage.toFixed(4)}</div>
+                <div class="metric-label">Current Usage</div>
+            </div>
+            <div class="cost-metric">
+                <div class="metric-value">$${costData.daily_usage.toFixed(2)}</div>
+                <div class="metric-label">Daily Usage</div>
+            </div>
+            <div class="cost-metric">
+                <div class="metric-value">$${costData.monthly_usage.toFixed(2)}</div>
+                <div class="metric-label">Monthly Usage</div>
+            </div>
+            <div class="cost-metric">
+                <div class="metric-value">${costData.cache_hit_rate.toFixed(1)}%</div>
+                <div class="metric-label">Cache Hit Rate</div>
+            </div>
+            <div class="cost-metric ${optimizationClass}">
+                <div class="metric-value">${costData.optimization_score.toFixed(0)}</div>
+                <div class="metric-label">Optimization Score</div>
+                <div class="optimization-score">
+                    <span>Score:</span>
+                    <div class="score-bar">
+                        <div class="score-fill" style="width: ${costData.optimization_score}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="cost-metric">
+                <div class="metric-value">${(costData.bytes_processed / 1024 / 1024).toFixed(1)} MB</div>
+                <div class="metric-label">Data Processed</div>
+            </div>
+        `;
+
+        // Add recommendations if available
+        if (costData.recommendations && costData.recommendations.length > 0) {
+            const recommendationsHtml = `
+                <div class="recommendations">
+                    <h4>💡 Optimization Recommendations</h4>
+                    <ul>
+                        ${costData.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', recommendationsHtml);
+        }
+    }
+
+    function updateConnectionStatus(status) {
+        const statusElement = document.getElementById('connection-status');
+        const statusIcon = document.getElementById('status-icon');
+        const statusText = document.getElementById('status-text');
+
+        statusElement.className = 'connection-status';
+
+        switch(status.status) {
+            case 'connected':
+                statusElement.classList.add('connected');
+                statusIcon.textContent = '✅';
+                statusText.textContent = `Connected to BigQuery (${status.tables_count} tables, ${status.total_rows} rows)`;
+                break;
+            case 'dataset_not_found':
+                statusElement.classList.add('error');
+                statusIcon.textContent = '❌';
+                statusText.textContent = 'Dataset not found - please check configuration';
+                break;
+            case 'error':
+                statusElement.classList.add('error');
+                statusIcon.textContent = '❌';
+                statusText.textContent = 'Connection error: ' + (status.error || 'Unknown error');
+                break;
+            default:
+                statusElement.classList.add('unknown');
+                statusIcon.textContent = '⏳';
+                statusText.textContent = 'Checking connection...';
+        }
+    }
+
+    function displayStats(data) {
+        const statsContainer = document.getElementById('stats-container');
+
+        if (!data.dashboard_ready) {
+            statsContainer.innerHTML = '<div class="error">❌ Dashboard not ready - please check BigQuery connection</div>';
+            return;
+        }
+
+        const stats = [];
+
+        // Connection stats
+        if (data.connection_status.tables_count !== undefined) {
+            stats.push({
+                value: data.connection_status.tables_count,
+                label: 'BigQuery Tables',
+                subtitle: 'Available in dataset'
+            });
+        }
+
+        if (data.connection_status.total_rows !== undefined) {
+            stats.push({
+                value: data.connection_status.total_rows.toLocaleString(),
+                label: 'Total Rows',
+                subtitle: 'Across all tables'
+            });
+        }
+
+        // Learner summary stats
+        if (data.learner_summary.success && data.learner_summary.row_count > 0) {
+            stats.push({
+                value: data.learner_summary.row_count,
+                label: 'Active Learners',
+                subtitle: 'With activity data'
+            });
+        }
+
+        // Verb distribution stats
+        if (data.verb_distribution.success && data.verb_distribution.data?.datasets?.[0]?.data?.length > 0) {
+            const totalActivities = data.verb_distribution.data.datasets[0].data.reduce((a, b) => a + b, 0);
+            stats.push({
+                value: totalActivities.toLocaleString(),
+                label: 'Total Activities',
+                subtitle: 'Across all verbs'
+            });
+        }
+
+        if (stats.length === 0) {
+            statsContainer.innerHTML = '<div class="loading">No statistics available yet</div>';
+            return;
+        }
+
+        const statsHtml = stats.map(stat => `
+            <div class="stat-card">
+                <div class="stat-number">${stat.value}</div>
+                <div class="stat-label">${stat.label}</div>
+                <div class="stat-subtitle">${stat.subtitle}</div>
+            </div>
+        `).join('');
+
+        statsContainer.innerHTML = statsHtml;
+    }
+
+    function displayCharts(data) {
+        const chartsContainer = document.getElementById('charts-container');
+
+        if (!data.dashboard_ready) {
+            chartsContainer.innerHTML = '<div class="error">❌ Charts not available - please check BigQuery connection</div>';
+            return;
+        }
+
+        // Clear existing charts
+        Object.values(charts).forEach(chart => chart.destroy());
+        charts = {};
+
+        const chartElements = [];
+
+        // Verb distribution chart
+        if (data.verb_distribution.success) {
+            chartElements.push(createChartElement('verb-distribution', '🎯 Learning Activity Types'));
+        }
+
+        // Activity timeline chart
+        if (data.activity_timeline.success) {
+            chartElements.push(createChartElement('activity-timeline', '📅 Activity Timeline (30 Days)'));
+        }
+
+        // Learner activity table
+        if (data.learner_summary.success) {
+            chartElements.push(createTableElement('learner-summary', '👥 Learner Activity Summary'));
+        }
+
+        if (chartElements.length === 0) {
+            chartsContainer.innerHTML = '<div class="loading">No chart data available</div>';
+            return;
+        }
+
+        chartsContainer.innerHTML = chartElements.join('');
+
+        // Render charts with delay to ensure DOM is ready
+        setTimeout(() => {
+            if (data.verb_distribution.success) {
+                renderVerbDistributionChart(data.verb_distribution);
+            }
+            if (data.activity_timeline.success) {
+                renderActivityTimelineChart(data.activity_timeline);
+            }
+            if (data.learner_summary.success) {
+                renderLearnerSummaryTable(data.learner_summary);
+            }
+        }, 200);
+    }
+
+    function createChartElement(id, title) {
+        return `
+            <div class="chart-card">
+                <h3>${title}</h3>
+                <div class="chart-container">
+                    <canvas id="${id}-chart"></canvas>
+                </div>
+            </div>
+        `;
+    }
+
+    function createTableElement(id, title) {
+        return `
+            <div class="chart-card">
+                <h3>${title}</h3>
+                <div id="${id}-table" class="table-container">
+                    <div class="loading">Loading table data...</div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderVerbDistributionChart(data) {
+        const ctx = document.getElementById('verb-distribution-chart');
+        if (!ctx) return;
+
+        const chartData = data.data;
+        if (!chartData || !chartData.labels || !chartData.datasets) return;
+
+        charts.verbDistribution = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: chartData.datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Activity Count'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderActivityTimelineChart(data) {
+        const ctx = document.getElementById('activity-timeline-chart');
+        if (!ctx) return;
+
+        const chartData = data.data;
+        if (!chartData || !chartData.labels || !chartData.datasets) return;
+
+        charts.activityTimeline = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: chartData.datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderLearnerSummaryTable(data) {
+        const container = document.getElementById('learner-summary-table');
+        if (!container) return;
+
+        const tableData = data.data;
+        if (!tableData || !tableData.rows || !tableData.columns) return;
+
+        const columns = tableData.columns;
+        const rows = tableData.rows.slice(0, 10); // Limit to first 10 rows
+
+        let tableHtml = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        ${columns.map(col => `<th>${col.headerName}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(row => `
+                        <tr>
+                            ${columns.map(col => `<td>${row[col.field] || '-'}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        if (tableData.rows.length > 10) {
+            tableHtml += `<div class="execution-info">Showing first 10 of ${tableData.rows.length} learners</div>`;
+        }
+
+        container.innerHTML = tableHtml;
+    }
+
+    // Custom query functionality
+    document.getElementById('execute-query').addEventListener('click', executeCustomQuery);
+    document.getElementById('clear-results').addEventListener('click', clearResults);
+
+    async function executeCustomQuery() {
+        const query = document.getElementById('custom-query').value.trim();
+        const chartType = document.getElementById('chart-type').value;
+        const resultsContainer = document.getElementById('query-results');
+        const statusElement = document.getElementById('query-status');
+
+        if (!query) {
+            showQueryError('Please enter a query');
+            return;
+        }
+
+        // Show loading state
+        resultsContainer.style.display = 'block';
+        statusElement.innerHTML = '<div class="loading">Executing query...</div>';
+        document.getElementById('results-container').innerHTML = '';
+
+        try {
+            const response = await fetch('/ui/bigquery-dashboard/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: query,
+                    chart_type: chartType
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                statusElement.innerHTML = `
+                    <div class="success">
+                        ✅ Query executed successfully in ${result.execution_time?.toFixed(2) || 'N/A'}s
+                        (${result.row_count || 0} rows returned)
+                    </div>
+                `;
+
+                renderQueryResults(result);
+            } else {
+                showQueryError(result.error || 'Query execution failed');
+            }
+
+        } catch (error) {
+            showQueryError('Network error: ' + error.message);
+        }
+    }
+
+    function renderQueryResults(result) {
+        const container = document.getElementById('results-container');
+
+        if (result.chart_type === 'table' || !result.data?.labels) {
+            // Render as table
+            renderQueryTable(result);
+        } else {
+            // Render as chart
+            renderQueryChart(result);
+        }
+    }
+
+    function renderQueryTable(result) {
+        const container = document.getElementById('results-container');
+
+        if (!result.data?.rows || result.data.rows.length === 0) {
+            container.innerHTML = '<div class="error">No data returned from query</div>';
+            return;
+        }
+
+        const columns = result.data.columns || Object.keys(result.data.rows[0]);
+        const rows = result.data.rows;
+
+        const tableHtml = `
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            ${columns.map(col => `<th>${col}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>
+                                ${columns.map(col => `<td>${row[col] || '-'}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div class="execution-info">
+                <span>Total rows: ${rows.length}</span>
+                <span>Execution time: ${result.execution_time?.toFixed(2) || 'N/A'}s</span>
+            </div>
+        `;
+
+        container.innerHTML = tableHtml;
+    }
+
+    function renderQueryChart(result) {
+        const container = document.getElementById('results-container');
+
+        const chartId = 'query-chart-' + Date.now();
+        container.innerHTML = `
+            <div class="chart-container">
+                <canvas id="${chartId}"></canvas>
+            </div>
+            <div class="execution-info">
+                <span>Total rows: ${result.row_count || 0}</span>
+                <span>Execution time: ${result.execution_time?.toFixed(2) || 'N/A'}s</span>
+            </div>
+        `;
+
+        const ctx = document.getElementById(chartId);
+        if (!ctx) return;
+
+        // Destroy any existing query chart
+        if (charts.queryChart) {
+            charts.queryChart.destroy();
+        }
+
+        charts.queryChart = new Chart(ctx, {
+            type: result.chart_type,
+            data: result.data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label || 'Value'}: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function showQueryError(message) {
+        const statusElement = document.getElementById('query-status');
+        statusElement.innerHTML = `<div class="error">❌ ${message}</div>`;
+        document.getElementById('results-container').innerHTML = '';
+        document.getElementById('query-results').style.display = 'block';
+    }
+
+    function clearResults() {
+        document.getElementById('custom-query').value = '';
+        document.getElementById('query-results').style.display = 'none';
+        document.getElementById('query-status').innerHTML = '';
+        document.getElementById('results-container').innerHTML = '';
+
+        // Destroy query chart if it exists
+        if (charts.queryChart) {
+            charts.queryChart.destroy();
+            delete charts.queryChart;
+        }
+    }
+
+    function showError(message) {
+        const statsContainer = document.getElementById('stats-container');
+        const chartsContainer = document.getElementById('charts-container');
+
+        statsContainer.innerHTML = `<div class="error">❌ ${message}</div>`;
+        chartsContainer.innerHTML = `<div class="error">❌ ${message}</div>`;
+    }
+</script>
+{% endblock %}

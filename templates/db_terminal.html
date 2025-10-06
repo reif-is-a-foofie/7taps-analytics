@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POL Analytics - DB Terminal</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+        .content {
+            display: flex;
+            min-height: 600px;
+        }
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-right: 1px solid #dee2e6;
+        }
+        .main {
+            flex: 1;
+            padding: 20px;
+        }
+        .query-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: left;
+            transition: background-color 0.3s;
+        }
+        .query-button:hover {
+            background: #0056b3;
+        }
+        .query-button.cohort {
+            background: #28a745;
+        }
+        .query-button.cohort:hover {
+            background: #1e7e34;
+        }
+        .query-button.completion {
+            background: #ffc107;
+            color: #212529;
+        }
+        .query-button.completion:hover {
+            background: #e0a800;
+        }
+        .query-button.analytics {
+            background: #17a2b8;
+        }
+        .query-button.analytics:hover {
+            background: #138496;
+        }
+        .terminal-frame {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .status-bar {
+            background: #e9ecef;
+            padding: 10px 20px;
+            border-top: 1px solid #dee2e6;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        .query-description {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        .custom-query {
+            margin-top: 20px;
+        }
+        .custom-query textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .execute-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .execute-btn:hover {
+            background: #1e7e34;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .results h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>POL Analytics - Database Terminal</h1>
+            <p>Safe, read-only database queries with prebuilt analytics</p>
+        </div>
+        
+        <div class="content">
+            <div class="sidebar">
+                <div class="section-title">Prebuilt Queries</div>
+                {% for query in prebuilt_queries %}
+                <button class="query-button {{ query.category }}" onclick="loadPrebuiltQuery('{{ query.name }}', `{{ query.sql | replace('\n', '\\n') | replace('"', '\\"') }}`)">
+                    <strong>{{ query.name }}</strong>
+                    <div class="query-description">{{ query.description }}</div>
+                </button>
+                {% endfor %}
+                
+                <div class="custom-query">
+                    <div class="section-title">Custom Query</div>
+                    <textarea id="customQuery" placeholder="Enter your SQL query here (SELECT only)..."></textarea>
+                    <button class="execute-btn" onclick="executeCustomQuery()">Execute Query</button>
+                </div>
+            </div>
+            
+            <div class="main">
+                <div class="section-title">Database Terminal</div>
+                {% if use_sqlpad %}
+                <iframe 
+                    src="{{ sqlpad_url }}/query" 
+                    class="terminal-frame"
+                    title="SQLPad Database Terminal">
+                </iframe>
+                {% else %}
+                <iframe 
+                    src="{{ superset_url }}/superset/sqllab" 
+                    class="terminal-frame"
+                    title="Superset Database Terminal">
+                </iframe>
+                {% endif %}
+                
+                <div id="results" class="results" style="display: none;">
+                    <h3>Query Results</h3>
+                    <div id="resultsContent"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <strong>Status:</strong> 
+            {% if use_sqlpad %}
+            SQLPad connected at {{ sqlpad_url }}
+            {% else %}
+            Superset connected at {{ superset_url }}
+            {% endif %}
+            | <strong>Mode:</strong> Read-only queries only
+        </div>
+    </div>
+
+    <script>
+        function loadPrebuiltQuery(name, sql) {
+            document.getElementById('customQuery').value = sql;
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        async function executeCustomQuery() {
+            const query = document.getElementById('customQuery').value.trim();
+            if (!query) {
+                alert('Please enter a query');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/ui/db-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        query_type: 'custom'
+                    })
+                });
+                
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                console.error('Error executing query:', error);
+                displayError('Failed to execute query: ' + error.message);
+            }
+        }
+        
+        function displayResults(result) {
+            const resultsDiv = document.getElementById('results');
+            const contentDiv = document.getElementById('resultsContent');
+            
+            resultsDiv.style.display = 'block';
+            
+            if (result.error) {
+                contentDiv.innerHTML = `<div class="error">Error: ${result.error}</div>`;
+                return;
+            }
+            
+            let html = `
+                <div class="success">
+                    Query executed successfully in ${result.execution_time.toFixed(2)}s
+                    | ${result.row_count} rows returned
+                </div>
+            `;
+            
+            if (result.results && result.results.length > 0) {
+                html += '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">';
+                
+                // Table header
+                const headers = Object.keys(result.results[0]);
+                html += '<tr>';
+                headers.forEach(header => {
+                    html += `<th style="border: 1px solid #dee2e6; padding: 8px; background: #f8f9fa;">${header}</th>`;
+                });
+                html += '</tr>';
+                
+                // Table rows
+                result.results.forEach(row => {
+                    html += '<tr>';
+                    headers.forEach(header => {
+                        html += `<td style="border: 1px solid #dee2e6; padding: 8px;">${row[header] || ''}</td>`;
+                    });
+                    html += '</tr>';
+                });
+                
+                html += '</table>';
+            } else {
+                html += '<p>No results returned</p>';
+            }
+            
+            contentDiv.innerHTML = html;
+        }
+        
+        function displayError(message) {
+            const resultsDiv = document.getElementById('results');
+            const contentDiv = document.getElementById('resultsContent');
+            
+            resultsDiv.style.display = 'block';
+            contentDiv.innerHTML = `<div class="error">${message}</div>`;
+        }
+    </script>
+</body>
+</html> 
