@@ -4,20 +4,20 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/safety-api:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/taps-analytics-ui:$SHORT_SHA'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/safety-api:latest'
+      - 'gcr.io/$PROJECT_ID/taps-analytics-ui:latest'
       - '--cache-from'
-      - 'gcr.io/$PROJECT_ID/safety-api:latest'
+      - 'gcr.io/$PROJECT_ID/taps-analytics-ui:latest'
       - '.'
     timeout: '600s'
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/safety-api:$SHORT_SHA']
+    args: ['push', 'gcr.io/$PROJECT_ID/taps-analytics-ui:$SHORT_SHA']
     timeout: '600s'
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/safety-api:latest']
+    args: ['push', 'gcr.io/$PROJECT_ID/taps-analytics-ui:latest']
     timeout: '600s'
 
   # Step 2: Deploy new image to Cloud Run with traffic swap
@@ -26,7 +26,7 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'safety-api'
+      - 'taps-analytics-ui'
       - '--image'
       - 'gcr.io/$PROJECT_ID/safety-api:$SHORT_SHA'
       - '--region'
@@ -50,8 +50,8 @@ steps:
 
 # Define images for caching
 images:
-  - 'gcr.io/$PROJECT_ID/safety-api:$SHORT_SHA'
-  - 'gcr.io/$PROJECT_ID/safety-api:latest'
+  - 'gcr.io/$PROJECT_ID/taps-analytics-ui:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/taps-analytics-ui:latest'
 
 # Optimize for speed
 options:
