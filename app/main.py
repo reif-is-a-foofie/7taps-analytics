@@ -24,8 +24,9 @@ app.add_middleware(
 app.include_router(safety_router)
 
 # Static files for UI (if serving frontend from same server)
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+static_path = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 @app.get("/")
 async def root():
@@ -34,6 +35,20 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "safety-api"}
+
+@app.get("/api/health")
+async def api_health_check():
+    return {"status": "healthy", "service": "safety-api", "version": "1.0.0"}
+
+@app.get("/safety-ui", response_class=HTMLResponse)
+async def safety_words_ui():
+    """Serve the safety words management UI"""
+    static_path = os.path.join(os.path.dirname(__file__), "static", "safety-words.html")
+    if os.path.exists(static_path):
+        with open(static_path, "r") as f:
+            return f.read()
+    else:
+        return HTMLResponse("<h1>UI not found</h1>", status_code=404)
 
 if __name__ == "__main__":
     import uvicorn
