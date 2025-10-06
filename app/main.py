@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 # Include safety router
-app.include_router(safety_router)
+app.include_router(safety_router, prefix="/api/safety", tags=["Enhanced Safety"])
 
 # Static files for UI (if serving frontend from same server)
 static_path = os.path.join(os.path.dirname(__file__), "static")
