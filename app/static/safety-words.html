@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safety Word Management - 7taps Analytics</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc; 
+            color: #334155;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; margin-bottom: 4px; font-weight: 500; }
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .table th { background: #f9fafb; font-weight: 600; }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-low { background: #dbeafe; color: #1e40af; }
+        .badge-medium { background: #fef3c7; color: #92400e; }
+        .badge-high { background: #fed7aa; color: #ea580c; }
+        .badge-critical { background: #fecaca; color: #dc2626; }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .stat-value { font-size: 24px; font-weight: bold; margin-bottom: 4px; }
+        .stat-label { font-size: 14px; opacity: 0.9; }
+        .search-box {
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            min-width: 120px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // API Configuration
+        const API_BASE = '/api/safety';
+
+        // Main Safety Word Management Component
+        function SafetyWordManager() {
+            const [words, setWords] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [showModal, setShowModal] = useState(false);
+            const [editingWord, setEditingWord] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filterCategory, setFilterCategory] = useState('');
+            const [filterSeverity, setFilterSeverity] = useState('');
+            const [stats, setStats] = useState(null);
+
+            // Fetch words from API
+            const fetchWords = async () => {
+                try {
+                    setLoading(true);
+                    const params = new URLSearchParams();
+                    if (filterCategory) params.append('category', filterCategory);
+                    if (filterSeverity) params.append('min_severity', filterSeverity);
+                    params.append('active_only', 'false');
+
+                    const response = await fetch(`${API_BASE}/words?${params}`);
+                    const data = await response.json();
+                    setWords(data);
+                } catch (error) {
+                    console.error('Error fetching words:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Fetch statistics
+            const fetchStats = async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/stats`);
+                    const data = await response.json();
+                    setStats(data);
+                } catch (error) {
+                    console.error('Error fetching stats:', error);
+                }
+            };
+
+            useEffect(() => {
+                fetchWords();
+                fetchStats();
+            }, [filterCategory, filterSeverity]);
+
+            // Filter words based on search term
+            const filteredWords = words.filter(word =>
+                word.word.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            // Get severity badge class
+            const getSeverityBadgeClass = (severity) => {
+                if (severity <= 2) return 'badge-low';
+                if (severity <= 3) return 'badge-medium';
+                if (severity <= 4) return 'badge-high';
+                return 'badge-critical';
+            };
+
+            // Get severity label
+            const getSeverityLabel = (severity) => {
+                const labels = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Critical', 5: 'Critical' };
+                return labels[severity] || 'Unknown';
+            };
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>🚨 Safety Word Management</h1>
+                        <p>Manage filtered words and monitor AI safety analysis</p>
+                    </div>
+
+                    {/* Statistics */}
+                    {stats && (
+                        <div className="stats-grid">
+                            <div className="stat-card">
+                                <div className="stat-value">{stats.total_words}</div>
+                                <div className="stat-label">Total Words</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-value">{stats.active_words}</div>
+                                <div className="stat-label">Active Filters</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-value">{stats.avg_severity?.toFixed(1) || 0}</div>
+                                <div className="stat-label">Avg Severity</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-value">{stats.detection_rate?.toFixed(1) || 0}%</div>
+                                <div className="stat-label">Detection Rate</div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2>Filtered Words</h2>
+                            <button 
+                                className="btn btn-primary"
+                                onClick={() => setShowModal(true)}
+                            >
+                                + Add Word
+                            </button>
+                        </div>
+
+                        {/* Search and Filters */}
+                        <div className="search-box">
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="Search words..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="filter-bar">
+                            <select
+                                className="filter-select"
+                                value={filterCategory}
+                                onChange={(e) => setFilterCategory(e.target.value)}
+                            >
+                                <option value="">All Categories</option>
+                                <option value="profanity">Profanity</option>
+                                <option value="harassment">Harassment</option>
+                                <option value="hate_speech">Hate Speech</option>
+                                <option value="violence">Violence</option>
+                                <option value="self_harm">Self Harm</option>
+                                <option value="spam">Spam</option>
+                                <option value="inappropriate">Inappropriate</option>
+                            </select>
+
+                            <select
+                                className="filter-select"
+                                value={filterSeverity}
+                                onChange={(e) => setFilterSeverity(e.target.value)}
+                            >
+                                <option value="">All Severities</option>
+                                <option value="1">Low (1)</option>
+                                <option value="2">Medium (2)</option>
+                                <option value="3">High (3)</option>
+                                <option value="4">Critical (4)</option>
+                                <option value="5">Critical (5)</option>
+                            </select>
+
+                            <button 
+                                className="btn btn-success"
+                                onClick={() => {
+                                    setFilterCategory('');
+                                    setFilterSeverity('');
+                                    setSearchTerm('');
+                                }}
+                            >
+                                Clear Filters
+                            </button>
+                        </div>
+
+                        {/* Words Table */}
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: '40px' }}>
+                                Loading words...
+                            </div>
+                        ) : (
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th>Word</th>
+                                        <th>Category</th>
+                                        <th>Severity</th>
+                                        <th>Usage Count</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredWords.map(word => (
+                                        <tr key={word.id}>
+                                            <td style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                                                {word.word}
+                                            </td>
+                                            <td>
+                                                <span className="badge badge-medium">
+                                                    {word.category.replace('_', ' ').toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${getSeverityBadgeClass(word.severity)}`}>
+                                                    {getSeverityLabel(word.severity)}
+                                                </span>
+                                            </td>
+                                            <td>{word.usage_count}</td>
+                                            <td>
+                                                <span className={`badge ${word.is_active ? 'badge-success' : 'badge-low'}`}>
+                                                    {word.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button 
+                                                    className="btn btn-primary"
+                                                    style={{ marginRight: '8px', fontSize: '12px', padding: '4px 8px' }}
+                                                    onClick={() => {
+                                                        setEditingWord(word);
+                                                        setShowModal(true);
+                                                    }}
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button 
+                                                    className="btn btn-danger"
+                                                    style={{ fontSize: '12px', padding: '4px 8px' }}
+                                                    onClick={async () => {
+                                                        if (confirm('Are you sure you want to delete this word?')) {
+                                                            try {
+                                                                await fetch(`${API_BASE}/words/${word.id}`, {
+                                                                    method: 'DELETE'
+                                                                });
+                                                                fetchWords();
+                                                                fetchStats();
+                                                            } catch (error) {
+                                                                alert('Error deleting word');
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+
+                        {filteredWords.length === 0 && !loading && (
+                            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                                No words found matching your criteria
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Add/Edit Word Modal */}
+                    {showModal && (
+                        <WordModal
+                            word={editingWord}
+                            onClose={() => {
+                                setShowModal(false);
+                                setEditingWord(null);
+                            }}
+                            onSave={() => {
+                                fetchWords();
+                                fetchStats();
+                                setShowModal(false);
+                                setEditingWord(null);
+                            }}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        // Word Modal Component
+        function WordModal({ word, onClose, onSave }) {
+            const [formData, setFormData] = useState({
+                word: word?.word || '',
+                category: word?.category || 'inappropriate',
+                severity: word?.severity || 2,
+                is_active: word?.is_active ?? true
+            });
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    const url = word ? `${API_BASE}/words/${word.id}` : `${API_BASE}/words`;
+                    const method = word ? 'PUT' : 'POST';
+                    
+                    const response = await fetch(url, {
+                        method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    if (response.ok) {
+                        onSave();
+                    } else {
+                        const error = await response.json();
+                        alert(error.detail || 'Error saving word');
+                    }
+                } catch (error) {
+                    alert('Error saving word');
+                }
+            };
+
+            return (
+                <div className="modal">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h3>{word ? 'Edit Word' : 'Add New Word'}</h3>
+                            <button className="close-btn" onClick={onClose}>×</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label className="form-label">Word</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={formData.word}
+                                    onChange={(e) => setFormData({...formData, word: e.target.value})}
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Category</label>
+                                <select
+                                    className="form-select"
+                                    value={formData.category}
+                                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                >
+                                    <option value="profanity">Profanity</option>
+                                    <option value="harassment">Harassment</option>
+                                    <option value="hate_speech">Hate Speech</option>
+                                    <option value="violence">Violence</option>
+                                    <option value="self_harm">Self Harm</option>
+                                    <option value="spam">Spam</option>
+                                    <option value="inappropriate">Inappropriate</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Severity (1-5)</label>
+                                <select
+                                    className="form-select"
+                                    value={formData.severity}
+                                    onChange={(e) => setFormData({...formData, severity: parseInt(e.target.value)})}
+                                >
+                                    <option value="1">1 - Low</option>
+                                    <option value="2">2 - Medium</option>
+                                    <option value="3">3 - High</option>
+                                    <option value="4">4 - Critical</option>
+                                    <option value="5">5 - Critical</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.is_active}
+                                        onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                                    />
+                                    {' '}Active
+                                </label>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                <button type="button" className="btn" onClick={onClose}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary">
+                                    {word ? 'Update' : 'Create'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(<SafetyWordManager />, document.getElementById('root'));
+    </script>
+</body>
+</html>
