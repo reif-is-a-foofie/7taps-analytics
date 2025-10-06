@@ -61,5 +61,5 @@ options:
 
 # Substitution variables for secrets
 substitutions:
-  _GEMINI_API_KEY: '${_GEMINI_API_KEY}'
-  _GEMINI_BASE_URL: '${_GEMINI_BASE_URL}'
+  _GEMINI_API_KEY: ''
+  _GEMINI_BASE_URL: ''
