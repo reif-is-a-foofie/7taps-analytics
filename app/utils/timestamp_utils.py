@@ -59,12 +59,12 @@ def to_central_time(dt: datetime) -> datetime:
 def format_human_readable(timestamp_input: Union[str, datetime, None]) -> str:
     """
     Format timestamp as human-readable Central Time.
-    Format: "Jan 15, 2025 2:30:45 PM CST"
+    Format: "Jan 15, 2025 at 2:30 PM"
     """
     dt = parse_timestamp(timestamp_input)
     central_dt = to_central_time(dt)
     
-    return central_dt.strftime("%b %d, %Y %I:%M:%S %p CST")
+    return central_dt.strftime("%b %d, %Y at %I:%M %p")
 
 def format_compact(timestamp_input: Union[str, datetime, None]) -> str:
     """
