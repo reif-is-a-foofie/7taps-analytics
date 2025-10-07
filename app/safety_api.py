@@ -283,7 +283,7 @@ async def apply_word_suggestions(suggestion_ids: List[int]):
 
 @router.post("/analyze/enhanced")
 async def enhanced_content_analysis(content: str):
-    """Enhanced content analysis using both existing filters and Gemini AI"""
+    """Enhanced content analysis using both existing filters and intelligent content analysis"""
     from gemini_integration import GeminiSafetyIntegration
     
     # Get existing filter matches
