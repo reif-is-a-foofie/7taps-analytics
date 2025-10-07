@@ -78,6 +78,54 @@
             </div>
         </div>
 
+        <!-- Trigger Words Management -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900">🔒 Language Filtering</h2>
+                <p class="text-sm text-gray-600 mt-1">Manage trigger words for content analysis</p>
+            </div>
+            <div class="p-6">
+                <!-- Add New Word Form -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add Custom Trigger Word</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Word/Phrase</label>
+                            <input type="text" id="new-word" placeholder="e.g., inappropriate phrase" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Severity</label>
+                            <select id="new-severity" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                            <input type="text" id="new-description" placeholder="Optional description" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="addTriggerWord()" 
+                                    class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                Add Word
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Words List -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Current Trigger Words</h3>
+                    <div id="trigger-words-list" class="space-y-2">
+                        <div class="text-gray-500 text-sm">Loading trigger words...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Events Table -->
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200">
@@ -100,14 +148,17 @@
                         <tr class="{% if event.is_flagged %}{% if event.severity == 'high' %}bg-red-50{% elif event.severity == 'medium' %}bg-yellow-50{% else %}bg-orange-50{% endif %}{% endif %}">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ event.timestamp }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center space-x-2">
-                                    <span class="text-sm font-medium text-gray-900 masked-data" data-original="{{ event.user }}">USER_****</span>
-                                    <button onclick="toggleMasking(this)" class="text-gray-400 hover:text-gray-600" title="Toggle masking">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                        </svg>
-                                    </button>
+                                <div class="relative group">
+                                    <div class="text-sm font-medium text-gray-900 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors" 
+                                         title="Hover to reveal full email: {{ event.user }}"
+                                         onclick="copyToClipboard('{{ event.user }}')">
+                                        {{ event.user_masked }}
+                                    </div>
+                                    <!-- Hover tooltip showing full email -->
+                                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                        {{ event.user }}
+                                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                    </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ event.action }}</td>
@@ -275,6 +326,110 @@
             
             alert('Incident report exported successfully!');
         }
+
+        // Trigger words management
+        async function loadTriggerWords() {
+            try {
+                const response = await fetch('/api/trigger-words');
+                const data = await response.json();
+                
+                const container = document.getElementById('trigger-words-list');
+                if (data.success && data.trigger_words.length > 0) {
+                    container.innerHTML = data.trigger_words.map(word => `
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <span class="font-medium text-gray-900">${word.word}</span>
+                                <span class="text-sm text-gray-500">Added: ${new Date(word.added_at).toLocaleDateString()}</span>
+                            </div>
+                            <button onclick="deleteTriggerWord('${word.word}')" 
+                                    class="text-red-600 hover:text-red-800 text-sm">
+                                Delete
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="text-gray-500 text-sm">No trigger words configured</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load trigger words:', error);
+                document.getElementById('trigger-words-list').innerHTML = '<div class="text-red-500 text-sm">Failed to load trigger words</div>';
+            }
+        }
+
+        async function addTriggerWord() {
+            const word = document.getElementById('new-word').value.trim();
+            const severity = document.getElementById('new-severity').value;
+            const description = document.getElementById('new-description').value.trim();
+            
+            if (!word) {
+                alert('Please enter a word or phrase');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/trigger-words?word=${encodeURIComponent(word)}&severity=${severity}&description=${encodeURIComponent(description)}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // Clear form
+                    document.getElementById('new-word').value = '';
+                    document.getElementById('new-description').value = '';
+                    
+                    // Reload list
+                    await loadTriggerWords();
+                    
+                    // Show success message
+                    showNotification('Trigger word added successfully!', 'success');
+                } else {
+                    showNotification('Failed to add trigger word: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to add trigger word:', error);
+                showNotification('Failed to add trigger word', 'error');
+            }
+        }
+
+        async function deleteTriggerWord(word) {
+            if (!confirm(`Are you sure you want to delete the trigger word "${word}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/trigger-words/${encodeURIComponent(word)}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    await loadTriggerWords();
+                    showNotification('Trigger word deleted successfully!', 'success');
+                } else {
+                    showNotification('Failed to delete trigger word: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to delete trigger word:', error);
+                showNotification('Failed to delete trigger word', 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded shadow-lg z-50`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 3000);
+        }
+
+        // Load trigger words when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTriggerWords();
+        });
 
         // Auto-refresh every 30 seconds
         setInterval(() => {

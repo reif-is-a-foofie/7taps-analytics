@@ -233,35 +233,80 @@ async def get_ai_analysis_status() -> Dict[str, Any]:
 
 
 async def get_recent_flagged_statements() -> Dict[str, Any]:
-    """Get recent statements that were flagged by AI analysis."""
+    """Get recent statements that were flagged by AI analysis or trigger words."""
     try:
         # Import directly instead of HTTP call
         from app.api.xapi import recent_statements
+        from app.api.trigger_word_alerts import trigger_word_alert_manager
         
         # Get recent statements from memory
         statements = list(recent_statements.values())
         
-        # Filter for flagged statements
+        # Get recent trigger word alerts
+        recent_alerts = trigger_word_alert_manager.get_recent_alerts(limit=10)
+        
+        # Filter for flagged statements (AI analysis OR trigger word alerts)
         flagged_statements = []
+        flagged_statement_ids = set()
+        
+        # Check AI analysis flags
         for statement_data in statements:
             payload = statement_data.get("payload", {})
             ai_analysis = payload.get("ai_content_analysis", {})
+            statement_id = statement_data.get("statement_id", payload.get("id", ""))
+            
             if ai_analysis.get("is_flagged", False):
                 flagged_statements.append({
-                    "statement_id": statement_data.get("statement_id"),
-                    "actor_name": payload.get("actor", {}).get("name"),
-                    "timestamp": statement_data.get("published_at"),
+                    "statement_id": statement_id,
+                    "actor_name": payload.get("actor", {}).get("name", "Unknown"),
+                    "timestamp": statement_data.get("published_at", payload.get("timestamp", "")),
                     "content": payload.get("result", {}).get("response", ""),
-                    "severity": ai_analysis.get("severity", "unknown"),
+                    "severity": ai_analysis.get("severity", "medium"),
                     "flagged_reasons": ai_analysis.get("flagged_reasons", []),
                     "confidence_score": ai_analysis.get("confidence_score", 0),
-                    "suggested_actions": ai_analysis.get("suggested_actions", [])
+                    "suggested_actions": ai_analysis.get("suggested_actions", []),
+                    "flag_type": "ai_analysis"
                 })
+                flagged_statement_ids.add(statement_id)
+        
+        # Check trigger word alerts
+        for alert in recent_alerts:
+            statement_id = alert.get("statement_id", "")
+            if statement_id and statement_id not in flagged_statement_ids:
+                # Get the statement data for this alert
+                statement_data = None
+                for stmt in statements:
+                    if stmt.get("statement_id", stmt.get("payload", {}).get("id", "")) == statement_id:
+                        statement_data = stmt
+                        break
+                
+                if statement_data:
+                    payload = statement_data.get("payload", {})
+                    matches = alert.get("matches", [])
+                    
+                    flagged_statements.append({
+                        "statement_id": statement_id,
+                        "actor_name": payload.get("actor", {}).get("name", "Unknown"),
+                        "timestamp": statement_data.get("published_at", payload.get("timestamp", "")),
+                        "content": payload.get("result", {}).get("response", ""),
+                        "severity": "high" if len(matches) > 1 else "medium",
+                        "flagged_reasons": [f"Trigger word detected: {', '.join(matches)}"],
+                        "confidence_score": 1.0,
+                        "suggested_actions": ["Review content for safety concerns"],
+                        "flag_type": "trigger_word",
+                        "trigger_words": matches
+                    })
+                    flagged_statement_ids.add(statement_id)
+        
+        # Sort by timestamp (most recent first)
+        flagged_statements.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         
         return {
             "flagged_count": len(flagged_statements),
             "flagged_statements": flagged_statements[:10],  # Last 10 flagged
-            "total_recent_statements": len(statements)
+            "total_recent_statements": len(statements),
+            "ai_flagged_count": len([s for s in flagged_statements if s.get("flag_type") == "ai_analysis"]),
+            "trigger_word_flagged_count": len([s for s in flagged_statements if s.get("flag_type") == "trigger_word"])
         }
     except Exception as e:
         logger.error(f"Failed to get flagged statements: {e}")
