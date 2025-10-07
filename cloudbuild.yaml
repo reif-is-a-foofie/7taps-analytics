@@ -33,7 +33,7 @@ steps:
       - 'us-central1'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated'
+      - '--no-allow-unauthenticated'
       - '--memory'
       - '1Gi'
       - '--cpu'
@@ -47,6 +47,22 @@ steps:
       - '--set-env-vars'
       - 'GEMINI_BASE_URL=$$GEMINI_BASE_URL'
     timeout: '600s'
+
+  # Step 3: Set IAM policy for public access
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'add-iam-policy-binding'
+      - 'taps-analytics-ui'
+      - '--region'
+      - 'us-central1'
+      - '--member'
+      - 'allUsers'
+      - '--role'
+      - 'roles/run.invoker'
+    timeout: '300s'
 
 # Define images for caching
 images:
