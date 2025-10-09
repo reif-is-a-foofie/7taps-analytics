@@ -42,6 +42,8 @@ steps:
       - '300'
       - '--max-instances'
       - '10'
+      - '--set-secrets'
+      - 'GEMINI_API_KEY=gemini-api-key:latest'
     timeout: '600s'
 
 
