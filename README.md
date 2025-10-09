@@ -99,28 +99,19 @@ Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps l
 
 ## 🚀 Quick Start
 
-### Google Cloud Deployment
-See `plan.md` for complete deployment instructions. Quick setup:
+### Deployment
+The project uses automatic deployment via Cloud Build. Just commit and push:
 
 ```bash
-# 1. Install dependencies
-pip3 install google-cloud-pubsub google-cloud-storage google-cloud-bigquery
-
-# 2. Authenticate with GCP
-gcloud auth activate-service-account --key-file=google-cloud-key.json
-gcloud config set project taps-data
-
-# 3. Deploy infrastructure
-python3 scripts/deploy_gcp_python_only.py
-
-# 4. Deploy Cloud Function
-gcloud functions deploy cloud-ingest-xapi --runtime python39 --trigger-http --allow-unauthenticated --source app/api --entry-point cloud_ingest_xapi --no-gen2
+./deploy.sh
 ```
 
-### Access Points
-* **Cloud Function:** https://us-central1-taps-data.cloudfunctions.net/cloud-ingest-xapi
-* **GCP Console:** https://console.cloud.google.com/functions/list?project=taps-data
-* **BigQuery:** https://console.cloud.google.com/bigquery?project=taps-data
+See [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) for complete setup and configuration.
+
+### Production URLs
+* **Analytics Dashboard:** https://taps-analytics-ui-245712978112.us-central1.run.app
+* **BigQuery Console:** https://console.cloud.google.com/bigquery?project=taps-data
+* **Cloud Build:** https://console.cloud.google.com/cloud-build/builds?project=taps-data
 
 ### Natural Language Queries
 Try asking September (the AI agent) questions like:
