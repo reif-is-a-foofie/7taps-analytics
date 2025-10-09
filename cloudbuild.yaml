@@ -70,8 +70,3 @@ options:
   machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
   diskSizeGb: 100
-
-# Substitution variables for secrets
-substitutions:
-  _GEMINI_API_KEY: ''
-  _GEMINI_BASE_URL: ''
