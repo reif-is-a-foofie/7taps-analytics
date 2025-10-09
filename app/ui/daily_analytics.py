@@ -632,10 +632,10 @@ async def daily_analytics_dashboard(
             "group": cohort,  # Changed from cohort to group
             "available_groups": available_groups.get("groups", []),
             "total_users": total_users,
-            "completed_users": completed_count,
-            "need_followup": need_followup_count,
+            "completed_count": completed_count,
+            "need_followup_count": need_followup_count,
             "completion_rate": completion_rate,
-            "completed_users_list": completed_users,
+            "completed_users": completed_users,
             "need_followup_users": need_followup_users,
             "analytics_data": analytics_data,
             "timestamp": datetime.now(timezone.utc).isoformat()
