@@ -300,3 +300,48 @@
 ---
 
 **Status**: ✅ **COMPLETE** - All objectives achieved, system operational, ready for production use.
+
+---
+
+## 2025-10-09 Clean Deployment Pipeline - IN PROGRESS
+
+### Executive Summary
+**Mission**: Fix broken deployment flow to establish clean: commit → push → auto-deploy pipeline.
+
+### Problems Identified
+1. **Broken Cloud Build**: `cloudbuild.yaml` was building `taps-analytics-ui` but deploying `safety-api` (image mismatch)
+2. **Too Many Deploy Scripts**: 6+ deployment scripts causing confusion
+3. **Duplicate Cloud Build Configs**: `cloudbuild.yaml`, `cloudbuild-lean.yaml`, `cloudbuild-staging.yaml`
+4. **Duplicate Triggers**: `safety-api-staging` and `safety-api-production` both triggering on main branch
+5. **Unused Substitutions**: `_GEMINI_API_KEY` and `_GEMINI_BASE_URL` causing build failures
+
+### Actions Completed
+- ✅ Fixed `cloudbuild.yaml` image mismatch (now builds and deploys `taps-analytics-ui`)
+- ✅ Simplified `deploy.sh` to clean commit → push → auto-deploy flow
+- ✅ Deleted 6 redundant deploy scripts: `deploy_fast.sh`, `deploy_lean.sh`, `deploy_ultra_fast.sh`, `fast_deploy.sh`, `instant_deploy.sh`, `deploy_fix.sh`
+- ✅ Deleted redundant Cloud Build configs: `cloudbuild-lean.yaml`, `cloudbuild-staging.yaml`
+- ✅ Removed unused substitutions from `cloudbuild.yaml`
+- ✅ Deleted duplicate Cloud Build triggers
+- ✅ Updated memory/CPU resources (2Gi/2 CPU for better performance)
+- ✅ Changed to `--allow-unauthenticated` for public access
+- ✅ Created `DEPLOYMENT_GUIDE.md` with complete deployment documentation
+
+### Next Step
+- ⏳ **AWAITING USER**: Set up Cloud Build trigger via web console
+  - URL opened: https://console.cloud.google.com/cloud-build/triggers/add?project=taps-data
+  - Configuration: Connect GitHub repo `reif-is-a-foofie/7taps-analytics`, branch `^main$`, use `cloudbuild.yaml`
+
+### Files Modified
+- `cloudbuild.yaml` - Fixed image reference, removed unused substitutions
+- `deploy.sh` - Simplified to commit → push flow
+- `DEPLOYMENT_GUIDE.md` - Created comprehensive deployment documentation
+
+### Files Deleted
+- 6 redundant deploy scripts
+- 2 redundant Cloud Build configs
+- Cloud Build triggers (to be recreated with correct config)
+
+### Production URL
+https://taps-analytics-ui-245712978112.us-central1.run.app
+
+**Status**: ⏳ **AWAITING TRIGGER SETUP** - Code ready, needs one-time Cloud Build trigger configuration via web console.
