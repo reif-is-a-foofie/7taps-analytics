@@ -1,6 +1,3 @@
-# External frameworks
-chat-ui/
-
 # Python
 __pycache__/
 *.py[cod]
@@ -25,43 +22,42 @@ wheels/
 
 # Virtual environments
 venv/
-.venv/
+ENV/
 env/
-.env
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Google Cloud
+google-cloud-key.json
+*.json.key
+
+# Test results and reports
+*.log
+*.json
+!lesson_mapping.json
+!cloudbuild.yaml
+!docker-compose.yml
+!requirements.txt
+!orchestrator_contracts/*.json
+!reports/*.json
+
+# Archives
+archive/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-
-# Environment variables
-.env
-.env.local
-.env.production
-.env.*
-*.env
-
-# Google Cloud Service Account Keys - NEVER COMMIT THESE!
-google-cloud-key.json
-*.json.key
-gcp-key*.json
-service-account*.json
-gcp-*.json
-*-service-account*.json
-sa-*.json
-key-*.json
-credentials*.json
-auth*.json
-
-# Cache
-.pytest_cache/
-.coverage
-htmlcov/
+# Temporary files
+*.tmp
+*.bak
+*.cache

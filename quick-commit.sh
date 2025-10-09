@@ -30,9 +30,9 @@ git status --short
 # Run pre-deployment tests
 echo ""
 echo "🧪 Running pre-deployment tests..."
-if ! python3 test_pre_deployment.py; then
+if ! python3 tests/test_pre_deployment.py; then
     echo "❌ Tests failed! Fix issues before committing."
-    echo "💡 Run 'python3 test_pre_deployment.py' to see details"
+    echo "💡 Run 'python3 tests/test_pre_deployment.py' to see details"
     exit 1
 fi
 
