@@ -17,9 +17,9 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/safety", response_class=HTMLResponse)
-async def safety_dashboard(request: Request):
-    """Safety monitoring dashboard with trigger word alerts and system health."""
+@router.get("/flagged-content", response_class=HTMLResponse)
+async def flagged_content_dashboard(request: Request):
+    """Flagged content monitoring dashboard with trigger word alerts and system health."""
     try:
         # Get system status
         system_status = await get_system_status()
