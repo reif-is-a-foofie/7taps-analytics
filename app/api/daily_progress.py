@@ -17,7 +17,7 @@ from app.api.bigquery_analytics import execute_bigquery_query
 
 router = APIRouter()
 logger = get_logger("daily_progress")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 def get_daily_progress_data(target_date: str, group: Optional[str] = None) -> Dict[str, Any]:
     """Get daily progress data for the 7pm email workflow."""

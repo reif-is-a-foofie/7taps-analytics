@@ -38,7 +38,7 @@ app = FastAPI(
 logger = get_logger("lean_production")
 
 # Templates
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 # Static files (if they exist)
 if os.path.exists("app/static"):

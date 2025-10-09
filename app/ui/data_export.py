@@ -20,7 +20,7 @@ from app.logging_config import get_logger
 
 router = APIRouter()
 logger = get_logger("data_export")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 class DataExporter:
     """Data export functionality."""

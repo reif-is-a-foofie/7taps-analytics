@@ -14,7 +14,7 @@ import httpx
 
 logger = get_logger("safety_ui")
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/safety", response_class=HTMLResponse)

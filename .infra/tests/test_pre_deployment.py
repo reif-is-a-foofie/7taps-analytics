@@ -29,8 +29,8 @@ def test_template_favicon_links():
     print("🔍 Testing favicon links in templates...")
     
     templates_to_check = [
-        "templates/base.html",
-        "templates/data_explorer_modern.html"
+        "app/templates/base.html",
+        "app/templates/data_explorer_modern.html"
     ]
     
     all_good = True
@@ -54,7 +54,7 @@ def test_hover_functionality():
     """Test that hover tooltips are properly implemented."""
     print("🔍 Testing hover functionality...")
     
-    template_path = Path("templates/data_explorer_modern.html")
+    template_path = Path("app/templates/data_explorer_modern.html")
     
     if not template_path.exists():
         print("❌ Data explorer template missing")
@@ -84,7 +84,7 @@ def test_timezone_formatting():
     """Test that timezone formatting is implemented."""
     print("🔍 Testing timezone formatting...")
     
-    template_path = Path("templates/data_explorer_modern.html")
+    template_path = Path("app/templates/data_explorer_modern.html")
     content = template_path.read_text()
     
     # Check for CST instead of UTC
@@ -130,7 +130,7 @@ def test_user_id_hover_implementation():
     """Test that user ID hover is properly implemented."""
     print("🔍 Testing user ID hover implementation...")
     
-    template_path = Path("templates/data_explorer_modern.html")
+    template_path = Path("app/templates/data_explorer_modern.html")
     content = template_path.read_text()
     
     # Check for user ID hover implementation

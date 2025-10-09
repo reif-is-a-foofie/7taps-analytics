@@ -66,7 +66,7 @@ from app.middleware.request_tracking import RequestTrackingMiddleware
 app.add_middleware(RequestTrackingMiddleware)
 
 # Templates and static files
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 # Mount static files if they exist
 if os.path.exists("app/static"):
@@ -370,7 +370,7 @@ app.include_router(batch_ai_safety_router, tags=["Batch AI Safety"])
 app.include_router(simple_privacy_router, tags=["Simple Privacy"])
 app.include_router(etl_dashboard_router, tags=["ETL Dashboard"])
 app.include_router(daily_progress_router, tags=["Daily Progress"])
-app.include_router(safety_router, prefix="/api/safety", tags=["Enhanced Safety"])
+app.include_router(safety_router, prefix="/ui", tags=["Safety Dashboard"])
 if ENHANCED_SAFETY_AVAILABLE:
     app.include_router(enhanced_safety_router, tags=["Enhanced Safety"])
 app.include_router(group_analytics_router, tags=["Group Analytics"])

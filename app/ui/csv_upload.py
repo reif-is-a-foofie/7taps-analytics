@@ -13,7 +13,7 @@ from app.services.csv_import_service import csv_import_service
 
 router = APIRouter()
 logger = get_logger("csv_upload")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/csv-upload", response_class=HTMLResponse)
