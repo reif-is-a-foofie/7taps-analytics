@@ -97,21 +97,102 @@ Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps l
 
 ---
 
-## 🚀 Quick Start
+## 📊 User Guide - Analytics Platform
+
+### Accessing the Platform
+**Production URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app
+
+### Available Dashboards
+
+#### 1. Dashboard (Main)
+**URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/ui/dashboard
+
+**What it shows:**
+- System health and status
+- Total users and activity metrics
+- Recent xAPI statements
+- Platform overview
+
+**Use this for:** Quick health check and overall system monitoring
+
+---
+
+#### 2. Daily Analytics
+**URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/ui/daily-analytics
+
+**What it shows:**
+- Daily lesson completions by user
+- Who completed lessons vs who needs follow-up
+- Completion rates and progress tracking
+- Downloadable CSV exports
+- Filter by cohort/group
+
+**Use this for:**
+- Preparing daily progress emails
+- Tracking lesson completion rates
+- Identifying users who need follow-up
+- Exporting data for reporting
+
+**How to use:**
+1. Select target date (defaults to today)
+2. Optional: Filter by cohort/group name
+3. View completion status for each user
+4. Download CSV for email workflow
+
+---
+
+#### 3. Flagged Content
+**URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/ui/flagged-content
+
+**What it shows:**
+- AI-detected concerning content in user responses
+- Flagged words management (add/remove custom words)
+- Detection rates and safety metrics
+- Recent flagged statements with context
+
+**Use this for:**
+- Monitoring learner safety and well-being
+- Managing custom flagged words for your context
+- Reviewing content that needs attention
+- Safety compliance and reporting
+
+**How to use:**
+1. Review flagged content section for recent alerts
+2. Add custom flagged words specific to your course
+3. Monitor AI analysis status (Active = Gemini AI, Fallback = keyword matching)
+4. Click on flagged content to see full context
+
+---
+
+### API Access
+**Documentation:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/docs
+
+Key endpoints:
+- `/api/daily-progress/data?date=YYYY-MM-DD&group=GROUP_NAME` - Daily progress data
+- `/api/daily-analytics/cohorts` - Available cohorts/groups
+- `/ui/api/daily-analytics/csv?date=YYYY-MM-DD` - Download daily CSV
+- `/api/health` - System health check
+
+---
+
+### xAPI Integration (7taps)
+**Ingestion URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/statements
+**Methods:** POST, PUT
+**Auth:** Basic Authentication (credentials provided separately)
+**Format:** xAPI v1.0.3 compliant JSON
+
+7taps automatically sends lesson completion events to this endpoint.
+
+---
+
+## 🚀 For Developers
 
 ### Deployment
-The project uses automatic deployment via Cloud Build. Just commit and push:
-
 ```bash
 ./deploy.sh
 ```
 
 See [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) for complete setup and configuration.
-
-### Production URLs
-* **Analytics Dashboard:** https://taps-analytics-ui-245712978112.us-central1.run.app
-* **BigQuery Console:** https://console.cloud.google.com/bigquery?project=taps-data
-* **Cloud Build:** https://console.cloud.google.com/cloud-build/builds?project=taps-data
 
 ### Natural Language Queries
 Try asking September (the AI agent) questions like:
