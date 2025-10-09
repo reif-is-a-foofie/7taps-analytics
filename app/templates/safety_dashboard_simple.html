@@ -16,7 +16,7 @@
                     <div class="flex space-x-6">
                         <a href="/" class="text-gray-600 hover:text-gray-900">Dashboard</a>
                         <a href="/ui/daily-analytics" class="text-gray-600 hover:text-gray-900">Daily Analytics</a>
-                        <a href="/ui/safety" class="text-blue-600 font-medium">AI Safety</a>
+                        <a href="/ui/flagged-content" class="text-blue-600 font-medium">Flagged Content</a>
                         <a href="/api/docs" class="text-gray-600 hover:text-gray-900">API Docs</a>
                     </div>
                 </div>
@@ -28,8 +28,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">AI Safety Dashboard</h1>
-            <p class="text-gray-600 mt-2">Monitor AI-flagged content and safety alerts</p>
+            <h1 class="text-3xl font-bold text-gray-900">Flagged Content</h1>
+            <p class="text-gray-600 mt-2">Monitor flagged content and safety alerts</p>
         </div>
 
         <!-- Status Cards -->
@@ -40,10 +40,10 @@
                     <div>
                         <h3 class="text-lg font-medium text-gray-900">AI Analysis</h3>
                         {% if ai_analysis_status.status == "configured" %}
-                        <div class="text-green-600 font-medium">✅ Active</div>
+                        <div class="text-green-600 font-medium">Active</div>
                         <div class="text-sm text-gray-500">Gemini AI</div>
                         {% else %}
-                        <div class="text-yellow-600 font-medium">⚠️ Fallback</div>
+                        <div class="text-yellow-600 font-medium">Fallback</div>
                         <div class="text-sm text-gray-500">Keyword matching</div>
                         {% endif %}
                     </div>
@@ -90,13 +90,13 @@
         <!-- Trigger Words Management -->
         <div class="bg-white rounded-lg shadow mb-8">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-xl font-semibold text-gray-900">🔒 Language Filtering</h2>
-                <p class="text-sm text-gray-600 mt-1">Manage trigger words for content analysis</p>
+                <h2 class="text-xl font-semibold text-gray-900">Language Filtering</h2>
+                <p class="text-sm text-gray-600 mt-1">Manage flagged words for content analysis</p>
             </div>
             <div class="p-6">
                 <!-- Add New Word Form -->
                 <div class="mb-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add Custom Trigger Word</h3>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add Flagged Word</h3>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Word/Phrase</label>
@@ -127,9 +127,9 @@
 
                 <!-- Current Words List -->
                 <div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Current Trigger Words</h3>
-                    <div id="trigger-words-list" class="space-y-2">
-                        <div class="text-gray-500 text-sm">Loading trigger words...</div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Current Flagged Words</h3>
+                    <div id="flagged-words-list" class="space-y-2">
+                        <div class="text-gray-500 text-sm">Loading flagged words...</div>
                     </div>
                 </div>
             </div>
@@ -138,7 +138,7 @@
         <!-- Flagged Content -->
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-xl font-semibold text-gray-900">🚨 Flagged Content</h2>
+                <h2 class="text-xl font-semibold text-gray-900">Flagged Content</h2>
             </div>
             <div class="p-6">
                 {% if flagged_statements.flagged_statements %}
@@ -192,7 +192,7 @@
                 </div>
                 {% else %}
                 <div class="text-center py-12">
-                    <div class="text-green-500 text-4xl mb-4">✅</div>
+                    <div class="text-green-500 text-2xl font-medium mb-4">All Clear</div>
                     <div class="text-gray-600 text-lg">No flagged content detected</div>
                     <div class="text-gray-500 text-sm mt-2">AI is monitoring all learner inputs</div>
                 </div>
@@ -388,10 +388,10 @@
         // Trigger words management
         async function loadTriggerWords() {
             try {
-                const response = await fetch('/api/trigger-words');
+                const response = await fetch('/api/flagged-words');
                 const data = await response.json();
                 
-                const container = document.getElementById('trigger-words-list');
+                const container = document.getElementById('flagged-words-list');
                 if (data.success && data.trigger_words.length > 0) {
                     container.innerHTML = data.trigger_words.map(word => `
                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -406,11 +406,11 @@
                         </div>
                     `).join('');
                 } else {
-                    container.innerHTML = '<div class="text-gray-500 text-sm">No trigger words configured</div>';
+                    container.innerHTML = '<div class="text-gray-500 text-sm">No flagged words configured</div>';
                 }
             } catch (error) {
-                console.error('Failed to load trigger words:', error);
-                document.getElementById('trigger-words-list').innerHTML = '<div class="text-red-500 text-sm">Failed to load trigger words</div>';
+                console.error('Failed to load flagged words:', error);
+                document.getElementById('flagged-words-list').innerHTML = '<div class="text-red-500 text-sm">Failed to load flagged words</div>';
             }
         }
 
@@ -425,7 +425,7 @@
             }
             
             try {
-                const response = await fetch(`/api/trigger-words?word=${encodeURIComponent(word)}&severity=${severity}&description=${encodeURIComponent(description)}`, {
+                const response = await fetch(`/api/flagged-words?word=${encodeURIComponent(word)}&severity=${severity}&description=${encodeURIComponent(description)}`, {
                     method: 'POST'
                 });
                 
@@ -441,21 +441,21 @@
                     // Show success message
                     showNotification('Trigger word added successfully!', 'success');
                 } else {
-                    showNotification('Failed to add trigger word: ' + data.error, 'error');
+                    showNotification('Failed to add flagged word: ' + data.error, 'error');
                 }
             } catch (error) {
-                console.error('Failed to add trigger word:', error);
-                showNotification('Failed to add trigger word', 'error');
+                console.error('Failed to add flagged word:', error);
+                showNotification('Failed to add flagged word', 'error');
             }
         }
 
         async function deleteTriggerWord(word) {
-            if (!confirm(`Are you sure you want to delete the trigger word "${word}"?`)) {
+            if (!confirm(`Are you sure you want to delete the flagged word "${word}"?`)) {
                 return;
             }
             
             try {
-                const response = await fetch(`/api/trigger-words/${encodeURIComponent(word)}`, {
+                const response = await fetch(`/api/flagged-words/${encodeURIComponent(word)}`, {
                     method: 'DELETE'
                 });
                 
@@ -464,11 +464,11 @@
                     await loadTriggerWords();
                     showNotification('Trigger word deleted successfully!', 'success');
                 } else {
-                    showNotification('Failed to delete trigger word: ' + data.error, 'error');
+                    showNotification('Failed to delete flagged word: ' + data.error, 'error');
                 }
             } catch (error) {
-                console.error('Failed to delete trigger word:', error);
-                showNotification('Failed to delete trigger word', 'error');
+                console.error('Failed to delete flagged word:', error);
+                showNotification('Failed to delete flagged word', 'error');
             }
         }
 
@@ -484,7 +484,7 @@
             }, 3000);
         }
 
-        // Load trigger words when page loads
+        // Load flagged words when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadTriggerWords();
         });
