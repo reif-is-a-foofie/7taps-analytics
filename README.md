@@ -106,7 +106,7 @@ The project uses automatic deployment via Cloud Build. Just commit and push:
 ./deploy.sh
 ```
 
-See [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) for complete setup and configuration.
+See [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) for complete setup and configuration.
 
 ### Production URLs
 * **Analytics Dashboard:** https://taps-analytics-ui-245712978112.us-central1.run.app
