@@ -811,7 +811,7 @@ async def get_available_cohorts():
             MAX(DATE(timestamp)) as last_activity_date
         FROM taps_data.statements 
         WHERE context_platform IS NOT NULL
-        AND DATE(timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAYS)
+        AND DATE(timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
         GROUP BY context_platform
         ORDER BY activity_count DESC
         """
