@@ -223,7 +223,7 @@ class GeminiSafetyIntegration:
         }
         
         # Replace with your actual Gemini API endpoint
-        url = f"{self.base_url}/models/gemini-pro:generateContent"
+        url = f"{self.base_url}/models/gemini-1.5-flash:generateContent"
         
         try:
             response = requests.post(url, headers=headers, json=payload)

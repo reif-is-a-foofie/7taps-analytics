@@ -55,7 +55,7 @@ async def call_gemini_api(prompt: str, context_data: Dict[str, Any] = None) -> D
             )
         
         genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Build enhanced prompt with context
         enhanced_prompt = f"""
