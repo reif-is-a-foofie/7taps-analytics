@@ -1,27 +1,21 @@
 #!/bin/bash
+# Clean deployment flow: commit -> push -> deploy to Google Cloud
 
-# Rapid Cloud Run deployment for enhanced safety system
-echo "🚀 Deploying Enhanced Safety System to Cloud Run..."
+set -e
 
-# Check if .env file exists and source it
-if [ -f .env ]; then
-    echo "📋 Loading environment variables from .env"
-    export $(cat .env | grep -v '^#' | xargs)
-fi
+echo "🚀 Clean Deploy Pipeline"
+echo "========================"
 
-# Deploy using Cloud Run with source-based deployment
-gcloud run deploy safety-api \
-  --source . \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY="$GEMINI_API_KEY" \
-  --set-env-vars GEMINI_BASE_URL="$GEMINI_BASE_URL" \
-  --memory 1Gi \
-  --cpu 1 \
-  --timeout 300 \
-  --max-instances 10
+# Step 1: Commit
+echo ""
+echo "📝 Step 1: Committing changes..."
+./quick-commit.sh
 
+# Step 2: Deploy via Cloud Build
+echo ""
+echo "☁️  Step 2: Deploying to Google Cloud..."
+gcloud builds submit --config cloudbuild.yaml .
+
+echo ""
 echo "✅ Deployment complete!"
-echo "🔗 Your enhanced safety API is now live on Cloud Run"
-echo "📊 Access the UI at your deployed URL + /static/safety-words.html"
+echo "🔗 URL: https://taps-analytics-ui-245712978112.us-central1.run.app"
