@@ -21,7 +21,7 @@ from app.api.bigquery_analytics import execute_bigquery_query
 
 router = APIRouter()
 logger = get_logger("daily_analytics")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 
 class DailyAnalyticsManager:

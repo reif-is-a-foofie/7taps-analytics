@@ -17,7 +17,7 @@ from app.logging_config import get_logger
 
 router = APIRouter()
 logger = get_logger("dashboard")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 class DashboardManager:
     """Analytics dashboard manager."""

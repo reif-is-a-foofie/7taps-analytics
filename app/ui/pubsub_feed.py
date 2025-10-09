@@ -8,7 +8,7 @@ import httpx
 from app.logging_config import get_logger
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 logger = get_logger("data_explorer")
 
 

@@ -13,7 +13,7 @@ from app.logging_config import get_logger
 
 router = APIRouter()
 logger = get_logger("etl_dashboard")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 # Real ETL data with your actual events
 REAL_ETL_DATA = [

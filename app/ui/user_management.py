@@ -20,7 +20,7 @@ from app.logging_config import get_logger
 
 router = APIRouter()
 logger = get_logger("user_management")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 class UserManager:
     """User management for Learning Locker access control."""

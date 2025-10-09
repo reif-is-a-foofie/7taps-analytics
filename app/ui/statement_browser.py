@@ -19,7 +19,7 @@ from app.api.xapi import get_recent_statements, get_ingestion_stats
 
 router = APIRouter()
 logger = get_logger("statement_browser")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 class StatementBrowser:
     """Statement browser interface."""

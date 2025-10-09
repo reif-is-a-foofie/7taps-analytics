@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 router = APIRouter()
 
 # Templates
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/data-import", response_class=HTMLResponse)
 async def data_import_page(request: Request):
