@@ -45,12 +45,8 @@ google-cloud-key.json
 *.json
 !lesson_mapping.json
 !cloudbuild.yaml
-!docker-compose.yml
-!requirements.txt
-!orchestrator_contracts/*.json
-!reports/*.json
 
-# Archives
+# Archives and historical
 archive/
 
 # OS
