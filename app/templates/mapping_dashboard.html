@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Manual Mapping</h1>
+    <p class="subtitle">Map unmapped activities to lessons and organize users into groups</p>
+</div>
+
+<div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-value">{{ activities_data.summary.total_activities }}</div>
+        <div class="stat-label">Total Activities</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ activities_data.summary.unmapped }}</div>
+        <div class="stat-label">Unmapped Activities</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ users_data.summary.total_users }}</div>
+        <div class="stat-label">Total Users</div>
+    </div>
+</div>
+
+<!-- Unmapped Activities Section -->
+<div class="content-section" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Unmapped Activities</h2>
+        <button onclick="copyUnmappedActivities()" class="btn-secondary">Copy URLs</button>
+    </div>
+    
+    {% if activities_data.unmapped_activities %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Activity URL</th>
+                    <th>Statements</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in activities_data.unmapped_activities %}
+                <tr>
+                    <td>
+                        <div style="font-family: monospace; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; max-width: 400px;" title="{{ activity.activity_url }}">
+                            {{ activity.activity_url }}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge">{{ activity.statement_count }}</span>
+                    </td>
+                    <td style="font-size: 0.85rem; color: var(--text-secondary);">
+                        {{ activity.first_seen[:10] if activity.first_seen else 'N/A' }}
+                    </td>
+                    <td style="font-size: 0.85rem; color: var(--text-secondary);">
+                        {{ activity.last_seen[:10] if activity.last_seen else 'N/A' }}
+                    </td>
+                    <td>
+                        <button onclick="copyText('{{ activity.activity_url }}')" class="btn-sm">Copy URL</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+        <h3>All Activities Mapped</h3>
+        <p>All activity URLs are currently mapped to lessons</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Mapped Activities Reference Section -->
+<div class="content-section" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Mapped Activities Reference</h2>
+        <span class="badge" style="background: var(--primary-color);">{{ activities_data.summary.mapped }} mapped</span>
+    </div>
+    
+    {% if activities_data.mapped_activities %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Lesson</th>
+                    <th style="width: 45%;">Activity URL</th>
+                    <th>Statements</th>
+                    <th>First Seen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in activities_data.mapped_activities[:10] %}
+                <tr>
+                    <td>
+                        <strong>{{ activity.lesson_metadata.lesson_number }}</strong>: {{ activity.lesson_metadata.lesson_name }}
+                    </td>
+                    <td>
+                        <div style="font-family: monospace; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; max-width: 350px;" title="{{ activity.activity_url }}">
+                            {{ activity.activity_url }}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge">{{ activity.statement_count }}</span>
+                    </td>
+                    <td style="font-size: 0.85rem; color: var(--text-secondary);">
+                        {{ activity.first_seen[:10] if activity.first_seen else 'N/A' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No mapped activities found</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Users Section -->
+<div class="content-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">All Users</h2>
+        <button onclick="exportUsers()" class="btn-secondary">Export CSV</button>
+    </div>
+    
+    {% if users_data.users %}
+    <div class="table-container">
+        <table class="data-table" id="usersTable">
+            <thead>
+                <tr>
+                    <th>Actor Name</th>
+                    <th>Email</th>
+                    <th>Statements</th>
+                    <th>Activities</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users_data.users[:50] %}
+                <tr>
+                    <td>
+                        <strong>{{ user.actor_name }}</strong>
+                    </td>
+                    <td style="font-family: monospace; font-size: 0.85rem;">
+                        {{ user.actor_mbox.replace('mailto:', '') if user.actor_mbox else 'N/A' }}
+                    </td>
+                    <td>
+                        <span class="badge">{{ user.statement_count }}</span>
+                    </td>
+                    <td>
+                        <span class="badge" style="background: var(--secondary-color);">{{ user.distinct_activities }}</span>
+                    </td>
+                    <td style="font-size: 0.85rem; color: var(--text-secondary);">
+                        {{ user.first_seen[:10] if user.first_seen else 'N/A' }}
+                    </td>
+                    <td style="font-size: 0.85rem; color: var(--text-secondary);">
+                        {{ user.last_seen[:10] if user.last_seen else 'N/A' }}
+                    </td>
+                    <td>
+                        <input type="text" placeholder="Group..." style="width: 120px; padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem;" data-user="{{ user.actor_name }}">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No users found</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.content-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.stats-grid {
+    display: grid;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table-container {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table thead {
+    background: var(--bg-color);
+}
+
+.data-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.data-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-color);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.btn-secondary {
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: var(--bg-color);
+    border-color: var(--primary-color);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btn-sm:hover {
+    background: var(--primary-dark);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+}
+
+.empty-state h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+</style>
+
+<script>
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+    });
+}
+
+function copyUnmappedActivities() {
+    const urls = {{ activities_data.unmapped_activities | map(attribute='activity_url') | list | tojson }};
+    const text = urls.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Copied ' + urls.length + ' URLs to clipboard!');
+    });
+}
+
+function exportUsers() {
+    const users = {{ users_data.users | tojson }};
+    let csv = 'Actor Name,Email,Statements,Activities,First Seen,Last Seen\n';
+    
+    users.forEach(user => {
+        const email = user.actor_mbox ? user.actor_mbox.replace('mailto:', '') : 'N/A';
+        const firstSeen = user.first_seen ? user.first_seen.substring(0, 10) : 'N/A';
+        const lastSeen = user.last_seen ? user.last_seen.substring(0, 10) : 'N/A';
+        csv += `"${user.actor_name}","${email}",${user.statement_count},${user.distinct_activities},"${firstSeen}","${lastSeen}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'users_export.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Auto-refresh every 30 seconds
+setTimeout(() => {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}
+
