@@ -33,18 +33,18 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 50%;">Activity URL</th>
+                    <th style="width: 40%;">Activity URL</th>
                     <th>Statements</th>
                     <th>First Seen</th>
-                    <th>Last Seen</th>
+                    <th style="width: 20%;">Map to Lesson</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for activity in activities_data.unmapped_activities %}
-                <tr>
+                <tr id="activity-row-{{ loop.index }}">
                     <td>
-                        <div style="font-family: monospace; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; max-width: 400px;" title="{{ activity.activity_url }}">
+                        <div style="font-family: monospace; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; max-width: 350px;" title="{{ activity.activity_url }}">
                             {{ activity.activity_url }}
                         </div>
                     </td>
@@ -54,11 +54,16 @@
                     <td style="font-size: 0.85rem; color: var(--text-secondary);">
                         {{ activity.first_seen[:10] if activity.first_seen else 'N/A' }}
                     </td>
-                    <td style="font-size: 0.85rem; color: var(--text-secondary);">
-                        {{ activity.last_seen[:10] if activity.last_seen else 'N/A' }}
+                    <td>
+                        <select id="lesson-select-{{ loop.index }}" class="lesson-dropdown" data-url="{{ activity.activity_url }}">
+                            <option value="">Select lesson...</option>
+                            {% for lesson_key, lesson_data in available_lessons.items() %}
+                            <option value="{{ lesson_key }}">{{ lesson_data.display_name }}</option>
+                            {% endfor %}
+                        </select>
                     </td>
                     <td>
-                        <button onclick="copyText('{{ activity.activity_url }}')" class="btn-sm">Copy URL</button>
+                        <button onclick="saveActivityMapping({{ loop.index }}, '{{ activity.activity_url }}')" class="btn-primary">Save</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -138,13 +143,13 @@
                     <th>Statements</th>
                     <th>Activities</th>
                     <th>First Seen</th>
-                    <th>Last Seen</th>
+                    <th>Assign Group</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for user in users_data.users[:50] %}
-                <tr>
+                <tr id="user-row-{{ loop.index }}">
                     <td>
                         <strong>{{ user.actor_name }}</strong>
                     </td>
@@ -160,11 +165,11 @@
                     <td style="font-size: 0.85rem; color: var(--text-secondary);">
                         {{ user.first_seen[:10] if user.first_seen else 'N/A' }}
                     </td>
-                    <td style="font-size: 0.85rem; color: var(--text-secondary);">
-                        {{ user.last_seen[:10] if user.last_seen else 'N/A' }}
+                    <td>
+                        <input type="text" id="group-input-{{ loop.index }}" placeholder="Group name..." style="width: 120px; padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem;" data-user="{{ user.actor_name }}">
                     </td>
                     <td>
-                        <input type="text" placeholder="Group..." style="width: 120px; padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem;" data-user="{{ user.actor_name }}">
+                        <button onclick="saveUserGroup({{ loop.index }}, '{{ user.actor_name }}')" class="btn-primary">Save</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -290,6 +295,45 @@
     background: var(--primary-dark);
 }
 
+.btn-primary {
+    padding: 0.35rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(99, 102, 241, 0.25);
+}
+
+.lesson-dropdown {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lesson-dropdown:hover {
+    border-color: var(--primary-color);
+}
+
+.lesson-dropdown:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
 .empty-state {
     text-align: center;
     padding: 4rem 2rem;
@@ -303,10 +347,91 @@
 </style>
 
 <script>
-function copyText(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        alert('Copied to clipboard!');
-    });
+async function saveActivityMapping(index, activityUrl) {
+    const select = document.getElementById(`lesson-select-${index}`);
+    const lessonNumber = select.value;
+    
+    if (!lessonNumber) {
+        alert('Please select a lesson');
+        return;
+    }
+    
+    const lessonName = select.options[select.selectedIndex].text;
+    
+    try {
+        const response = await fetch('/ui/mapping/save-activity', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                activity_url: activityUrl,
+                lesson_number: lessonNumber,
+                lesson_name: lessonName
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Remove the row with fade out
+            const row = document.getElementById(`activity-row-${index}`);
+            row.style.background = '#d1fae5';
+            setTimeout(() => {
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            }, 500);
+            
+            alert('✅ ' + result.message);
+        } else {
+            alert('❌ Failed: ' + result.detail);
+        }
+    } catch (error) {
+        alert('❌ Error saving mapping: ' + error.message);
+    }
+}
+
+async function saveUserGroup(index, actorName) {
+    const input = document.getElementById(`group-input-${index}`);
+    const groupName = input.value.trim();
+    
+    if (!groupName) {
+        alert('Please enter a group name');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/ui/mapping/save-user-group', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                actor_name: actorName,
+                group_name: groupName
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Visual feedback
+            const row = document.getElementById(`user-row-${index}`);
+            row.style.background = '#d1fae5';
+            input.disabled = true;
+            input.value = '✓ ' + groupName;
+            
+            setTimeout(() => {
+                row.style.background = '';
+            }, 2000);
+            
+            alert('✅ ' + result.message);
+        } else {
+            alert('❌ Failed: ' + result.detail);
+        }
+    } catch (error) {
+        alert('❌ Error saving group: ' + error.message);
+    }
 }
 
 function copyUnmappedActivities() {
@@ -336,11 +461,6 @@ function exportUsers() {
     a.click();
     window.URL.revokeObjectURL(url);
 }
-
-// Auto-refresh every 30 seconds
-setTimeout(() => {
-    location.reload();
-}, 30000);
 </script>
 {% endblock %}
 
