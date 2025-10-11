@@ -17,6 +17,8 @@ settings = config_module.settings
 get_extension_key = config_module.get_extension_key
 get_lesson_url = config_module.get_lesson_url
 get_lesson_name = config_module.get_lesson_name
+get_lesson_by_url = config_module.get_lesson_by_url
+get_lesson_by_number = config_module.get_lesson_by_number
 
 # Create instances for easier access (lazy-loaded)
 _gcp_config = None
@@ -43,5 +45,6 @@ bigquery_schema = get_bigquery_schema_instance
 __all__ = [
     'GCPConfig', 'BigQuerySchema', 'gcp_config', 'bigquery_schema', 
     'get_gcp_config', 'get_bigquery_schema_instance', 'settings',
-    'get_extension_key', 'get_lesson_url', 'get_lesson_name'
+    'get_extension_key', 'get_lesson_url', 'get_lesson_name',
+    'get_lesson_by_url', 'get_lesson_by_number'
 ]
