@@ -41,16 +41,24 @@ app = FastAPI(
     redoc_url="/api/redoc"
 )
 
-# Startup event to initialize batch processor
+# Startup event to initialize background services
 @app.on_event("startup")
-async def startup_event():
-    """Initialize batch processor on startup."""
+async def startup_event_early():
+    """Initialize batch processor and system monitor on startup."""
     try:
         # Start the background batch processor
         batch_processor.start_background_processor()
         logger.info("Batch AI safety processor started")
     except Exception as e:
         logger.error(f"Failed to start batch processor: {e}")
+    
+    try:
+        # Start system monitoring
+        from app.monitoring.system_monitor import system_monitor
+        system_monitor._start_monitoring()
+        logger.info("System monitoring started")
+    except Exception as e:
+        logger.error(f"Failed to start system monitoring: {e}")
 
 # CORS middleware
 app.add_middleware(
@@ -925,7 +933,7 @@ async def architecture_status():
 # ============================================================================
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event_etl():
     """Start background ETL processors on application startup."""
     try:
         # Auto-start BigQuery data processor for continuous data flow

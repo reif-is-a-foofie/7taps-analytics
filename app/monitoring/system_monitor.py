@@ -62,13 +62,22 @@ class SystemMonitor:
             "error_rate_percent": 5.0
         }
         
-        # Start monitoring
-        self._start_monitoring()
+        # Monitoring will be started lazily when needed
+        self._monitoring_started = False
     
     def _start_monitoring(self):
-        """Start background monitoring tasks."""
-        asyncio.create_task(self._collect_metrics_loop())
-        asyncio.create_task(self._check_alerts_loop())
+        """Start background monitoring tasks (only if event loop is running)."""
+        if self._monitoring_started:
+            return
+        
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._collect_metrics_loop())
+            loop.create_task(self._check_alerts_loop())
+            self._monitoring_started = True
+        except RuntimeError:
+            # No event loop running, will start later
+            pass
     
     async def _collect_metrics_loop(self):
         """Continuously collect system metrics."""
