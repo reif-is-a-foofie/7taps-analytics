@@ -4,8 +4,13 @@ This directory contains project documentation and guides.
 
 ## Available Documentation
 
+### For End Users
+- `USER_GUIDE.md` - Daily operations guide for non-technical staff
+- `DATA_MANAGEMENT_SOP.md` - Standard operating procedures for data operators
+
+### For Developers
 - `AGENTS.md` - Agent system documentation
-- `DEPLOYMENT.md` - Deployment instructions
+- `DEPLOYMENT_GUIDE.md` - Deployment instructions and setup
 - `LEARNINGLOCKER_AGENT_GUIDE.md` - LearningLocker integration guide
 
 ## Documentation Standards
