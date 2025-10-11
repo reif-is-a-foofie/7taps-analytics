@@ -4,9 +4,8 @@ This directory contains project documentation and guides.
 
 ## Available Documentation
 
-### For End Users
-- `USER_GUIDE.md` - Daily operations guide for non-technical staff
-- `DATA_MANAGEMENT_SOP.md` - Standard operating procedures for data operators
+### For All Users
+- `USER_GUIDE.md` - Complete guide for non-technical staff, data operators, and system administrators
 
 ### For Developers
 - `AGENTS.md` - Agent system documentation

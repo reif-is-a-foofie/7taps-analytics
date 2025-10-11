@@ -18,7 +18,10 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/flagged-content", response_class=HTMLResponse)
-async def flagged_content_dashboard(request: Request):
+async def flagged_content_dashboard(
+    request: Request,
+    cohort: Optional[str] = Query(None, description="Filter by cohort")
+):
     """Flagged content monitoring dashboard with trigger word alerts and system health."""
     try:
         # Get system status
@@ -32,10 +35,13 @@ async def flagged_content_dashboard(request: Request):
         
         # Get AI content analysis status and recent flagged content
         ai_analysis_status = await get_ai_analysis_status()
-        flagged_statements = await get_recent_flagged_statements()
+        flagged_statements = await get_recent_flagged_statements(cohort_filter=cohort)
         
         # Get safety configuration
         safety_config = await get_safety_configuration()
+        
+        # Get cohort configurations
+        cohort_configs = await get_cohort_safety_configs()
         
         context = {
             "request": request,
@@ -45,6 +51,8 @@ async def flagged_content_dashboard(request: Request):
             "ai_analysis_status": ai_analysis_status,
             "flagged_statements": flagged_statements,
             "safety_config": safety_config,
+            "cohort_configs": cohort_configs,
+            "selected_cohort": cohort,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
@@ -232,7 +240,21 @@ async def get_ai_analysis_status() -> Dict[str, Any]:
         }
 
 
-async def get_recent_flagged_statements() -> Dict[str, Any]:
+async def get_cohort_safety_configs() -> Dict[str, Any]:
+    """Get all cohort safety configurations."""
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:8000/api/cohorts/safety")
+            if response.status_code == 200:
+                return response.json()
+            return {"cohorts": {}}
+    except Exception as e:
+        logger.error(f"Error getting cohort configs: {e}")
+        return {"cohorts": {}}
+
+
+async def get_recent_flagged_statements(cohort_filter: Optional[str] = None) -> Dict[str, Any]:
     """Get recent statements that were flagged by AI analysis or trigger words."""
     try:
         # Import directly instead of HTTP call
@@ -255,6 +277,15 @@ async def get_recent_flagged_statements() -> Dict[str, Any]:
             ai_analysis = payload.get("ai_content_analysis", {})
             statement_id = statement_data.get("statement_id", payload.get("id", ""))
             
+            # Extract cohort from context extensions
+            context = payload.get("context", {})
+            extensions = context.get("extensions", {})
+            stmt_cohort = extensions.get("https://7taps.com/cohort", "")
+            
+            # Apply cohort filter if specified
+            if cohort_filter and stmt_cohort != cohort_filter:
+                continue
+            
             if ai_analysis.get("is_flagged", False):
                 flagged_statements.append({
                     "statement_id": statement_id,
@@ -265,7 +296,8 @@ async def get_recent_flagged_statements() -> Dict[str, Any]:
                     "flagged_reasons": ai_analysis.get("flagged_reasons", []),
                     "confidence_score": ai_analysis.get("confidence_score", 0),
                     "suggested_actions": ai_analysis.get("suggested_actions", []),
-                    "flag_type": "ai_analysis"
+                    "flag_type": "ai_analysis",
+                    "cohort": stmt_cohort
                 })
                 flagged_statement_ids.add(statement_id)
         
@@ -284,6 +316,15 @@ async def get_recent_flagged_statements() -> Dict[str, Any]:
                     payload = statement_data.get("payload", {})
                     matches = alert.get("matches", [])
                     
+                    # Extract cohort from context extensions
+                    context = payload.get("context", {})
+                    extensions = context.get("extensions", {})
+                    stmt_cohort = extensions.get("https://7taps.com/cohort", "")
+                    
+                    # Apply cohort filter if specified
+                    if cohort_filter and stmt_cohort != cohort_filter:
+                        continue
+                    
                     flagged_statements.append({
                         "statement_id": statement_id,
                         "actor_name": payload.get("actor", {}).get("name", "Unknown"),
@@ -294,7 +335,8 @@ async def get_recent_flagged_statements() -> Dict[str, Any]:
                         "confidence_score": 1.0,
                         "suggested_actions": ["Review content for safety concerns"],
                         "flag_type": "trigger_word",
-                        "trigger_words": matches
+                        "trigger_words": matches,
+                        "cohort": stmt_cohort
                     })
                     flagged_statement_ids.add(statement_id)
         

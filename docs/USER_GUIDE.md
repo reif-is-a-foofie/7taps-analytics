@@ -1,110 +1,227 @@
 # 7taps Analytics — User Guide
 
-**For:** Program coordinators, course facilitators, non-technical staff  
-**Last Updated:** October 2025
+**For:** Program coordinators, course facilitators, data operators, and system administrators  
+**Last Updated:** October 2025  
+**Questions?** Contact Reif Tauati at [reiftauati@gmail.com](mailto:reiftauati@gmail.com)
 
 ---
 
 ## What This Platform Does
 
-This platform automatically tracks learner progress in your 7taps course. Every time someone completes a lesson, answers a question, or engages with content, that data flows into the system. You can then:
+This platform tracks your learners in two ways:
 
-- See who completed lessons today
-- Export daily progress reports for follow-ups
-- Monitor flagged content for learner safety
-- Track engagement patterns over time
+### 1. Automatic Data (happens on its own)
+When someone finishes a lesson or answers a question in 7taps, that activity gets sent here automatically. You don't need to do anything.
 
-**You don't need to do anything for data to arrive.** It happens automatically when learners use 7taps.
+**What you get automatically:**
+- Lesson completions
+- Text answers to questions
+- When each activity happened
+- Basic info (email, name)
+
+**What's missing:**
+- Age, location, group names
+- Extra fields you added in 7taps
+- Ratings or feedback scores
+- Any custom information
+
+### 2. CSV Files (you upload these)
+To see everything, download a CSV file from 7taps and upload it here. The CSV has all the extra details the automatic system doesn't catch.
+
+**The platform matches people by email.** If someone's email is in both the automatic data and your CSV, their information gets combined into one profile.
+
+---
+
+## How It Works
+
+```
+7taps Course
+    ↓
+    ├─ Automatic (runs 24/7) ──────────┐
+    │  - Lesson completions             │
+    │  - Question answers               │
+    │                                    ↓
+    └─ CSV Upload (you do this) ──→  Everything combines here
+       - Extra details                     ↓
+       - Custom info                  One complete view
+```
+
+Use both to get the full picture.
+
+---
+
+## Getting Started: First-Time Setup
+
+### Step 1: Download CSV from 7taps
+**Where:** Log in to 7taps → Go to your course → Find "Exports" or "Data"
+
+1. Log in to your 7taps account
+2. Open your course
+3. Click "Exports" or "Data" (the name depends on your 7taps setup)
+4. Download the full CSV file
+
+**What's in the CSV:**
+- Names and emails
+- All answers (polls, ratings, text responses)
+- When people finished lessons
+- Any extra fields you added in 7taps
+- Group names (if you set those up)
+
+---
+
+### Step 2: Upload CSV to This Platform
+**Where:** Open the platform → Click **📥 CSV Upload** in the left sidebar
+
+1. Go to: https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app
+2. Click **📥 CSV Upload** on the left side
+3. Click "Select CSV File" and pick the file you just downloaded
+4. (Optional) Add a note like "January 2025 class"
+5. Click "📤 Upload CSV"
+6. Wait 5-30 seconds for it to finish
+
+**What happens:**
+- The system reads your CSV file
+- It finds people by matching emails
+- It combines CSV info with automatic data
+- Now you can see everything in one place
+
+**When to upload:**
+- **First time:** Upload old data to get started
+- **Weekly:** Keep data fresh
+- **After changes:** If you add new people or update info in 7taps
+
+---
+
+### Step 3: Check That It Worked
+**Where:** Same page, scroll down to "Upload Status"
+
+After uploading, look at this section to see:
+- How many people were matched (found in both places)
+- How many new people were added (only in your CSV)
+- Any errors
+
+**What can happen:**
+
+| What You'll See | Why | Example |
+|----------|--------------|---------|
+| **Match found** | Email is in both CSV and automatic data | `jane@example.com` is in both → Everything combines |
+| **CSV only** | Person is new or hasn't done any lessons yet | Added from CSV, waiting for them to start |
+| **Automatic only** | Person did lessons but isn't in your CSV | They'll show up once you upload a CSV with their info |
+| **Emails don't match** | Typo or different emails | `Jane@example.com` vs `jane@example.com` → Seen as 2 different people |
+
+**Tip:** Make sure emails match in 7taps. Small typos create duplicate people.
 
 ---
 
 ## Daily Workflow (5 minutes)
 
 ### Step 1: Check Daily Analytics
-**URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/ui/daily-analytics
+**Where:** Click **📊 Daily Course Analytics** on the left side
 
-1. Open the page (it defaults to today's date)
-2. Scan the completion list:
-   - ✅ Green = completed today's lesson
-   - ⚠️ Yellow/blank = needs follow-up
-3. Download the CSV if you're sending follow-up emails
+1. Click **📊 Daily Course Analytics** (opens to today's date)
+2. **(Optional) Filter by group:**
+   - Find the dropdown at the top
+   - Pick a group (like "January 2025" or "Class A") to see just that group
+   - Leave it blank to see everyone
+3. **(Optional) Pick a different date:**
+   - Click the date to see a different day
+   - Good for checking past days or planning ahead
+4. Look at who completed lessons:
+   - ✅ Green = finished today's lesson
+   - ⚠️ Yellow/blank = didn't finish (follow up with them)
+5. Download the CSV to save the list
+   - The file will only have the group/date you picked
 
-**When to use:**
-- Every morning at 9am to prep outreach
-- Before cohort check-ins
-- When preparing weekly reports
+**When to do this:**
+- Every morning at 9am before reaching out to learners
+- Before meeting with a specific group
+- When making weekly reports
 
 ---
 
-### Step 2: Review Flagged Content (if applicable)
-**URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/ui/flagged-content
+### Step 2: Check Flagged Content
+**Where:** Look for Flagged Content (in the sidebar or main page)
 
-1. Check the "Recent Flagged Statements" section
-2. If anything appears, read the full context
-3. Follow your protocol for learner safety (contact counselor, reach out directly, etc.)
+1. Open "Recent Flagged Statements"
+2. If you see anything, read the full answer to understand the context
+3. Follow your safety plan (call a counselor, reach out to the learner, etc.)
 
-**When to use:**
-- Once per day (morning or end of day)
-- After major lesson releases
-- Anytime you receive a safety alert
+**When to do this:**
+- Once per day (morning or evening)
+- After releasing big lessons
+- Any time you get a safety alert
 
 ---
 
 ## Weekly Workflow (15 minutes)
 
-### Monday: Review Completion Trends
-Go to **Daily Analytics** and check the past 7 days:
-- Are completion rates dropping?
-- Are specific users consistently missing lessons?
-- Do you need to send a re-engagement email?
+### Monday: Check Completion Trends
+Go to **📊 Daily Course Analytics** and look at the past 7 days:
+- Use the date picker to go back day by day
+- **Tip:** Pick a group to compare how different groups are doing
+  - "Which group finishes the most lessons?"
+  - "Is Group A dropping off more than Group B?"
+- Are fewer people finishing lessons this week?
+- Are the same people missing lessons over and over?
+- Do you need to send a reminder email?
 
-### Wednesday: Spot Check Flagged Words
-Go to **Flagged Content** and review your custom word list:
-- Are you seeing false positives? Remove those words.
-- Do you need to add course-specific terms?
+### Wednesday: Check Flagged Words
+Go to **Flagged Content** and look at your word list:
+- Are harmless words getting flagged? Remove them.
+- Do you need to add new words specific to your course?
 
-### Friday: Export Data for Reporting
-From **Daily Analytics**, export the week's CSV and:
-- Share with leadership
-- Update your tracking spreadsheet
-- Identify learners for 1-on-1 check-ins
+### Friday: Download Data for Reports
+From **📊 Daily Course Analytics**, get the week's data:
+1. Pick a group (if you manage more than one)
+2. Pick the dates you need
+3. Download the CSV for each day
+4. Use the files to:
+   - Share reports with your boss
+   - Update your tracking spreadsheet
+   - Find people who need 1-on-1 check-ins
+   - Compare how groups are doing
 
 ---
 
 ## Common Questions
 
 ### "I don't see any data for today"
-**Possible causes:**
-1. Learners haven't completed lessons yet (check time of day)
-2. 7taps integration is paused (contact admin)
-3. The date filter is set incorrectly (reset to today)
+**Why this might happen:**
+1. People haven't finished lessons yet (check what time it is)
+2. 7taps connection is off (ask your admin)
+3. The date is set wrong (make sure it says today)
 
-**What to do:** Wait until afternoon, or check yesterday's data to confirm the system is working.
-
----
-
-### "A learner says they completed a lesson but it's not showing"
-**Possible causes:**
-1. They started but didn't finish (7taps only sends data on completion)
-2. There's a 5-10 minute delay in data processing
-3. Their email/username doesn't match your roster
-
-**What to do:** Wait 10 minutes and refresh. If still missing, ask them to complete the lesson again or contact support.
+**What to do:** Wait until later in the day, or check yesterday to make sure the system is working.
 
 ---
 
-### "Flagged content seems wrong"
-The AI sometimes flags things that aren't actually concerning (false positives). If you see this:
-1. Review the full context
-2. If it's harmless, remove that word from the flagged word list
-3. The system will learn over time
+### "Someone says they finished a lesson but I don't see it"
+**Why this might happen:**
+1. They started but didn't finish (7taps only sends data when they're done)
+2. It takes 5-10 minutes to show up
+3. Their email doesn't match what you have
 
-**Example:** The word "exhausted" might be flagged, but if learners use it casually ("exhausted from running"), you can remove it.
+**What to do:** Wait 10 minutes and refresh. Still missing? Ask them to finish the lesson again.
+
+---
+
+### "Flagged content looks fine to me"
+Sometimes the system flags normal stuff by mistake. If this happens:
+1. Read the full answer to see the context
+2. If it's harmless, remove that word from your list
+3. The system gets better over time
+
+**Example:** The word "exhausted" might get flagged, but if someone says "exhausted from running," that's fine. Remove "exhausted" from your list.
 
 ---
 
 ### "I need data from last month"
-Use the date picker in **Daily Analytics** to go back in time. You can export any date range as a CSV.
+Use the date picker in **📊 Daily Course Analytics**:
+1. Click the date at the top
+2. Pick the date you want (like September 15, 2024)
+3. The page will update with that day's info
+4. Download the CSV to save it
+5. Do this for each day you need, or pick a group to see just that group
 
 ---
 
@@ -112,74 +229,393 @@ Use the date picker in **Daily Analytics** to go back in time. You can export an
 
 | Problem | Solution |
 |---------|----------|
-| Dashboard won't load | Clear browser cache, try incognito mode, or contact admin |
-| CSV download fails | Right-click the download button → "Save link as..." |
-| Can't find a specific user | Check the group/cohort filter — they might be in a different cohort |
-| Data looks duplicated | This is rare; contact admin to check for ingestion issues |
+| Dashboard won't load | Clear your browser history, try a private window, or ask your admin |
+| CSV won't download | Right-click the download button → Pick "Save link as..." |
+| Can't find someone | 1. Clear the group filter (pick "All") to see everyone<br>2. Check if they're in a different group<br>3. Open the CSV and search for their email |
+| I'm seeing the same person twice | This is rare; ask your admin to check it |
 
 ---
 
-## Access & Permissions
+## Getting Access
 
-**Production URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app
+**Website:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app
 
-**Dashboards you'll use most:**
-- `/ui/dashboard` — Overview and system status
+**Pages you'll use most:**
+- `/ui/dashboard` — Main page and system status
 - `/ui/daily-analytics` — Daily lesson completions
 - `/ui/flagged-content` — Safety monitoring
 
-**Authentication:** Most dashboards are open for demo purposes. In production, you'll log in with Google SSO.
+**Logging in:** Right now, most pages are open. Later, you'll log in with your Google account.
 
 ---
 
-## Who to Contact
+## Who to Ask for Help
 
-| Issue Type | Contact |
+| Problem | Who to Contact |
 |------------|---------|
-| Dashboard not loading | System admin |
-| Data looks wrong | System admin |
-| Learner safety concern | Your org's protocol (counselor, coach, etc.) |
-| Feature requests | Product owner |
+| Dashboard not working | Your system admin |
+| Data looks wrong | Your system admin |
+| Safety concern about a learner | Follow your safety plan (counselor, coach, etc.) |
+| Want a new feature | Reif Tauati at [reiftauati@gmail.com](mailto:reiftauati@gmail.com) |
 
 ---
 
-## Tips for Success
+## Tips
 
-✅ **Do:**
-- Check daily analytics at a consistent time (e.g., 9am)
-- Export CSVs regularly for backup/reporting
-- Review flagged content within 24 hours
-- Filter by cohort if you manage multiple groups
+✅ **Do this:**
+- Check analytics at the same time every day (like 9am)
+- **Use group filters** if you manage more than one group
+- Download CSVs often for your records
+- Check flagged content within 24 hours
+- Use clear group names in 7taps so they're easy to find here
 
-❌ **Don't:**
-- Assume real-time data (expect 5-10 min delay)
-- Rely solely on this platform for safety (it's a tool, not a replacement for human judgment)
-- Share raw CSV files outside your org (contains PII)
-
----
-
-## What Happens Behind the Scenes (FYI)
-
-You don't need to know this to use the platform, but for context:
-
-1. Learner completes a lesson in 7taps
-2. 7taps sends the completion event to our Cloud Function
-3. The system processes and stores it in BigQuery (Google's data warehouse)
-4. Dashboards query BigQuery to show you the results
-
-This happens automatically, 24/7. You just use the dashboards.
+❌ **Don't do this:**
+- Expect instant data (it takes 5-10 minutes to show up)
+- Use this as your only safety tool (it helps, but you still need to use your judgment)
+- Share CSV files outside your team (they have private information)
 
 ---
 
-## Glossary
+## How It Works (Background Info)
 
-- **xAPI:** A data standard for learning events (you'll never interact with this directly)
-- **BigQuery:** Google's database where all the data lives
-- **CSV:** Spreadsheet file you can open in Excel/Google Sheets
-- **Flagged content:** User responses that contain concerning words or phrases
-- **Cohort/Group:** A subset of learners (e.g., "January 2025 cohort")
+You don't need to know this to use the platform, but here's what happens:
+
+1. Someone finishes a lesson in 7taps
+2. 7taps sends that info to our system
+3. The system saves it in a database
+4. The dashboard shows you the results
+
+This all happens automatically. You just check the dashboard.
 
 ---
 
-**Questions?** Contact your system administrator or see `docs/DATA_MANAGEMENT_SOP.md` for technical details.
+## Words to Know
+
+- **CSV:** A spreadsheet file you can open in Excel or Google Sheets
+- **Flagged content:** Answers that have words you're watching for safety reasons
+- **Group/Cohort:** A set of learners (like "January 2025 class" or "Group A")
+- **Filter:** Show only specific people or dates (like picking just one group)
+
+---
+
+# For Technical Staff
+
+The following sections are for system administrators and data operators who manage the platform.
+
+---
+
+## System Architecture Overview
+
+```
+7taps (learner activity)
+  ↓
+Cloud Function (ingestion endpoint)
+  ↓
+Pub/Sub (event streaming)
+  ↓
+Cloud Storage (raw backup) + BigQuery (structured analytics)
+  ↓
+FastAPI Dashboard (user-facing)
+```
+
+**Key principle:** Data flows automatically. Your job is to monitor health, handle exceptions, and ensure data quality.
+
+---
+
+## Daily Operations (Technical)
+
+### Morning Health Check (5 min)
+**URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/ui/dashboard
+
+1. Check "System Health" status (should show green indicators)
+2. Verify "Recent xAPI Statements" shows activity from the past 24h
+3. Confirm "Total Users" count is reasonable (no sudden spikes/drops)
+
+**Alert conditions:**
+- ❌ No statements in 24h → Ingestion issue
+- ❌ User count drops >20% → Data loss or query issue
+- ⚠️ Statement errors in logs → Review error logs
+
+---
+
+### Weekly Data Quality Check (15 min)
+**Frequency:** Every Monday morning
+
+1. **Completeness Check**
+   - Query BigQuery for lesson completions in the past 7 days
+   - Compare to expected volume (based on cohort size × lessons per week)
+   - Flag any days with <50% expected volume
+
+2. **User Identity Check**
+   - Scan `users` table for duplicate emails or malformed names
+   - Run deduplication script if needed
+
+3. **Flagged Content Review**
+   - Check `/ui/flagged-content` for false positives
+   - Update flagged word list as needed
+   - Monitor AI detection status (Active = Gemini, Fallback = keyword only)
+
+---
+
+## Data Flow Monitoring
+
+### Ingestion Endpoint
+**URL:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/statements  
+**Method:** POST/PUT  
+**Expected volume:** ~10-500 statements/day (depends on cohort size)
+
+**How to monitor:**
+1. Check Cloud Function logs in GCP Console → Cloud Functions → `xapi-ingestion`
+2. Look for 2xx status codes (success) vs 4xx/5xx (errors)
+3. Pub/Sub metrics: Messages published vs delivered
+
+**Common issues:**
+- **401 Unauthorized:** 7taps credentials misconfigured
+- **500 Server Error:** Cloud Function crashed (check logs)
+- **No traffic:** 7taps webhook not configured or paused
+
+---
+
+### Data Storage
+
+#### BigQuery Tables
+**Project:** `pol-chatbot`  
+**Dataset:** `xapi_analytics`
+
+| Table | Purpose | Retention |
+|-------|---------|-----------|
+| `users` | Learner profiles | Indefinite |
+| `lessons` | Course content metadata | Indefinite |
+| `questions` | Individual prompts | Indefinite |
+| `user_responses` | Freeform text answers | Indefinite (PII) |
+| `user_activities` | Completion events | Indefinite |
+
+**Data retention policy:**
+- Raw data in Cloud Storage: 90 days (configurable)
+- BigQuery data: No automatic deletion (manual archive as needed)
+
+---
+
+#### Cloud Storage Backup
+**Bucket:** `pol-chatbot-xapi-raw`  
+**Format:** JSON files (one per xAPI statement)  
+**Naming:** `YYYY-MM-DD/UUID.json`
+
+**Purpose:** Disaster recovery and data replay. Do not delete unless >90 days old and you've confirmed BigQuery has the data.
+
+---
+
+## Data Quality Standards
+
+### Acceptable Data
+- ✅ User email is valid format (contains `@`)
+- ✅ Lesson completion timestamp is within past 30 days
+- ✅ User response text is <5000 characters
+- ✅ All required xAPI fields present (`actor`, `verb`, `object`)
+
+### Data to Flag for Review
+- ⚠️ User email is malformed or generic (`test@example.com`)
+- ⚠️ Response text contains only special characters or spam
+- ⚠️ Duplicate completions within 1 minute (possible bot)
+- ⚠️ Timestamp is in the future or >1 year old
+
+### Data to Reject
+- ❌ Missing required xAPI fields
+- ❌ User email is missing or null
+- ❌ Statement type is not recognized
+
+**How to handle:**
+- Review rejected statements in Cloud Function error logs
+- Correct at source (7taps configuration) if systemic
+- Manually insert corrected data if one-off issue
+
+---
+
+## Common Data Tasks
+
+### Task 1: Export Full Dataset
+**When:** End of cohort, annual reporting, external audit
+
+**Steps:**
+1. Open BigQuery Console → `pol-chatbot.xapi_analytics`
+2. Run export query (see `docs/migrations/export_full_dataset.sql`)
+3. Export to Cloud Storage as CSV
+4. Download from Cloud Storage to local machine
+5. Archive and share according to data governance policy
+
+**Important:** Export contains PII. Follow your org's data handling protocols.
+
+---
+
+### Task 2: Backfill Missing Data
+**When:** Cloud Function was down, Pub/Sub had issues, or data was lost
+
+**Steps:**
+1. Identify date range of missing data
+2. Locate raw JSON files in Cloud Storage bucket (`pol-chatbot-xapi-raw`)
+3. Re-publish to Pub/Sub using replay script:
+   ```bash
+   python scripts/replay_from_storage.py --start-date YYYY-MM-DD --end-date YYYY-MM-DD
+   ```
+4. Monitor BigQuery ingestion to confirm data appears
+5. Validate completeness with count query
+
+---
+
+### Task 3: Investigate Missing Learner Data
+**When:** Learner reports completion but data doesn't show
+
+**Steps:**
+1. Get learner's email and lesson name
+2. Query BigQuery:
+   ```sql
+   SELECT * FROM `pol-chatbot.xapi_analytics.user_activities`
+   WHERE user_email = 'learner@example.com'
+   AND lesson_title LIKE '%Lesson Title%'
+   ORDER BY completed_at DESC
+   ```
+3. If no results → Check Cloud Storage raw data for that date
+4. If raw data exists but BigQuery doesn't → Re-run ETL for that statement
+5. If raw data missing → 7taps didn't send it (check their logs)
+
+---
+
+## Technical Troubleshooting
+
+### Issue: No Data for Today
+**Symptoms:** Dashboards show no activity, BigQuery queries return 0 rows
+
+**Diagnosis:**
+1. Check Cloud Function logs for errors
+2. Check Pub/Sub subscription backlog (should be 0-10 messages)
+3. Verify 7taps webhook is active
+
+**Resolution:**
+- If Cloud Function error → Check credentials, fix code, redeploy
+- If Pub/Sub backlog >1000 → Increase subscription capacity or clear backlog
+- If webhook inactive → Contact 7taps support
+
+---
+
+### Issue: Duplicate User Records
+**Symptoms:** Same learner appears multiple times with different IDs
+
+**Diagnosis:**
+1. Query BigQuery `users` table:
+   ```sql
+   SELECT user_email, COUNT(*) as count
+   FROM `pol-chatbot.xapi_analytics.users`
+   GROUP BY user_email
+   HAVING count > 1
+   ```
+2. Check if email case differs (`User@example.com` vs `user@example.com`)
+
+**Resolution:**
+- Run user normalization script:
+  ```bash
+  python scripts/normalize_users.py
+  ```
+- Merge duplicate records (preserve most recent metadata)
+
+---
+
+### Issue: Flagged Content Overflow
+**Symptoms:** Too many false positives, flagged content list is unmanageable
+
+**Diagnosis:**
+1. Review most common flagged words
+2. Identify patterns (e.g., "stressed" flags 200+ times)
+
+**Resolution:**
+- Remove overly broad words from flagged list
+- Switch AI detection mode to "Contextual" (uses Gemini to understand nuance)
+- Consult with safety team on acceptable thresholds
+
+---
+
+## Data Security & Privacy
+
+### PII Handling
+**What counts as PII:**
+- User email
+- User name
+- Freeform response text (may contain identifying info)
+
+**How we protect it:**
+- Data at rest encrypted (GCP default)
+- BigQuery access restricted to authorized users only
+- Export files encrypted before sharing
+- No PII in logs or error messages
+
+### Compliance
+- **GDPR:** User can request data deletion (contact dev to run deletion script)
+- **FERPA (if applicable):** Student data treated as education records
+- **Internal policy:** Follow your org's data retention and access policies
+
+---
+
+## Scheduled Maintenance
+
+### Monthly Tasks
+- Review BigQuery storage costs (archive old data if >$X threshold)
+- Audit user access logs (who queried what)
+- Update flagged word list based on feedback
+
+### Quarterly Tasks
+- Full data quality audit (completeness, accuracy, consistency)
+- Review and update this guide
+- Test disaster recovery procedure (restore from Cloud Storage backup)
+
+---
+
+## Useful Resources
+
+- **BigQuery Console:** https://console.cloud.google.com/bigquery?project=pol-chatbot
+- **Cloud Functions:** https://console.cloud.google.com/functions?project=pol-chatbot
+- **Pub/Sub:** https://console.cloud.google.com/cloudpubsub?project=pol-chatbot
+- **Cloud Storage:** https://console.cloud.google.com/storage?project=pol-chatbot
+- **Dashboard:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app
+- **API Docs:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/docs
+
+---
+
+## Appendix: Key SQL Queries
+
+### Check Daily Ingestion Volume
+```sql
+SELECT
+  DATE(completed_at) as date,
+  COUNT(*) as completions
+FROM `pol-chatbot.xapi_analytics.user_activities`
+WHERE completed_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+GROUP BY date
+ORDER BY date DESC
+```
+
+### Find Duplicate Users
+```sql
+SELECT
+  LOWER(user_email) as email,
+  COUNT(DISTINCT user_id) as id_count
+FROM `pol-chatbot.xapi_analytics.users`
+GROUP BY email
+HAVING id_count > 1
+```
+
+### Export Flagged Content
+```sql
+SELECT
+  user_email,
+  lesson_title,
+  response_text,
+  created_at
+FROM `pol-chatbot.xapi_analytics.user_responses`
+WHERE flagged = TRUE
+ORDER BY created_at DESC
+LIMIT 100
+```
+
+---
+
+**For technical implementation details, see `docs/DEPLOYMENT_GUIDE.md` and `docs/plan.md`.**
 
