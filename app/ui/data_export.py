@@ -13,7 +13,7 @@ import json
 import csv
 import io
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 
 from app.logging_config import get_logger
