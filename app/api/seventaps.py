@@ -55,6 +55,7 @@ async def store_incoming_statement_to_bigquery(statement: Dict[str, Any], source
     """Store all incoming xAPI statements directly to BigQuery for immediate visibility."""
     try:
         from app.config.gcp_config import gcp_config
+        from app.config import get_lesson_by_url, get_extension_key
         from google.cloud import bigquery
         
         # Extract key information
@@ -66,6 +67,25 @@ async def store_incoming_statement_to_bigquery(statement: Dict[str, Any], source
         actor_mbox = statement.get("actor", {}).get("mbox", "unknown")
         statement_id = statement.get("id", "no-id")
         timestamp = statement.get("timestamp", datetime.now().isoformat())
+        
+        # Auto-enrich: reverse lookup lesson metadata from URL
+        if object_id and object_id not in ("unknown", "", "no-id"):
+            lesson_metadata = get_lesson_by_url(object_id)
+            if lesson_metadata:
+                # Inject lesson metadata into context extensions
+                if "context" not in statement:
+                    statement["context"] = {}
+                if "extensions" not in statement["context"]:
+                    statement["context"]["extensions"] = {}
+                
+                extensions = statement["context"]["extensions"]
+                extensions[get_extension_key("lesson_number")] = str(lesson_metadata.get("lesson_number", ""))
+                extensions[get_extension_key("lesson_name")] = lesson_metadata.get("lesson_name", "")
+                extensions[get_extension_key("lesson_url")] = lesson_metadata.get("lesson_url", "")
+                
+                print(f"  🔗 Enriched with lesson metadata: {lesson_metadata.get('display_name', 'Unknown')}")
+            else:
+                print(f"  ⚠️ Unmapped activity: {object_id}")
         
         # Parse timestamp using centralized utility
         from app.utils.timestamp_utils import parse_timestamp, format_human_readable

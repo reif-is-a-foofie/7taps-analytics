@@ -1,6 +1,20 @@
 {
-  "timestamp": "2025-09-17T01:52:24.525140+00:00",
+  "timestamp": "2025-10-11T00:00:00.000000+00:00",
   "lessons": {
+    "0a": {
+      "lesson_number": "0a",
+      "lesson_name": "What's This All About",
+      "lesson_url": "",
+      "description": "Introduction to the course",
+      "display_name": "Lesson 0. What's This All About"
+    },
+    "0b": {
+      "lesson_number": "0b",
+      "lesson_name": "How It Works",
+      "lesson_url": "",
+      "description": "Course mechanics and structure",
+      "display_name": "Lesson 0. How It Works"
+    },
     "1": {
       "lesson_number": 1,
       "lesson_name": "You're Here. Start Strong",
@@ -17,17 +31,17 @@
     },
     "3": {
       "lesson_number": 3,
-      "lesson_name": "Own Your Mindset",
-      "lesson_url": "https://courses.practiceoflife.com/VyyZZTDxpncL",
-      "description": "Developing a healthy mindset around technology and productivity",
-      "display_name": "3. Own Your Mindset"
+      "lesson_name": "Rewire Your Story",
+      "lesson_url": "",
+      "description": "Transforming your narrative and mindset",
+      "display_name": "3. Rewire Your Story"
     },
     "4": {
       "lesson_number": 4,
-      "lesson_name": "Future Proof Your Health",
-      "lesson_url": "https://courses.practiceoflife.com/krQ47COePqsY",
-      "description": "Building sustainable health habits for long-term wellness",
-      "display_name": "4. Future Proof Your Health"
+      "lesson_name": "Focus = Superpower",
+      "lesson_url": "",
+      "description": "Harnessing deep focus as your productivity superpower",
+      "display_name": "4. Focus = Superpower"
     },
     "5": {
       "lesson_number": 5,
@@ -38,24 +52,24 @@
     },
     "6": {
       "lesson_number": 6,
-      "lesson_name": "Focus = Superpower",
-      "lesson_url": "https://courses.practiceoflife.com/5EGM9Sj2n6To",
-      "description": "Harnessing deep focus as your productivity superpower",
-      "display_name": "6. Focus = Superpower"
+      "lesson_name": "Social Media + You",
+      "lesson_url": "",
+      "description": "Building a healthy relationship with social media",
+      "display_name": "6. Social Media + You"
     },
     "7": {
       "lesson_number": 7,
-      "lesson_name": "Social Media + You",
-      "lesson_url": "https://courses.practiceoflife.com/Eqdrni4QVvsa",
-      "description": "Building a healthy relationship with social media",
-      "display_name": "7. Social Media + You"
-    },
-    "8": {
-      "lesson_number": 8,
       "lesson_name": "Less Stress. More Calm",
       "lesson_url": "https://courses.practiceoflife.com/xxVEAHPYYOfn",
       "description": "Managing stress and finding calm in a connected world",
-      "display_name": "8. Less Stress. More Calm"
+      "display_name": "7. Less Stress. More Calm"
+    },
+    "8": {
+      "lesson_number": 8,
+      "lesson_name": "Move It or Lose It",
+      "lesson_url": "",
+      "description": "Physical movement and wellness habits",
+      "display_name": "8. Move It or Lose It"
     },
     "9": {
       "lesson_number": 9,

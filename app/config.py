@@ -1,5 +1,7 @@
 import os
-from typing import Optional, Dict
+import json
+from pathlib import Path
+from typing import Optional, Dict, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,22 +38,9 @@ class Settings(BaseSettings):
         "audio_metadata": "https://7taps.com/audio-metadata"
     }
     
-    # Lesson Mappings (Configurable)
-    LESSON_URL_MAPPING: Dict[str, str] = {
-        "1": "https://7taps.com/lessons/digital-wellness-foundations",
-        "2": "https://7taps.com/lessons/screen-habits-awareness", 
-        "3": "https://7taps.com/lessons/device-relationship",
-        "4": "https://7taps.com/lessons/productivity-focus",
-        "5": "https://7taps.com/lessons/connection-balance"
-    }
-    
-    LESSON_NAME_MAPPING: Dict[str, str] = {
-        "1": "Digital Wellness Foundations",
-        "2": "Screen Habits Awareness",
-        "3": "Device Relationship", 
-        "4": "Productivity Focus",
-        "5": "Connection Balance"
-    }
+    # Lesson mapping cache (loaded from JSON)
+    _lesson_mapping: Optional[Dict[str, Dict[str, Any]]] = None
+    _lesson_url_reverse: Optional[Dict[str, str]] = None
     
     # AI Services
     OPENAI_API_KEY: Optional[str] = None
@@ -86,6 +75,46 @@ class Settings(BaseSettings):
         extra='ignore'
     )
 
+    def _load_lesson_mapping(self) -> None:
+        """Load lesson mapping from JSON file."""
+        if self._lesson_mapping is not None:
+            return
+        
+        mapping_path = Path(__file__).parent / "data" / "lesson_mapping.json"
+        if not mapping_path.exists():
+            self._lesson_mapping = {}
+            self._lesson_url_reverse = {}
+            return
+        
+        try:
+            with open(mapping_path, 'r') as f:
+                data = json.load(f)
+                self._lesson_mapping = data.get("lessons", {})
+                
+                # Build reverse lookup: URL → lesson_number
+                self._lesson_url_reverse = {}
+                for lesson_num, lesson_data in self._lesson_mapping.items():
+                    url = lesson_data.get("lesson_url", "").strip()
+                    if url:
+                        self._lesson_url_reverse[url] = lesson_num
+        except Exception as e:
+            print(f"Warning: Failed to load lesson mapping: {e}")
+            self._lesson_mapping = {}
+            self._lesson_url_reverse = {}
+    
+    def get_lesson_by_url(self, url: str) -> Optional[Dict[str, Any]]:
+        """Reverse lookup: get lesson metadata by URL."""
+        self._load_lesson_mapping()
+        lesson_num = self._lesson_url_reverse.get(url.strip())
+        if lesson_num:
+            return self._lesson_mapping.get(lesson_num)
+        return None
+    
+    def get_lesson_by_number(self, lesson_number: str) -> Optional[Dict[str, Any]]:
+        """Get lesson metadata by lesson number."""
+        self._load_lesson_mapping()
+        return self._lesson_mapping.get(str(lesson_number))
+    
     def get_extension_key(self, key_name: str) -> str:
         """Get extension key with dynamic domain support."""
         base_key = self.SEVENTAPS_EXTENSION_KEYS.get(key_name, key_name)
@@ -94,15 +123,14 @@ class Settings(BaseSettings):
         return base_key
     
     def get_lesson_url(self, lesson_number: str) -> str:
-        """Get lesson URL with dynamic domain support."""
-        base_url = self.LESSON_URL_MAPPING.get(str(lesson_number), "")
-        if base_url and not base_url.startswith('http'):
-            return f"{self.SEVENTAPS_DOMAIN}{base_url}"
-        return base_url
+        """Get lesson URL with fallback."""
+        lesson = self.get_lesson_by_number(str(lesson_number))
+        return lesson.get("lesson_url", "") if lesson else ""
     
     def get_lesson_name(self, lesson_number: str) -> str:
         """Get lesson name with fallback."""
-        return self.LESSON_NAME_MAPPING.get(str(lesson_number), f"Lesson {lesson_number}")
+        lesson = self.get_lesson_by_number(str(lesson_number))
+        return lesson.get("lesson_name", f"Lesson {lesson_number}") if lesson else f"Lesson {lesson_number}"
 
 
 # Global settings instance
@@ -122,10 +150,20 @@ def get_extension_key(key_name: str) -> str:
 
 
 def get_lesson_url(lesson_number: str) -> str:
-    """Get lesson URL with dynamic domain support."""
+    """Get lesson URL by lesson number."""
     return settings.get_lesson_url(lesson_number)
 
 
 def get_lesson_name(lesson_number: str) -> str:
     """Get lesson name with fallback."""
-    return settings.get_lesson_name(lesson_number) 
+    return settings.get_lesson_name(lesson_number)
+
+
+def get_lesson_by_url(url: str) -> Optional[Dict[str, Any]]:
+    """Reverse lookup: get lesson metadata by URL."""
+    return settings.get_lesson_by_url(url)
+
+
+def get_lesson_by_number(lesson_number: str) -> Optional[Dict[str, Any]]:
+    """Get lesson metadata by lesson number."""
+    return settings.get_lesson_by_number(lesson_number) 
