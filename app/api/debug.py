@@ -187,7 +187,7 @@ async def get_unmapped_activities() -> Dict[str, Any]:
             MIN(timestamp) as first_seen,
             MAX(timestamp) as last_seen,
             ARRAY_AGG(DISTINCT actor_name IGNORE NULLS LIMIT 5) as sample_actors
-        FROM `{gcp_config.project_id}.{gcp_config.dataset_id}.xapi_statements`
+        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.xapi_statements`
         WHERE object_id IS NOT NULL
             AND object_id != 'unknown'
             AND object_id != ''
@@ -268,7 +268,7 @@ async def get_unmapped_users() -> Dict[str, Any]:
             MAX(timestamp) as last_seen,
             COUNT(DISTINCT object_id) as distinct_activities,
             ARRAY_AGG(DISTINCT verb_display IGNORE NULLS LIMIT 5) as sample_verbs
-        FROM `{gcp_config.project_id}.{gcp_config.dataset_id}.xapi_statements`
+        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.xapi_statements`
         WHERE actor_name IS NOT NULL
             AND actor_name != 'unknown'
             AND actor_name != ''
