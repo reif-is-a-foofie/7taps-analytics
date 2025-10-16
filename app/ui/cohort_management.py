@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional
 import logging
 from datetime import datetime, timezone
 
-from app.core.config import get_gcp_config
+from app.config.gcp_config import get_gcp_config
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
