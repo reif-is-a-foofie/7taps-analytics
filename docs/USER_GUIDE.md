@@ -52,64 +52,83 @@ Use both to get the full picture.
 
 ## Getting Started: First-Time Setup
 
-### Step 1: Download CSV from 7taps
-**Where:** Log in to 7taps → Go to your course → Find "Exports" or "Data"
+### Step 1: Create Your User CSV
+**Where:** Create a CSV file with your learner information
 
-1. Log in to your 7taps account
-2. Open your course
-3. Click "Exports" or "Data" (the name depends on your 7taps setup)
-4. Download the full CSV file
+Your CSV needs these columns:
+- `First Name`, `Last Name`, `Email` (required)
+- `Group`, `Team` (for creating cohorts)
 
-**What's in the CSV:**
-- Names and emails
-- All answers (polls, ratings, text responses)
-- When people finished lessons
-- Any extra fields you added in 7taps
-- Group names (if you set those up)
+**Example CSV format:**
+```csv
+First Name,Last Name,Email,Group,Team
+John,Doe,john@school.edu,Wellness,January
+Jane,Smith,jane@school.edu,Wellness,February
+Bob,Johnson,bob@school.edu,Business,January
+```
+
+**How cohorts are created:**
+- **Group + Team** → **"Wellness January"** cohort
+- **Group only** → **"Wellness X"** cohort  
+- **Team only** → **"X January"** cohort
+- **Neither** → **"X X"** cohort
+
+**Tip:** Use clear group names like "Wellness", "Business", or "Spring 2025" to make filtering easy later.
 
 ---
 
-### Step 2: Upload CSV to This Platform
+### Step 2: Upload User CSV to Create Cohorts
 **Where:** Open the platform → Click **📥 CSV Upload** in the left sidebar
 
 1. Go to: https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app
 2. Click **📥 CSV Upload** on the left side
-3. Click "Select CSV File" and pick the file you just downloaded
-4. (Optional) Add a note like "January 2025 class"
+3. Click "Select CSV File" and pick your user CSV file
+4. (Optional) Add a note like "Spring 2025 cohorts"
 5. Click "📤 Upload CSV"
 6. Wait 5-30 seconds for it to finish
 
 **What happens:**
 - The system reads your CSV file
-- It finds people by matching emails
-- It combines CSV info with automatic data
-- Now you can see everything in one place
+- It creates cohorts based on Group+Team combinations
+- It adds all learners to their cohorts
+- Now you can set up flagged words for each cohort
 
 **When to upload:**
-- **First time:** Upload old data to get started
-- **Weekly:** Keep data fresh
-- **After changes:** If you add new people or update info in 7taps
+- **Before course starts:** Set up cohorts and safety monitoring
+- **When adding new learners:** Update cohort assignments
+- **Between terms:** Create new cohorts for new groups
 
 ---
 
-### Step 3: Check That It Worked
+### Step 3: Check That Cohorts Were Created
 **Where:** Same page, scroll down to "Upload Status"
 
 After uploading, look at this section to see:
-- How many people were matched (found in both places)
-- How many new people were added (only in your CSV)
+- How many cohorts were created (from your Group+Team combinations)
+- How many people were added to each cohort
 - Any errors
 
-**What can happen:**
+**Example of what you'll see:**
+- ✅ **"Wellness January"** cohort created (15 people)
+- ✅ **"Business February"** cohort created (8 people)
+- ✅ **"X X"** cohort created (3 people without group/team)
 
-| What You'll See | Why | Example |
-|----------|--------------|---------|
-| **Match found** | Email is in both CSV and automatic data | `jane@example.com` is in both → Everything combines |
-| **CSV only** | Person is new or hasn't done any lessons yet | Added from CSV, waiting for them to start |
-| **Automatic only** | Person did lessons but isn't in your CSV | They'll show up once you upload a CSV with their info |
-| **Emails don't match** | Typo or different emails | `Jane@example.com` vs `jane@example.com` → Seen as 2 different people |
+### Step 4: Set Up Flagged Words for Each Cohort
+**Where:** Click **Flagged Content** in the sidebar
 
-**Tip:** Make sure emails match in 7taps. Small typos create duplicate people.
+1. Pick a cohort from the dropdown (like "Wellness January")
+2. Add flagged words specific to that group:
+   - **Safety words:** "overwhelmed", "stressed", "hopeless"
+   - **Positive words:** "grateful", "connected", "confident"
+   - **Engagement words:** "bored", "confused", "excited"
+3. Repeat for each cohort
+
+**Why this matters:**
+- A wellness course might flag "grateful" as positive
+- A business course might flag "stressed" as concerning
+- Each cohort gets monitoring tailored to their content
+
+**Tip:** Set up flagged words before learners start the course. This way monitoring is ready from day one.
 
 ---
 

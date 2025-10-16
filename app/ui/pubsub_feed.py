@@ -386,7 +386,7 @@ async def get_etl_status(client: httpx.AsyncClient) -> Dict[str, Any]:
 
 
 @router.get("/data-explorer", response_class=HTMLResponse)
-async def data_explorer(request: Request, limit: int = Query(25, ge=1, le=100)) -> HTMLResponse:
+async def data_explorer(request: Request, limit: int = Query(100, ge=1, le=100)) -> HTMLResponse:
     """Simplified data explorer showing real-time xAPI data with data type indicators."""
     # Get ETL processed data, direct xAPI requests, and endpoint tracking data
     etl_data = await get_recent_bigquery_data(limit)
