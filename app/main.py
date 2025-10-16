@@ -346,6 +346,8 @@ from app.api.simple_privacy import router as simple_privacy_router
 from app.api.etl_dashboard import router as etl_dashboard_router
 from app.api.daily_progress import router as daily_progress_router
 from app.ui.safety import router as safety_router
+from app.ui.cohort_management import router as cohort_management_router
+from app.ui.user_matching import router as user_matching_router
 
 # Enhanced Safety System Router
 try:
@@ -387,6 +389,8 @@ app.include_router(simple_privacy_router, tags=["Simple Privacy"])
 app.include_router(etl_dashboard_router, tags=["ETL Dashboard"])
 app.include_router(daily_progress_router, tags=["Daily Progress"])
 app.include_router(safety_router, prefix="/ui", tags=["Flagged Content"])
+app.include_router(cohort_management_router, prefix="/ui", tags=["Cohort Management"])
+app.include_router(user_matching_router, prefix="/ui", tags=["User Matching"])
 if ENHANCED_SAFETY_AVAILABLE:
     app.include_router(enhanced_safety_router, tags=["Enhanced Safety"])
 app.include_router(group_analytics_router, tags=["Group Analytics"])
