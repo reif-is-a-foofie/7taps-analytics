@@ -348,6 +348,7 @@ from app.api.daily_progress import router as daily_progress_router
 from app.ui.safety import router as safety_router
 from app.ui.cohort_management import router as cohort_management_router
 from app.ui.user_matching import router as user_matching_router
+from app.api.cohort_safety import router as cohort_safety_router
 
 # Enhanced Safety System Router
 try:
@@ -391,6 +392,7 @@ app.include_router(daily_progress_router, tags=["Daily Progress"])
 app.include_router(safety_router, prefix="/ui", tags=["Flagged Content"])
 app.include_router(cohort_management_router, prefix="/api", tags=["Cohort Management API"])
 app.include_router(cohort_management_router, prefix="/ui", tags=["Cohort Management UI"])
+app.include_router(cohort_safety_router, tags=["Cohort Safety"])
 app.include_router(user_matching_router, prefix="/ui", tags=["User Matching"])
 if ENHANCED_SAFETY_AVAILABLE:
     app.include_router(enhanced_safety_router, tags=["Enhanced Safety"])
