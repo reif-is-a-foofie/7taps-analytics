@@ -389,7 +389,7 @@ app.include_router(simple_privacy_router, tags=["Simple Privacy"])
 app.include_router(etl_dashboard_router, tags=["ETL Dashboard"])
 app.include_router(daily_progress_router, tags=["Daily Progress"])
 app.include_router(safety_router, prefix="/ui", tags=["Flagged Content"])
-app.include_router(cohort_management_router, prefix="/ui", tags=["Cohort Management"])
+app.include_router(cohort_management_router, tags=["Cohort Management"])
 app.include_router(user_matching_router, prefix="/ui", tags=["User Matching"])
 if ENHANCED_SAFETY_AVAILABLE:
     app.include_router(enhanced_safety_router, tags=["Enhanced Safety"])
