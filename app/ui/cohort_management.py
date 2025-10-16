@@ -49,7 +49,7 @@ async def cohort_management_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("cohort_management.html", context)
 
 
-@router.get("/api/cohorts")
+@router.get("/cohorts")
 async def get_all_cohorts() -> JSONResponse:
     """Get all cohorts with their member counts."""
     try:
@@ -93,7 +93,7 @@ async def get_all_cohorts() -> JSONResponse:
         }, status_code=500)
 
 
-@router.post("/api/cohorts")
+@router.post("/cohorts")
 async def create_cohort(request: CohortCreateRequest) -> JSONResponse:
     """Create a new cohort."""
     try:
@@ -144,7 +144,7 @@ async def create_cohort(request: CohortCreateRequest) -> JSONResponse:
         }, status_code=500)
 
 
-@router.put("/api/cohorts/{cohort_id}")
+@router.put("/cohorts/{cohort_id}")
 async def update_cohort(cohort_id: str, request: CohortUpdateRequest) -> JSONResponse:
     """Update an existing cohort."""
     try:
@@ -188,7 +188,7 @@ async def update_cohort(cohort_id: str, request: CohortUpdateRequest) -> JSONRes
         }, status_code=500)
 
 
-@router.delete("/api/cohorts/{cohort_id}")
+@router.delete("/cohorts/{cohort_id}")
 async def delete_cohort(cohort_id: str) -> JSONResponse:
     """Delete a cohort."""
     try:
@@ -223,7 +223,7 @@ async def delete_cohort(cohort_id: str) -> JSONResponse:
         }, status_code=500)
 
 
-@router.get("/api/cohorts/{cohort_id}/members")
+@router.get("/cohorts/{cohort_id}/members")
 async def get_cohort_members(cohort_id: str) -> JSONResponse:
     """Get members of a specific cohort."""
     try:
@@ -305,7 +305,7 @@ async def get_cohort_members(cohort_id: str) -> JSONResponse:
         }, status_code=500)
 
 
-@router.get("/api/cohorts/available-groups")
+@router.get("/cohorts/available-groups")
 async def get_available_groups() -> JSONResponse:
     """Get all available groups and teams from user data."""
     try:
