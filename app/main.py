@@ -327,7 +327,6 @@ from app.api.csv_to_xapi import router as csv_to_xapi_router
 from app.api.etl_control import router as etl_control_router
 from app.api.migration import router as migration_router
 from app.api.completed_activities_diagnostic import router as diagnostic_router
-from app.api.cohort_safety import router as cohort_safety_router
 
 # UI Routers
 from app.ui.bigquery_dashboard import router as bigquery_dashboard_router
@@ -394,7 +393,6 @@ app.include_router(group_analytics_router, tags=["Group Analytics"])
 app.include_router(etl_control_router, prefix="/api", tags=["ETL Control"])
 app.include_router(migration_router, prefix="/api", tags=["Migration"])
 app.include_router(diagnostic_router, tags=["Completed Activities Diagnostic"])
-app.include_router(cohort_safety_router, tags=["Cohort Safety"])
 
 # Endpoint tracking router
 from app.api.endpoint_tracking import router as endpoint_tracking_router
