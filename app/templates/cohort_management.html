@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block title %}Cohort Management - POL Analytics{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">👥 Cohort Management</h1>
+        <p class="text-gray-600">Create and manage cohorts, then match them to user groups</p>
+    </div>
+
+    <!-- Create New Cohort -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Create New Cohort</h2>
+        <form id="createCohortForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="cohortName" class="block text-sm font-medium text-gray-700 mb-2">Cohort Name</label>
+                <input type="text" id="cohortName" name="name" required
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="e.g., Wellness January 2025">
+            </div>
+            <div>
+                <label for="cohortDescription" class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <input type="text" id="cohortDescription" name="description"
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="Optional description">
+            </div>
+            <div>
+                <label for="groupFilter" class="block text-sm font-medium text-gray-700 mb-2">Group Filter</label>
+                <select id="groupFilter" name="group_filter"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All Groups</option>
+                </select>
+            </div>
+            <div>
+                <label for="teamFilter" class="block text-sm font-medium text-gray-700 mb-2">Team Filter</label>
+                <select id="teamFilter" name="team_filter"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All Teams</option>
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <button type="submit" 
+                        class="bg-blue-600 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    ➕ Create Cohort
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Available Groups -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Available Groups</h2>
+        <div id="availableGroups" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Groups will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Existing Cohorts -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold text-gray-900">Existing Cohorts</h2>
+            <button onclick="refreshCohorts()" 
+                    class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-200">
+                🔄 Refresh
+            </button>
+        </div>
+        <div id="cohortsList" class="space-y-4">
+            <!-- Cohorts will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Cohort Details Modal -->
+<div id="cohortModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modalTitle" class="text-lg font-semibold text-gray-900">Cohort Details</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="modalContent">
+                    <!-- Modal content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentCohorts = [];
+let availableGroups = [];
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadAvailableGroups();
+    loadCohorts();
+});
+
+async function loadAvailableGroups() {
+    try {
+        const response = await fetch('/api/cohorts/available-groups');
+        const data = await response.json();
+        
+        if (data.success) {
+            availableGroups = data.groups;
+            populateGroupFilters();
+            displayAvailableGroups();
+        } else {
+            console.error('Failed to load groups:', data.error);
+        }
+    } catch (error) {
+        console.error('Error loading groups:', error);
+    }
+}
+
+function populateGroupFilters() {
+    const groupSelect = document.getElementById('groupFilter');
+    const teamSelect = document.getElementById('teamFilter');
+    
+    // Get unique groups and teams
+    const groups = [...new Set(availableGroups.map(g => g.group_name).filter(g => g && g !== 'X'))];
+    const teams = [...new Set(availableGroups.map(g => g.team_name).filter(t => t && t !== 'X'))];
+    
+    // Populate group filter
+    groupSelect.innerHTML = '<option value="">All Groups</option>';
+    groups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group;
+        option.textContent = group;
+        groupSelect.appendChild(option);
+    });
+    
+    // Populate team filter
+    teamSelect.innerHTML = '<option value="">All Teams</option>';
+    teams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team;
+        option.textContent = team;
+        teamSelect.appendChild(option);
+    });
+}
+
+function displayAvailableGroups() {
+    const container = document.getElementById('availableGroups');
+    container.innerHTML = '';
+    
+    availableGroups.forEach(group => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+        div.innerHTML = `
+            <div class="font-medium text-gray-900">${group.cohort_name}</div>
+            <div class="text-sm text-gray-600 mt-1">
+                Group: ${group.group_name} | Team: ${group.team_name}
+            </div>
+            <div class="text-sm text-blue-600 mt-2">${group.user_count} users</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function loadCohorts() {
+    try {
+        const response = await fetch('/api/cohorts');
+        const data = await response.json();
+        
+        if (data.success) {
+            currentCohorts = data.cohorts;
+            displayCohorts();
+        } else {
+            console.error('Failed to load cohorts:', data.error);
+        }
+    } catch (error) {
+        console.error('Error loading cohorts:', error);
+    }
+}
+
+function displayCohorts() {
+    const container = document.getElementById('cohortsList');
+    container.innerHTML = '';
+    
+    if (currentCohorts.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">No cohorts created yet</div>';
+        return;
+    }
+    
+    currentCohorts.forEach(cohort => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+        div.innerHTML = `
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <div class="font-medium text-gray-900">${cohort.name}</div>
+                    <div class="text-sm text-gray-600 mt-1">${cohort.description || 'No description'}</div>
+                    <div class="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                        <span>👥 ${cohort.member_count} members</span>
+                        <span>🔤 ${cohort.word_count} flagged words</span>
+                        <span class="text-xs">Created: ${new Date(cohort.created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+                <div class="flex space-x-2 ml-4">
+                    <button onclick="viewCohortMembers('${cohort.id}')" 
+                            class="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-200">
+                        View Members
+                    </button>
+                    <button onclick="editCohort('${cohort.id}')" 
+                            class="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-200">
+                        Edit
+                    </button>
+                    <button onclick="deleteCohort('${cohort.id}', '${cohort.name}')" 
+                            class="bg-red-100 text-red-700 px-3 py-1 rounded text-sm hover:bg-red-200">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// Create cohort form submission
+document.getElementById('createCohortForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const cohortData = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        group_filter: formData.get('group_filter'),
+        team_filter: formData.get('team_filter')
+    };
+    
+    try {
+        const response = await fetch('/api/cohorts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(cohortData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`Cohort "${cohortData.name}" created successfully!`);
+            e.target.reset();
+            loadCohorts();
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Error creating cohort:', error);
+        alert('Error creating cohort. Please try again.');
+    }
+});
+
+async function viewCohortMembers(cohortId) {
+    try {
+        const response = await fetch(`/api/cohorts/${cohortId}/members`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const cohort = currentCohorts.find(c => c.id === cohortId);
+            showModal(`Members of ${cohort.name}`, `
+                <div class="mb-4">
+                    <div class="text-sm text-gray-600">Total members: ${data.total_count}</div>
+                </div>
+                <div class="space-y-2 max-h-96 overflow-y-auto">
+                    ${data.members.map(member => `
+                        <div class="bg-gray-50 rounded p-3 border">
+                            <div class="font-medium">${member.name || member.email}</div>
+                            <div class="text-sm text-gray-600">${member.email}</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Group: ${member.group_name || 'X'} | Team: ${member.team_name || 'X'} | 
+                                Activities: ${member.activity_count}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `);
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Error loading cohort members:', error);
+        alert('Error loading cohort members. Please try again.');
+    }
+}
+
+function editCohort(cohortId) {
+    const cohort = currentCohorts.find(c => c.id === cohortId);
+    if (!cohort) return;
+    
+    showModal(`Edit Cohort: ${cohort.name}`, `
+        <form id="editCohortForm" onsubmit="updateCohort('${cohortId}', event)">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <input type="text" name="name" value="${cohort.name}" required
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <input type="text" name="description" value="${cohort.description || ''}"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal()" 
+                            class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-200">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                        Update Cohort
+                    </button>
+                </div>
+            </div>
+        </form>
+    `);
+}
+
+async function updateCohort(cohortId, event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const updateData = {
+        name: formData.get('name'),
+        description: formData.get('description')
+    };
+    
+    try {
+        const response = await fetch(`/api/cohorts/${cohortId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Cohort updated successfully!');
+            closeModal();
+            loadCohorts();
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating cohort:', error);
+        alert('Error updating cohort. Please try again.');
+    }
+}
+
+async function deleteCohort(cohortId, cohortName) {
+    if (!confirm(`Are you sure you want to delete the cohort "${cohortName}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/cohorts/${cohortId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`Cohort "${cohortName}" deleted successfully!`);
+            loadCohorts();
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Error deleting cohort:', error);
+        alert('Error deleting cohort. Please try again.');
+    }
+}
+
+function showModal(title, content) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalContent').innerHTML = content;
+    document.getElementById('cohortModal').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('cohortModal').classList.add('hidden');
+}
+
+function refreshCohorts() {
+    loadCohorts();
+    loadAvailableGroups();
+}
+</script>
+{% endblock %}
