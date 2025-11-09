@@ -18,7 +18,6 @@
                         <a href="/ui/safety" class="text-gray-600 hover:text-gray-900">AI Safety</a>
                         <a href="/ui/etl-dashboard" class="text-gray-600 hover:text-gray-900">ETL Data</a>
                         <a href="/ui/daily-progress" class="text-blue-600 font-medium">Daily Progress</a>
-                        <a href="/api/docs" class="text-gray-600 hover:text-gray-900">API Docs</a>
                     </div>
                 </div>
             </div>
@@ -35,9 +34,8 @@
             <!-- Cohort Selection -->
             <div class="mt-4 flex space-x-4">
                 <select id="cohortSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">All Groups</option>
-                    <option value="7taps" {% if group == "7taps" %}selected{% endif %}>7taps Platform</option>
-                    <option value="test" {% if group == "test" %}selected{% endif %}>Test Group</option>
+                    <option value="">All Cohorts</option>
+                    <!-- Cohorts will be loaded dynamically -->
                 </select>
                 <button onclick="changeCohort()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                     Filter Cohort
@@ -163,6 +161,33 @@
     </div>
 
     <script>
+        // Load cohorts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCohorts();
+        });
+
+        async function loadCohorts() {
+            try {
+                const response = await fetch('/api/cohorts/available');
+                const data = await response.json();
+                const cohortSelect = document.getElementById('cohortSelect');
+                
+                if (data.success && data.cohorts) {
+                    data.cohorts.forEach(cohort => {
+                        const option = document.createElement('option');
+                        option.value = cohort.cohort_id;
+                        option.textContent = `${cohort.cohort_name || cohort.cohort_id} (${cohort.user_count || 0} users)`;
+                        if ("{{ group }}" === cohort.cohort_id) {
+                            option.selected = true;
+                        }
+                        cohortSelect.appendChild(option);
+                    });
+                }
+            } catch (err) {
+                console.warn('Failed to load cohorts:', err);
+            }
+        }
+
         function changeCohort() {
             const cohort = document.getElementById('cohortSelect').value;
             const date = document.getElementById('dateSelect').value;

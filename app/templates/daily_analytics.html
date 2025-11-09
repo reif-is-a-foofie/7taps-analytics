@@ -418,15 +418,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadCohorts() {
         try {
-            const response = await fetch('/ui/api/daily-analytics/cohorts');
+            const response = await fetch('/api/cohorts/available');
             const data = await response.json();
             
-            if (data.success) {
+            if (data.success && data.cohorts) {
                 cohortFilter.innerHTML = '<option value="">All Cohorts</option>';
                 data.cohorts.forEach(cohort => {
                     const option = document.createElement('option');
-                    option.value = cohort.context_platform;
-                    option.textContent = `${cohort.context_platform} (${cohort.user_count} users)`;
+                    option.value = cohort.cohort_id;
+                    option.textContent = `${cohort.cohort_name || cohort.cohort_id} (${cohort.user_count || 0} users)`;
                     cohortFilter.appendChild(option);
                 });
             }

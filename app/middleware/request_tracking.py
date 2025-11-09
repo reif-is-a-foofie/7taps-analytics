@@ -19,8 +19,7 @@ class RequestTrackingMiddleware(BaseHTTPMiddleware):
         self.exclude_paths = exclude_paths or [
             "/health",
             "/docs",
-            "/redoc",
-            "/openapi.json",
+            # Removed: API docs endpoints (not needed for production)
             "/favicon.ico"
         ]
     

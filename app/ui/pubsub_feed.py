@@ -182,15 +182,20 @@ async def get_endpoint_tracking_data(limit: int = 25, base_url: Optional[str] = 
         return {"success": False, "statements": [], "total_count": 0}
 
 
-async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = None) -> Dict[str, Any]:
+async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = None, cohort_id: Optional[str] = None) -> Dict[str, Any]:
     """Get recent xAPI data directly from BigQuery."""
     try:
+        from app.utils.cohort_filtering import build_cohort_filter_sql
+        
         # Use base_url for httpx client if provided
         client_kwargs = {}
         if base_url:
             client_kwargs["base_url"] = base_url
         
         async with httpx.AsyncClient(**client_kwargs) as client:
+            # Build cohort filter
+            cohort_filter = build_cohort_filter_sql(cohort_id=cohort_id) if cohort_id else ""
+            
             # Get recent statements from BigQuery with data type indicator
             query = f"""
             SELECT 
@@ -208,6 +213,8 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                 'ETL Processed' as data_type,
                 statement_id
             FROM taps_data.statements 
+            WHERE 1=1
+            {cohort_filter}
             ORDER BY timestamp DESC 
             LIMIT {limit}
             """
@@ -428,11 +435,15 @@ async def get_etl_status(client: httpx.AsyncClient, base_url: Optional[str] = No
 
 
 @router.get("/data-explorer", response_class=HTMLResponse)
-async def data_explorer(request: Request, limit: int = Query(100, ge=1, le=100)) -> HTMLResponse:
+async def data_explorer(
+    request: Request, 
+    limit: int = Query(100, ge=1, le=100),
+    cohort: Optional[str] = Query(None, description="Filter by cohort ID")
+) -> HTMLResponse:
     """Simplified data explorer showing real-time xAPI data with data type indicators."""
     base_url = get_api_base_url(request)
     # Get ETL processed data, direct xAPI requests, and endpoint tracking data
-    etl_data = await get_recent_bigquery_data(limit, base_url)
+    etl_data = await get_recent_bigquery_data(limit, base_url, cohort_id=cohort)
     direct_data = await get_direct_xapi_requests(limit, base_url)
     endpoint_data = await get_endpoint_tracking_data(limit, base_url)
     status = await get_system_status(request)
@@ -462,6 +473,7 @@ async def data_explorer(request: Request, limit: int = Query(100, ge=1, le=100))
         "endpoint_count": endpoint_data.get("total_count", 0),
         "system_status": status,
         "limit": limit,
+        "cohort": cohort,
         "success": etl_data.get("success", False) or direct_data.get("success", False) or endpoint_data.get("success", False)
     }
 

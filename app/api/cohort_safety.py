@@ -228,21 +228,24 @@ async def get_cohort_flagged_content(
         # Build query to get flagged statements for cohort
         severity_filter = ""
         if severity:
-            severity_filter = f"AND JSON_EXTRACT_SCALAR(ai_content_analysis, '$.severity') = '{severity}'"
+            severity_filter = f"AND JSON_EXTRACT_SCALAR(raw_json, '$.ai_content_analysis.severity') = '{severity}'"
+        
+        # Use cohort_id from CSV metadata extensions
+        cohort_filter = f"AND JSON_EXTRACT_SCALAR(raw_json, '$.context.extensions.\"https://7taps.com/csv-metadata\".cohort_id') = '{cohort_id}'"
         
         query = f"""
         SELECT 
             statement_id,
             actor_name,
             timestamp,
-            JSON_EXTRACT_SCALAR(result, '$.response') as content,
-            JSON_EXTRACT_SCALAR(ai_content_analysis, '$.severity') as severity,
-            JSON_EXTRACT(ai_content_analysis, '$.flagged_reasons') as flagged_reasons,
-            JSON_EXTRACT_SCALAR(ai_content_analysis, '$.confidence_score') as confidence_score,
-            JSON_EXTRACT(context_extensions, '$."https://7taps.com/cohort"') as cohort
-        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.xapi_statements`
-        WHERE JSON_EXTRACT_SCALAR(ai_content_analysis, '$.is_flagged') = 'true'
-            AND JSON_EXTRACT(context_extensions, '$."https://7taps.com/cohort"') = '"{cohort_id}"'
+            JSON_EXTRACT_SCALAR(raw_json, '$.result.response') as content,
+            JSON_EXTRACT_SCALAR(raw_json, '$.ai_content_analysis.severity') as severity,
+            JSON_EXTRACT(raw_json, '$.ai_content_analysis.flagged_reasons') as flagged_reasons,
+            JSON_EXTRACT_SCALAR(raw_json, '$.ai_content_analysis.confidence_score') as confidence_score,
+            JSON_EXTRACT_SCALAR(raw_json, '$.context.extensions.\"https://7taps.com/csv-metadata\".cohort_id') as cohort
+        FROM `{gcp_config.project_id}.{gcp_config.bigquery_dataset}.statements`
+        WHERE JSON_EXTRACT_SCALAR(raw_json, '$.ai_content_analysis.is_flagged') = 'true'
+            {cohort_filter}
             {severity_filter}
         ORDER BY timestamp DESC
         LIMIT {limit}

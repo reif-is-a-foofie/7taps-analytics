@@ -238,13 +238,13 @@ class PubSubBigQueryProcessor:
 
             logger.info(f"Processing message {message_id} for BigQuery")
 
-            # Normalize user data first
+            # Normalize user data and enrich with CSV metadata if matched
             user_service = get_user_normalization_service()
             normalized_statement = await user_service.normalize_xapi_statement(message_data)
             normalized_user_id = normalized_statement.get("normalized_user_id", "")
 
-            # Transform xAPI statement to BigQuery row
-            row = self.transform_xapi_to_bigquery_row(message_data, message_id, normalized_user_id)
+            # Transform xAPI statement to BigQuery row (already enriched by normalization)
+            row = self.transform_xapi_to_bigquery_row(normalized_statement, message_id, normalized_user_id)
 
             # Insert into BigQuery
             if self.insert_row_to_bigquery(row, message_id):

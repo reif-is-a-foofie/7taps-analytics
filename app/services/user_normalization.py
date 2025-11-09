@@ -7,7 +7,7 @@ Handles user profile normalization, merging, and deduplication across data sourc
 import re
 import hashlib
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from app.logging_config import get_logger
 from app.config.gcp_config import get_gcp_config
 
@@ -132,9 +132,24 @@ class UserNormalizationService:
             row.get("full_name"),
             row.get("learner_name"),
             row.get("participant_name"),
-            row.get("first_name"),
-            row.get("last_name")
         ]
+        
+        # Also try combining First Name and Last Name
+        first_name = row.get("First Name", "").strip()
+        last_name = row.get("Last Name", "").strip()
+        if first_name or last_name:
+            combined_name = f"{first_name} {last_name}".strip()
+            if combined_name:
+                name_candidates.insert(0, combined_name)
+        
+        # Also check for first_name and last_name (lowercase with underscore)
+        if not name:
+            first_name_alt = row.get("first_name", "").strip()
+            last_name_alt = row.get("last_name", "").strip()
+            if first_name_alt or last_name_alt:
+                combined_name_alt = f"{first_name_alt} {last_name_alt}".strip()
+                if combined_name_alt:
+                    name_candidates.insert(0, combined_name_alt)
         
         name = None
         for candidate in name_candidates:
@@ -316,18 +331,124 @@ class UserNormalizationService:
             return False
     
     async def normalize_xapi_statement(self, statement: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize xAPI statement with user information."""
+        """Normalize xAPI statement with user information and enrich with CSV metadata if available."""
         # Extract user info
         user_info = self.extract_user_info_from_xapi(statement)
         
-        # Upsert user
+        # Upsert user (this will merge with CSV users if they exist)
         await self.upsert_user(user_info)
         
         # Return normalized statement with user_id
         normalized_statement = statement.copy()
         normalized_statement["normalized_user_id"] = user_info["user_id"]
         
+        # Check if user has CSV data and enrich statement
+        if user_info.get("user_id") or user_info.get("email"):
+            existing_user = await self.find_existing_user(
+                user_info.get("user_id", ""),
+                user_info.get("email", "")
+            )
+            
+            if existing_user and existing_user.get("csv_data"):
+                # Extract CSV metadata
+                csv_metadata = self._extract_csv_metadata_from_user(existing_user)
+                
+                if csv_metadata.get("has_csv_data"):
+                    # Enrich statement with CSV metadata
+                    normalized_statement = self._enrich_statement_with_csv_metadata(
+                        normalized_statement, csv_metadata
+                    )
+        
         return normalized_statement
+    
+    def _extract_csv_metadata_from_user(self, user: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract metadata from CSV user data."""
+        metadata = {
+            "team": None,
+            "group": None,
+            "location": None,
+            "phone": None,
+            "csv_id": None,
+            "has_csv_data": False
+        }
+        
+        csv_data = user.get("csv_data", [])
+        if not csv_data:
+            return metadata
+        
+        # csv_data is an array of JSON strings or dicts
+        first_csv_entry = csv_data[0] if csv_data else None
+        if not first_csv_entry:
+            return metadata
+        
+        # Parse if it's a JSON string
+        if isinstance(first_csv_entry, str):
+            try:
+                import json
+                first_csv_entry = json.loads(first_csv_entry)
+            except:
+                pass
+        
+        if isinstance(first_csv_entry, dict):
+            metadata["team"] = first_csv_entry.get("Team") or first_csv_entry.get("team")
+            metadata["group"] = first_csv_entry.get("Group") or first_csv_entry.get("group")
+            metadata["location"] = first_csv_entry.get("Location") or first_csv_entry.get("location")
+            metadata["phone"] = first_csv_entry.get("Phone") or first_csv_entry.get("phone")
+            metadata["csv_id"] = first_csv_entry.get("ID") or first_csv_entry.get("id")
+            metadata["has_csv_data"] = True
+        
+        return metadata
+    
+    def _enrich_statement_with_csv_metadata(
+        self, 
+        statement: Dict[str, Any], 
+        csv_metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Enrich xAPI statement with CSV metadata."""
+        enriched = statement.copy()
+        
+        # Compute cohort identifier (Team + Group combination)
+        team = csv_metadata.get("team") or "X"
+        group = csv_metadata.get("group") or "X"
+        cohort_name = f"{group} {team}".strip()
+        cohort_id = cohort_name.lower().replace(" ", "_").replace("-", "_")
+        
+        # Add CSV metadata to context extensions
+        if "context" not in enriched:
+            enriched["context"] = {}
+        
+        if "extensions" not in enriched["context"]:
+            enriched["context"]["extensions"] = {}
+        
+        # Add CSV metadata to extensions (including cohort)
+        enriched["context"]["extensions"][
+            "https://7taps.com/csv-metadata"
+        ] = {
+            "team": csv_metadata["team"],
+            "group": csv_metadata["group"],
+            "cohort_name": cohort_name,
+            "cohort_id": cohort_id,
+            "location": csv_metadata["location"],
+            "phone": csv_metadata["phone"],
+            "csv_id": csv_metadata["csv_id"]
+        }
+        
+        # Also add to actor extensions for easy access
+        if "actor" in enriched:
+            if "extensions" not in enriched["actor"]:
+                enriched["actor"]["extensions"] = {}
+            
+            enriched["actor"]["extensions"][
+                "https://7taps.com/csv-metadata"
+            ] = {
+                "team": csv_metadata["team"],
+                "group": csv_metadata["group"],
+                "cohort_name": cohort_name,
+                "cohort_id": cohort_id,
+                "csv_id": csv_metadata["csv_id"]
+            }
+        
+        return enriched
     
     async def normalize_csv_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize CSV row with user information."""

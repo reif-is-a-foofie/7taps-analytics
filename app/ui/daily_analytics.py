@@ -275,7 +275,12 @@ class DailyAnalyticsManager:
     def get_daily_completion_data(self, target_date: str, group: Optional[str] = None) -> Dict[str, Any]:
         """Get completion data for a specific date and group."""
         try:
-            # Filter by 7taps platform
+            from app.utils.cohort_filtering import build_cohort_filter_sql
+            
+            # Filter by cohort if specified (group parameter is now cohort_id)
+            cohort_filter = build_cohort_filter_sql(cohort_id=group) if group else ""
+            
+            # Also filter by 7taps platform
             platform_filter = "AND context_platform = '7taps'"
             
             # Get user to group mapping
@@ -299,6 +304,7 @@ class DailyAnalyticsManager:
                 FROM taps_data.statements 
                 WHERE DATE(timestamp) = '{target_date}'
                 {platform_filter}
+                {cohort_filter}
             ),
             user_completions AS (
                 SELECT 
@@ -375,9 +381,9 @@ class DailyAnalyticsManager:
     def get_daily_insights(self, target_date: str, cohort: Optional[str] = None) -> Dict[str, Any]:
         """Generate 5 actionable insights from the day's course feedback data for 7pm email strategy."""
         try:
-            cohort_filter = ""
-            if cohort:
-                cohort_filter = f"AND context_platform LIKE '%{cohort}%'"
+            from app.utils.cohort_filtering import build_cohort_filter_sql
+            
+            cohort_filter = build_cohort_filter_sql(cohort_id=cohort) if cohort else ""
             
             insights_query = f"""
             WITH daily_feedback AS (
@@ -803,28 +809,14 @@ async def download_daily_csv(
 async def get_available_cohorts():
     """Get list of available cohorts/platforms for filtering."""
     try:
-        query = """
-        SELECT DISTINCT 
-            context_platform,
-            COUNT(*) as activity_count,
-            COUNT(DISTINCT actor_id) as user_count,
-            MAX(DATE(timestamp)) as last_activity_date
-        FROM taps_data.statements 
-        WHERE context_platform IS NOT NULL
-        AND DATE(timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-        GROUP BY context_platform
-        ORDER BY activity_count DESC
-        """
+        from app.utils.cohort_filtering import get_all_available_cohorts
         
-        result = execute_bigquery_query(query)
+        cohorts = await get_all_available_cohorts()
         
-        if result["success"]:
-            return {
-                "success": True,
-                "cohorts": result["data"]["rows"]
-            }
-        else:
-            return {"success": False, "error": result["error"], "cohorts": []}
+        return {
+            "success": True,
+            "cohorts": cohorts
+        }
             
     except Exception as e:
         logger.error(f"Failed to get cohorts: {e}")

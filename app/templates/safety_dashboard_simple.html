@@ -17,7 +17,6 @@
                         <a href="/" class="text-gray-600 hover:text-gray-900">Dashboard</a>
                         <a href="/ui/daily-analytics" class="text-gray-600 hover:text-gray-900">Daily Analytics</a>
                         <a href="/ui/flagged-content" class="text-blue-600 font-medium">Flagged Content</a>
-                        <a href="/api/docs" class="text-gray-600 hover:text-gray-900">API Docs</a>
                     </div>
                 </div>
             </div>
@@ -38,11 +37,7 @@
                     <select id="cohortFilter" onchange="filterByCohort(this.value)" 
                             class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         <option value="">All Cohorts</option>
-                        {% for cohort_id, cohort_data in cohort_configs.cohorts.items() %}
-                        <option value="{{ cohort_id }}" {% if selected_cohort == cohort_id %}selected{% endif %}>
-                            {{ cohort_data.name }}
-                        </option>
-                        {% endfor %}
+                        <!-- Cohorts will be loaded dynamically -->
                     </select>
                     
                     <!-- Export Button -->
@@ -506,6 +501,34 @@
             }, 3000);
         }
 
+        // Load cohorts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCohorts();
+            loadTriggerWords();
+        });
+
+        async function loadCohorts() {
+            try {
+                const response = await fetch('/api/cohorts/available');
+                const data = await response.json();
+                const cohortFilter = document.getElementById('cohortFilter');
+                
+                if (data.success && data.cohorts) {
+                    data.cohorts.forEach(cohort => {
+                        const option = document.createElement('option');
+                        option.value = cohort.cohort_id;
+                        option.textContent = `${cohort.cohort_name || cohort.cohort_id} (${cohort.user_count || 0} users)`;
+                        if ("{{ selected_cohort }}" === cohort.cohort_id) {
+                            option.selected = true;
+                        }
+                        cohortFilter.appendChild(option);
+                    });
+                }
+            } catch (err) {
+                console.warn('Failed to load cohorts:', err);
+            }
+        }
+
         // Filter by cohort
         function filterByCohort(cohortId) {
             const url = new URL(window.location.href);
@@ -520,20 +543,18 @@
         // Export flagged content
         async function exportFlaggedContent() {
             const cohortFilter = document.getElementById('cohortFilter').value;
-            const cohortParam = cohortFilter ? `/${cohortFilter}` : '/default';
+            if (!cohortFilter) {
+                showNotification('Please select a cohort to export', 'error');
+                return;
+            }
             
             try {
-                window.location.href = `/api/cohorts${cohortParam}/flagged-content/export?format=csv`;
+                window.location.href = `/api/cohorts/${cohortFilter}/flagged-content/export?format=csv`;
             } catch (error) {
                 console.error('Export failed:', error);
                 showNotification('Failed to export flagged content', 'error');
             }
         }
-
-        // Load flagged words when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            loadTriggerWords();
-        });
     </script>
 </body>
 </html>

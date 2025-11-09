@@ -32,13 +32,13 @@ os.environ.setdefault("GCP_PROJECT_ID", settings.GCP_PROJECT_ID)
 os.environ.setdefault("GCP_BIGQUERY_DATASET", settings.GCP_BIGQUERY_DATASET)
 os.environ.setdefault("GCP_LOCATION", settings.GCP_LOCATION)
 
-# Create FastAPI app with unified configuration
+# Create FastAPI app with unified configuration (no API docs - production only)
 app = FastAPI(
     title="POL Analytics",
     description="Professional analytics platform for Practice of Life learning data",
     version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    docs_url=None,
+    redoc_url=None
 )
 
 # Startup event to initialize background services
@@ -277,32 +277,7 @@ async def data_explorer_interface(request: Request):
         title="Data Explorer"
     ))
 
-@app.get("/chat", response_class=HTMLResponse)
-async def chat_interface(request: Request):
-    """Chat interface endpoint"""
-    return templates.TemplateResponse("chat_interface.html", get_template_context(
-        request, 
-        active_page="chat",
-        title="AI Chat"
-    ))
-
-@app.get("/docs", response_class=HTMLResponse)
-async def api_docs(request: Request):
-    """API documentation endpoint"""
-    return templates.TemplateResponse("docs.html", get_template_context(
-        request,
-        active_page="docs",
-        title="API Documentation"
-    ))
-
-@app.get("/api-docs", response_class=HTMLResponse)
-async def clean_api_docs(request: Request):
-    """Clean API documentation endpoint"""
-    return templates.TemplateResponse("api_docs_clean.html", get_template_context(
-        request,
-        active_page="api-docs",
-        title="API Documentation"
-    ))
+# Removed: Chat interface and API docs endpoints (not needed for production)
 
 # ============================================================================
 # API ROUTERS
@@ -349,6 +324,7 @@ from app.ui.safety import router as safety_router
 from app.ui.cohort_management import router as cohort_management_router
 from app.ui.user_matching import router as user_matching_router
 from app.api.cohort_safety import router as cohort_safety_router
+from app.api.cohort_api import router as cohort_api_router
 
 # Enhanced Safety System Router
 try:
@@ -393,6 +369,7 @@ app.include_router(safety_router, prefix="/ui", tags=["Flagged Content"])
 app.include_router(cohort_management_router, prefix="/api", tags=["Cohort Management API"])
 app.include_router(cohort_management_router, prefix="/ui", tags=["Cohort Management UI"])
 app.include_router(cohort_safety_router, tags=["Cohort Safety"])
+app.include_router(cohort_api_router, tags=["Cohort API"])
 app.include_router(user_matching_router, prefix="/ui", tags=["User Matching"])
 if ENHANCED_SAFETY_AVAILABLE:
     app.include_router(enhanced_safety_router, tags=["Enhanced Safety"])
@@ -440,215 +417,7 @@ async def cloud_ingest_endpoint(request: Request):
             "message": str(e)
         }, status_code=500)
 
-@app.post("/api/chat")
-async def chat_api(request: dict):
-    """September AI chat API with real analytics integration"""
-    try:
-        message = request.get("message", "")
-        if not message:
-            return JSONResponse(
-                content={"response": "I didn't receive any message. Please try again."},
-                status_code=400
-            )
-        
-        # Import group analytics for real data
-        from app.api.group_analytics import analytics_manager
-        
-        # Get real analytics data
-        group_data = analytics_manager.get_real_dashboard_metrics()
-        
-        # Intelligent query routing based on user intent
-        message_lower = message.lower()
-        
-        if "problematic" in message_lower or "haven't finished" in message_lower or "incomplete" in message_lower:
-            # Get detailed user data
-            groups_data = group_data.get("groups_data", {})
-            all_users = []
-            
-            for group_name, group_info in groups_data.items():
-                for user in group_info.get("users", []):
-                    user["group"] = group_name
-                    all_users.append(user)
-            
-            # Sort by response count to identify low-engagement users
-            all_users.sort(key=lambda x: x.get("response_count", 0))
-            
-            # Identify users with low engagement (less than 15 responses)
-            low_engagement = [u for u in all_users if u.get("response_count", 0) < 15]
-            
-            if low_engagement:
-                response = f"I found {len(low_engagement)} learners who haven't completed their Practice of Life journey:\\n\\n"
-                for user in low_engagement[:5]:  # Show top 5
-                    response += f"• {user['name']} ({user['group']}): {user.get('response_count', 0)} responses\\n"
-                
-                if len(low_engagement) > 5:
-                    response += f"...and {len(low_engagement) - 5} more learners\\n\\n"
-                
-                response += f"These learners have fewer than 15 responses (target completion). "
-                response += "Consider personalized outreach focusing on digital wellness benefits they've already experienced."
-            else:
-                response = f"Great news! All {len(all_users)} learners are actively engaged. "
-                response += f"Average responses per learner: {sum(u.get('response_count', 0) for u in all_users) / len(all_users):.1f}. "
-                response += "Your Practice of Life program has excellent retention!"
-                
-        elif "engagement" in message_lower or "drop" in message_lower or "dropoff" in message_lower:
-            # Detailed engagement analysis
-            groups = group_data.get("groups_data", {})
-            all_users = []
-            for group_info in groups.values():
-                all_users.extend(group_info.get("users", []))
-            
-            # Categorize by engagement levels
-            high_engagement = [u for u in all_users if u["response_count"] >= 20]
-            medium_engagement = [u for u in all_users if 10 <= u["response_count"] < 20]
-            low_engagement = [u for u in all_users if u["response_count"] < 10]
-            
-            response = f"📈 **Engagement Analysis:**\\n\\n"
-            response += f"• **High Engagement** ({len(high_engagement)} learners): 20+ responses\\n"
-            response += f"• **Medium Engagement** ({len(medium_engagement)} learners): 10-19 responses\\n"
-            response += f"• **Low Engagement** ({len(low_engagement)} learners): <10 responses\\n\\n"
-            
-            if low_engagement:
-                response += f"**Dropoff Risk:** {len(low_engagement)} learners need attention:\\n"
-                for user in low_engagement[:3]:
-                    response += f"• {user['name']}: {user['response_count']} responses\\n"
-                if len(low_engagement) > 3:
-                    response += f"...and {len(low_engagement) - 3} more\\n"
-            
-            response += f"\\nOverall engagement rate: {((len(high_engagement) + len(medium_engagement)) / len(all_users) * 100):.1f}% of learners are actively engaged."
-                
-        elif "digital wellness" in message_lower or "wellness" in message_lower or "screen time" in message_lower or "energy" in message_lower or "sentiment" in message_lower:
-            # Enhanced digital wellness insights
-            card_types = group_data.get("card_type_distribution", {})
-            total_responses = group_data.get("total_responses", 0)
-            total_users = group_data.get("total_users", 0)
-            
-            response = f"📱 **Digital Wellness Insights:**\\n\\n"
-            response += f"**Overall Activity:** {total_responses} wellness interactions across {total_users} learners\\n\\n"
-            
-            if card_types:
-                response += f"**Activity Breakdown:**\\n"
-                for card_type, count in card_types.items():
-                    percentage = (count / total_responses * 100) if total_responses > 0 else 0
-                    wellness_focus = {
-                        'Poll': 'Self-Assessment & Awareness',
-                        'Form': 'Deep Reflection & Goal Setting', 
-                        'Submit media': 'Personal Sharing & Connection',
-                        'Multiple choice': 'Quick Check-ins'
-                    }.get(card_type, 'General Wellness')
-                    
-                    response += f"• **{card_type}**: {count} activities ({percentage:.1f}%) - {wellness_focus}\\n"
-                
-                # Most engaged wellness area
-                top_activity = max(card_types.keys(), key=card_types.get)
-                response += f"\\n**Key Insight:** Most popular wellness activity is {top_activity} with {card_types[top_activity]} interactions, showing learners prefer {wellness_focus.lower()}."
-                
-                # Average engagement
-                avg_per_user = total_responses / total_users if total_users > 0 else 0
-                response += f"\\n**Engagement Level:** {avg_per_user:.1f} wellness activities per learner on average."
-            else:
-                response += "No wellness activity data available yet. Encourage learners to start their digital wellness journey!"
-            
-        elif "practice of life" in message_lower or "pol" in message_lower or "course" in message_lower or "finish" in message_lower or "complete" in message_lower or "learning priorities" in message_lower:
-            # Course completion and learning priorities analysis
-            groups = group_data.get("groups_data", {})
-            
-            response = f"🎓 **Practice of Life Course Analysis:**\\n\\n"
-            
-            total_completed = 0
-            total_in_progress = 0
-            total_need_support = 0
-            
-            for group_name, group_info in groups.items():
-                users = group_info.get("users", [])
-                completed = len([u for u in users if u["response_count"] >= 15])
-                in_progress = len([u for u in users if 5 <= u["response_count"] < 15])
-                need_support = len([u for u in users if u["response_count"] < 5])
-                
-                total_completed += completed
-                total_in_progress += in_progress
-                total_need_support += need_support
-                
-                response += f"**{group_name}** ({len(users)} learners):\\n"
-                response += f"• ✅ Completed: {completed} learners (15+ responses)\\n"
-                response += f"• 📚 In Progress: {in_progress} learners (5-14 responses)\\n"
-                response += f"• ⚠️ Need Support: {need_support} learners (<5 responses)\\n\\n"
-            
-            # Overall completion rate
-            total_learners = total_completed + total_in_progress + total_need_support
-            completion_rate = (total_completed / total_learners * 100) if total_learners > 0 else 0
-            response += f"**Overall Completion Rate:** {completion_rate:.1f}% ({total_completed}/{total_learners} learners)\\n\\n"
-            
-            # Show incomplete learners if specifically asked
-            if "not finish" in message_lower or "incomplete" in message_lower or "didn't complete" in message_lower or "haven't finished" in message_lower:
-                incomplete_users = []
-                for group_name, group_info in groups.items():
-                    for user in group_info.get("users", []):
-                        if user["response_count"] < 15:
-                            user["group"] = group_name
-                            incomplete_users.append(user)
-                
-                response += f"**Incomplete Learners ({len(incomplete_users)} total):**\\n"
-                for user in incomplete_users[:8]:  # Show up to 8
-                    status = "Needs initial outreach" if user["response_count"] < 5 else "Mid-program re-engagement needed"
-                    response += f"• {user['name']} ({user['group']}): {user['response_count']} responses - {status}\\n"
-                if len(incomplete_users) > 8:
-                    response += f"...and {len(incomplete_users) - 8} more learners\\n"
-            
-        elif "reflection" in message_lower or "themes" in message_lower:
-            # Reflection themes analysis
-            card_types = group_data.get("card_type_distribution", {})
-            form_count = card_types.get("Form", 0)
-            poll_count = card_types.get("Poll", 0)
-            media_count = card_types.get("Submit media", 0)
-            
-            response = f"📝 **Reflection Themes Analysis:**\\n\\n"
-            response += f"**Reflection Activity Summary:**\\n"
-            response += f"• Deep Reflection Forms: {form_count} submissions\\n"
-            response += f"• Self-Assessment Polls: {poll_count} responses\\n"
-            response += f"• Personal Sharing: {media_count} media submissions\\n\\n"
-            
-            total_reflective = form_count + poll_count + media_count
-            if total_reflective > 0:
-                response += f"**Key Insights:**\\n"
-                response += f"• Total reflective activities: {total_reflective}\\n"
-                
-                if form_count > poll_count:
-                    response += f"• Learners prefer deep, open-ended reflection over quick assessments\\n"
-                elif poll_count > form_count:
-                    response += f"• Learners engage more with structured self-assessments\\n"
-                
-                if media_count > 0:
-                    response += f"• {media_count} learners shared personal content, showing strong trust and engagement\\n"
-                
-                response += f"\\n**Common Themes:** Digital wellness, mindful technology use, work-life balance, and personal growth appear to be key reflection areas based on activity patterns."
-            else:
-                response += "No reflection data available yet. Encourage learners to engage with reflection prompts and self-assessment tools."
-                
-        else:
-            # Default response with real data context
-            total_users = group_data.get("total_users", 0)
-            total_responses = group_data.get("total_responses", 0)
-            avg_responses = group_data.get("avg_responses_per_user", 0)
-            
-            response = f"Hi! I'm September, your POL Analytics assistant. I can see you have {total_users} learners with {total_responses} total wellness interactions (avg: {avg_responses:.1f} per learner). "
-            response += "\\n\\nI can help you analyze:\\n"
-            response += "• **Engagement patterns** - who's dropping off and why\\n"
-            response += "• **Course completion** - who needs follow-up support\\n"  
-            response += "• **Digital wellness insights** - activity preferences and themes\\n"
-            response += "• **Reflection analysis** - what learners are sharing and learning\\n\\n"
-            response += "What specific insights would you like to explore?"
-        
-        return {
-            "response": response,
-            "visualization": None
-        }
-        
-    except Exception as e:
-        return JSONResponse(
-            content={"response": f"Sorry, I encountered an error accessing your analytics data: {str(e)}"},
-            status_code=500
-        )
+# Removed: September chat API endpoint (not needed for production)
 
 @app.get("/api/debug/cloud-function-status")
 async def cloud_function_status_endpoint():

@@ -8,7 +8,7 @@ import csv
 import io
 import json
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from app.logging_config import get_logger
 from app.services.user_normalization import get_user_normalization_service
 from app.config.gcp_config import get_gcp_config

@@ -22,8 +22,13 @@ templates = Jinja2Templates(directory="app/templates")
 def get_daily_progress_data(target_date: str, group: Optional[str] = None) -> Dict[str, Any]:
     """Get daily progress data for the 7pm email workflow."""
     try:
-        # Simple query to get today's lesson completions
-        platform_filter = "AND context_platform = '7taps'" if group == "7taps" else ""
+        from app.utils.cohort_filtering import build_cohort_filter_sql
+        
+        # Filter by cohort if specified (group parameter is now cohort_id)
+        cohort_filter = build_cohort_filter_sql(cohort_id=group) if group else ""
+        
+        # Also filter by 7taps platform
+        platform_filter = "AND context_platform = '7taps'"
         
         query = f"""
         WITH daily_activity AS (
@@ -40,6 +45,7 @@ def get_daily_progress_data(target_date: str, group: Optional[str] = None) -> Di
             FROM taps_data.statements 
             WHERE DATE(timestamp) = '{target_date}'
             {platform_filter}
+            {cohort_filter}
         ),
         user_summary AS (
             SELECT 
