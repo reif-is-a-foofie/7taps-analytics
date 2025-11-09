@@ -3,9 +3,17 @@
 
 set -e
 
-API_KEY="${1:-AIzaSyBysP9upDtfXkpU3QaXkOkY1xLuLQPkwN8}"
+# API key must be provided as first argument or environment variable
+API_KEY="${1:-${GOOGLE_AI_API_KEY}}"
 PROJECT_ID="${GCP_PROJECT_ID:-pol-a-477603}"
 SECRET_NAME="google-ai-api-key"
+
+if [ -z "$API_KEY" ]; then
+    echo "Error: API key required"
+    echo "Usage: $0 <API_KEY>"
+    echo "   OR: GOOGLE_AI_API_KEY=<key> $0"
+    exit 1
+fi
 
 if [ -z "$PROJECT_ID" ]; then
     echo "Error: GCP_PROJECT_ID not set and no default project configured"

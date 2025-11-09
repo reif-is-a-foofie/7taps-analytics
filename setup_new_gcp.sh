@@ -4,7 +4,16 @@
 set -e
 
 PROJECT_ID="pol-a-477603"
-API_KEY="AIzaSyBysP9upDtfXkpU3QaXkOkY1xLuLQPkwN8"
+
+# API key should be passed as first argument or environment variable
+API_KEY="${1:-${GOOGLE_AI_API_KEY}}"
+
+if [ -z "$API_KEY" ]; then
+    echo "Error: API key required"
+    echo "Usage: $0 <API_KEY>"
+    echo "   OR: GOOGLE_AI_API_KEY=<key> $0"
+    exit 1
+fi
 
 echo "Setting up Google Cloud project: $PROJECT_ID"
 echo ""
@@ -55,4 +64,3 @@ echo "API Key: Stored in Secret Manager as 'google-ai-api-key'"
 echo ""
 echo "Next: Deploy your application with:"
 echo "  gcloud builds submit --config cloudbuild.yaml"
-

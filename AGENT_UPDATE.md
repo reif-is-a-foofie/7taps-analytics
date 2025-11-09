@@ -3,7 +3,7 @@ _Last updated: 2025-11-09_
 
 ## Summary
 - ✅ New GCP project deployed (`pol-a-477603`)
-- ✅ Google AI API key stored and configured (`AIzaSyBysP9upDtfXkpU3QaXkOkY1xLuLQPkwN8`)
+- ✅ Google AI API key stored and configured (stored in Secret Manager)
 - ✅ Data explorer fixed (removed hardcoded old URLs, now uses dynamic base_url)
 - ✅ ETL processor verified (auto-starts, processes messages in real-time via Pub/Sub streaming)
 - ✅ xAPI statement persistence verified (test statement `persist-test-1762658695` in BigQuery)
