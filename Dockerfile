@@ -20,8 +20,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code (changes frequently)
 COPY app/ ./app/
 
-# Copy environment file (changes rarely)
-COPY .env .
+# Note: .env is not copied - secrets come from GCP Secret Manager in production
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app \
