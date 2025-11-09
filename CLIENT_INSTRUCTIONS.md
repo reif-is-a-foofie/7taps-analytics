@@ -6,7 +6,7 @@
 
 **Authentication:** Basic Authentication
 - **Username:** `7taps.team`
-- **Password:** `PracticeofLifeMethods`
+- **Password:** `PracticeofLife`
 
 **Supported Methods:** 
 - ✅ PUT
@@ -26,7 +26,7 @@
 ```bash
 curl -X PUT https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/statements \
   -H "Content-Type: application/json" \
-  -u "7taps.team:PracticeofLifeMethods" \
+  -u "7taps.team:PracticeofLife" \
   -d '{
     "actor": {
       "mbox": "mailto:user@example.com",
@@ -54,7 +54,7 @@ curl -X PUT https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/statements \
 ```bash
 curl -X POST https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/statements \
   -H "Content-Type: application/json" \
-  -u "7taps.team:PracticeofLifeMethods" \
+  -u "7taps.team:PracticeofLife" \
   -d '[{
     "actor": {
       "mbox": "mailto:user@example.com"
@@ -106,7 +106,7 @@ curl -X POST https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/statements \
 
 If you encounter any issues, please verify:
 1. The URL is correct: `https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/statements`
-2. Credentials are exactly: `7taps.team:PracticeofLifeMethods`
+2. Credentials are exactly: `7taps.team:PracticeofLife`
 3. Content-Type header is set to `application/json`
 4. The request body contains valid xAPI statement(s)
 

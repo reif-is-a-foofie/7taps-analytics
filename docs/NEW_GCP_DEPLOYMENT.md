@@ -185,7 +185,7 @@ Test the `/statements` endpoint:
 ```bash
 curl -X PUT https://NEW-URL/statements \
   -H "Content-Type: application/json" \
-  -u "7taps.team:PracticeofLifeMethods" \
+  -u "7taps.team:PracticeofLife" \
   -d '{"test": "statement"}'
 ```
 
@@ -218,7 +218,7 @@ gcloud secrets add-iam-policy-binding google-ai-api-key \
 ## Quick Reference
 
 **Current Endpoint:** `https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/statements`
-**Credentials:** `7taps.team:PracticeofLifeMethods`
+**Credentials:** `7taps.team:PracticeofLife`
 **Methods:** PUT, POST
 **Content-Type:** `application/json`
 

@@ -86,6 +86,22 @@ class BatchProcessor:
             
             # Step 2: Run AI immediately for ANY obvious flag (safety first!)
             ai_result = await self._run_immediate_ai_analysis(content, context)
+            
+            # If AI analysis failed, use obvious_result as fallback
+            if ai_result.get("error"):
+                logger.warning(f"AI analysis failed, using obvious flag result: {ai_result.get('error')}")
+                ai_result = {
+                    "is_flagged": True,
+                    "severity": obvious_result.get("severity", "high"),
+                    "flagged_reasons": obvious_result.get("flagged_reasons", ["Obvious safety concern detected"]),
+                    "confidence_score": obvious_result.get("confidence", 0.9),
+                    "suggested_actions": obvious_result.get("suggested_actions", ["Immediate review required"]),
+                    "analysis_metadata": {
+                        "analysis_method": "obvious_flag_fallback",
+                        "ai_analysis_failed": True
+                    }
+                }
+            
             return self._create_flag_result(ai_result, statement_id, user_id, timestamp, immediate=True)
         else:
             # Step 3: Add to batch for AI analysis
@@ -108,13 +124,22 @@ class BatchProcessor:
             # Check if batch should be processed
             await self._check_batch_trigger()
             
-            # Return queued status
+            # Return queued status (normalized format for compatibility)
             return {
+                "is_flagged": False,
+                "severity": "low",
+                "flagged_reasons": [],
+                "confidence_score": 0.5,
+                "suggested_actions": [],
                 "status": "queued",
                 "statement_id": statement_id,
                 "queue_position": len(self.batch_queue),
                 "estimated_processing_time": self._estimate_processing_time(),
-                "message": "Content queued for batch AI analysis"
+                "message": "Content queued for batch AI analysis",
+                "analysis_metadata": {
+                    "analysis_method": "batch_queued",
+                    "processing_time": "pending"
+                }
             }
     
     async def _check_obvious_flags(self, content: str) -> Dict[str, Any]:

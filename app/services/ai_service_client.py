@@ -35,7 +35,7 @@ class AIServiceClient:
         if not self.base_url:
             # Fallback to local processing
             from app.api.batch_ai_safety import batch_processor
-            return await batch_processor.process_content(content, context, user_id, statement_id)
+            return await batch_processor.process_content(content, context, statement_id, user_id)
         
         try:
             payload = {
@@ -58,7 +58,7 @@ class AIServiceClient:
             print(f"❌ AI service call failed: {e}")
             # Fallback to local processing
             from app.api.batch_ai_safety import batch_processor
-            return await batch_processor.process_content(content, context, user_id, statement_id)
+            return await batch_processor.process_content(content, context, statement_id, user_id)
     
     async def get_batch_status(self) -> Dict[str, Any]:
         """Get batch processor status from AI service."""
