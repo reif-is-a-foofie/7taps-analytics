@@ -6,12 +6,13 @@ Provides real analytics data based on the actual group data we have.
 
 import json
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from pathlib import Path
+from io import StringIO
+
+import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
-import psycopg2
-from psycopg2.extras import RealDictCursor
 
 from app.config import settings
 
@@ -53,17 +54,15 @@ class GroupAnalyticsManager:
     def __init__(self):
         self.reports_dir = Path("reports")
         self.lesson_normalizer = LessonNormalizer()
+        self._cohort_cache: Optional[Dict[str, Any]] = None
+        self._focus_group_df: Optional[pd.DataFrame] = None
     
     def get_real_dashboard_metrics(self, group_filter: Optional[str] = None) -> Dict[str, Any]:
         """Get real dashboard metrics from actual data."""
         try:
-            # Load group data
-            mapping_file = self.reports_dir / "smart_cohort_mapping.json"
-            if not mapping_file.exists():
+            cohort_data = self._load_cohort_data()
+            if not cohort_data:
                 return self._get_empty_metrics()
-            
-            with open(mapping_file, 'r', encoding='utf-8') as f:
-                cohort_data = json.load(f)
             
             # Calculate totals
             total_users = 0
@@ -129,39 +128,82 @@ class GroupAnalyticsManager:
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
+    def _load_cohort_data(self) -> Dict[str, Any]:
+        """Load and cache cohort mapping data."""
+        if self._cohort_cache is not None:
+            return self._cohort_cache
+        
+        mapping_file = self.reports_dir / "smart_cohort_mapping.json"
+        if not mapping_file.exists():
+            self._cohort_cache = {}
+            return self._cohort_cache
+        
+        try:
+            with open(mapping_file, 'r', encoding='utf-8') as f:
+                self._cohort_cache = json.load(f)
+        except Exception as exc:
+            logger.error(f"Failed to load cohort mapping: {exc}")
+            self._cohort_cache = {}
+        return self._cohort_cache
+    
+    def _load_focus_group_dataframe(self) -> Optional[pd.DataFrame]:
+        """Load and cache the focus group CSV as a DataFrame."""
+        if self._focus_group_df is not None:
+            return self._focus_group_df
+        
+        data_file = Path("data/focus_group_import.json")
+        if not data_file.exists():
+            return None
+        
+        try:
+            with open(data_file, 'r', encoding='utf-8') as f:
+                focus_data = json.load(f)
+            self._focus_group_df = pd.read_csv(StringIO(focus_data['csv_data']))
+        except Exception as exc:
+            logger.error(f"Failed to load focus group data: {exc}")
+            self._focus_group_df = None
+        return self._focus_group_df
+    
+    def _filter_dataframe_by_group(self, df: Optional[pd.DataFrame], group_filter: Optional[str]) -> Optional[pd.DataFrame]:
+        """Filter a DataFrame by group membership."""
+        if df is None or df.empty or not group_filter or group_filter == "all":
+            return df
+        
+        if 'Learner' not in df.columns:
+            return df
+        
+        cohort_data = self._load_cohort_data()
+        group_users = [
+            user.get("name")
+            for user in cohort_data.get(group_filter, {}).get('users', [])
+            if user.get("name")
+        ]
+        
+        if not group_users:
+            return df.iloc[0:0]
+        
+        return df[df['Learner'].isin(group_users)]
+    
     def _get_lesson_distribution(self, group_filter: Optional[str] = None) -> Dict[str, int]:
         """Get lesson distribution from database."""
         try:
-            # Load the original focus group CSV data
-            # import pandas as pd  # Removed - heavy dependency for production
-            from io import StringIO
-            
-            data_file = Path("data/focus_group_import.json")
-            if not data_file.exists():
+            df = self._load_focus_group_dataframe()
+            if df is None or 'Lesson Number' not in df.columns:
                 return {}
             
-            with open(data_file, 'r') as f:
-                focus_data = json.load(f)
+            filtered_df = self._filter_dataframe_by_group(df, group_filter)
+            if filtered_df is None or filtered_df.empty:
+                return {}
             
-            # Parse the CSV data
-            df = pd.read_csv(StringIO(focus_data['csv_data']))
-            
-            # Filter by group if specified
-            if group_filter and group_filter != "all":
-                # Get users in the specified group
-                mapping_file = self.reports_dir / "smart_cohort_mapping.json"
-                if mapping_file.exists():
-                    with open(mapping_file, 'r') as f:
-                        cohort_data = json.load(f)
-                    
-                    group_users = [user['name'] for user in cohort_data.get(group_filter, {}).get('users', [])]
-                    df = df[df['Learner'].isin(group_users)]
-            
-            # Count responses by lesson number
-            lesson_counts = df['Lesson Number'].value_counts().to_dict()
+            lesson_counts = (
+                filtered_df['Lesson Number']
+                .value_counts()
+                .sort_index()
+                .to_dict()
+            )
             
             # Convert to string keys and sort
-            return {str(k): v for k, v in sorted(lesson_counts.items())}
+            return {str(k): int(v) for k, v in lesson_counts.items()}
             
         except Exception as e:
             logger.error(f"Error getting lesson distribution: {e}")
@@ -170,33 +212,20 @@ class GroupAnalyticsManager:
     def _get_card_type_distribution(self, group_filter: Optional[str] = None) -> Dict[str, int]:
         """Get card type distribution from focus group data."""
         try:
-            # Load the original focus group CSV data
-            # import pandas as pd  # Removed - heavy dependency for production
-            from io import StringIO
-            
-            data_file = Path("data/focus_group_import.json")
-            if not data_file.exists():
+            df = self._load_focus_group_dataframe()
+            if df is None or 'Card type' not in df.columns:
                 return {}
             
-            with open(data_file, 'r') as f:
-                focus_data = json.load(f)
+            filtered_df = self._filter_dataframe_by_group(df, group_filter)
+            if filtered_df is None or filtered_df.empty:
+                return {}
             
-            # Parse the CSV data
-            df = pd.read_csv(StringIO(focus_data['csv_data']))
-            
-            # Filter by group if specified
-            if group_filter and group_filter != "all":
-                # Get users in the specified group
-                mapping_file = self.reports_dir / "smart_cohort_mapping.json"
-                if mapping_file.exists():
-                    with open(mapping_file, 'r') as f:
-                        cohort_data = json.load(f)
-                    
-                    group_users = [user['name'] for user in cohort_data.get(group_filter, {}).get('users', [])]
-                    df = df[df['Learner'].isin(group_users)]
-            
-            # Count responses by card type
-            card_counts = df['Card type'].value_counts().to_dict()
+            card_counts = (
+                filtered_df['Card type']
+                .value_counts()
+                .sort_index()
+                .to_dict()
+            )
             
             return card_counts
             
@@ -207,13 +236,9 @@ class GroupAnalyticsManager:
     def _get_response_patterns(self, group_filter: Optional[str] = None) -> Dict[str, Any]:
         """Get response patterns and insights."""
         try:
-            # Load group data for analysis
-            mapping_file = self.reports_dir / "smart_cohort_mapping.json"
-            if not mapping_file.exists():
+            cohort_data = self._load_cohort_data()
+            if not cohort_data:
                 return {}
-            
-            with open(mapping_file, 'r', encoding='utf-8') as f:
-                cohort_data = json.load(f)
             
             patterns = {
                 "most_active_users": [],
@@ -322,13 +347,14 @@ async def get_available_lessons():
     """Get all available lessons with normalized names."""
     try:
         lessons = []
-        for lesson_num, lesson_info in analytics_manager.lesson_normalizer.get_all_lessons().items():
+        for lesson_num, lesson_name in sorted(analytics_manager.lesson_normalizer.get_all_lessons().items()):
+            lesson_metadata = settings.get_lesson_by_number(str(lesson_num)) or {}
             lessons.append({
-                "lesson_number": lesson_info.lesson_number,
-                "lesson_name": lesson_info.lesson_name,
-                "lesson_url": lesson_info.lesson_url,
-                "description": lesson_info.description,
-                "display_name": f"{lesson_info.lesson_number}. {lesson_info.lesson_name}"
+                "lesson_number": lesson_num,
+                "lesson_name": lesson_name,
+                "lesson_url": lesson_metadata.get("lesson_url", ""),
+                "description": lesson_metadata.get("description", ""),
+                "display_name": f"{lesson_num}. {lesson_name}"
             })
         
         return {"lessons": lessons}

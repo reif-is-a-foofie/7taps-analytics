@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional, Dict, Any
 import httpx
+import os
 from app.logging_config import get_logger
 
 router = APIRouter()
@@ -12,10 +13,34 @@ templates = Jinja2Templates(directory="app/templates")
 logger = get_logger("data_explorer")
 
 
-async def get_direct_xapi_requests(limit: int = 25) -> Dict[str, Any]:
+def get_api_base_url(request: Optional[Request] = None) -> str:
+    """Get the API base URL from environment variable or request."""
+    api_base_url = os.getenv("API_BASE_URL", "")
+    if api_base_url:
+        return api_base_url.rstrip("/")
+    if request:
+        return str(request.base_url).rstrip("/")
+    # Fallback for local development
+    if os.getenv("ENVIRONMENT") == "development":
+        return "http://localhost:8000"
+    # Fallback: try to get from Cloud Run metadata or use a sensible default
+    # In Cloud Run, we can use the service URL from environment
+    service_url = os.getenv("CLOUD_RUN_SERVICE_URL", "")
+    if service_url:
+        return service_url.rstrip("/")
+    # Last resort: return empty string (will use relative URLs)
+    return ""
+
+
+async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = None) -> Dict[str, Any]:
     """Get recent direct xAPI requests from the webhook endpoints."""
     try:
-        async with httpx.AsyncClient() as client:
+        # Use base_url for httpx client if provided, otherwise use relative URLs
+        client_kwargs = {}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        
+        async with httpx.AsyncClient(**client_kwargs) as client:
             # Get recent direct xAPI requests from raw statements
             query = f"""
             SELECT 
@@ -36,7 +61,7 @@ async def get_direct_xapi_requests(limit: int = 25) -> Dict[str, Any]:
             """
             
             response = await client.get(
-                "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/analytics/bigquery/query",
+                "/api/analytics/bigquery/query",
                 params={"query": query}
             )
             
@@ -81,13 +106,16 @@ async def get_direct_xapi_requests(limit: int = 25) -> Dict[str, Any]:
         return {"success": False, "statements": [], "total_count": 0}
 
 
-async def get_endpoint_tracking_data(limit: int = 25) -> Dict[str, Any]:
+async def get_endpoint_tracking_data(limit: int = 25, base_url: Optional[str] = None) -> Dict[str, Any]:
     """Get recent endpoint tracking data formatted for the data explorer table."""
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/endpoint-analytics"
-            )
+        # Use base_url for httpx client if provided
+        client_kwargs = {}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            response = await client.get("/api/endpoint-analytics")
             
             if response.status_code == 200:
                 data = response.json()
@@ -154,10 +182,15 @@ async def get_endpoint_tracking_data(limit: int = 25) -> Dict[str, Any]:
         return {"success": False, "statements": [], "total_count": 0}
 
 
-async def get_recent_bigquery_data(limit: int = 25) -> Dict[str, Any]:
+async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = None) -> Dict[str, Any]:
     """Get recent xAPI data directly from BigQuery."""
     try:
-        async with httpx.AsyncClient() as client:
+        # Use base_url for httpx client if provided
+        client_kwargs = {}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        
+        async with httpx.AsyncClient(**client_kwargs) as client:
             # Get recent statements from BigQuery with data type indicator
             query = f"""
             SELECT 
@@ -180,7 +213,7 @@ async def get_recent_bigquery_data(limit: int = 25) -> Dict[str, Any]:
             """
             
             response = await client.get(
-                "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/analytics/bigquery/query",
+                "/api/analytics/bigquery/query",
                 params={"query": query}
             )
             
@@ -244,10 +277,15 @@ async def get_recent_bigquery_data(limit: int = 25) -> Dict[str, Any]:
         return {"success": False, "statements": [], "total_count": 0}
 
 
-async def get_raw_incoming_statements(limit: int = 25) -> Dict[str, Any]:
+async def get_raw_incoming_statements(limit: int = 25, base_url: Optional[str] = None) -> Dict[str, Any]:
     """Get raw incoming xAPI statements from Cloud Storage for debugging."""
     try:
-        async with httpx.AsyncClient() as client:
+        # Use base_url for httpx client if provided
+        client_kwargs = {}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        
+        async with httpx.AsyncClient(**client_kwargs) as client:
             # Query for raw statements stored in Cloud Storage
             query = f"""
             SELECT 
@@ -267,7 +305,7 @@ async def get_raw_incoming_statements(limit: int = 25) -> Dict[str, Any]:
             """
             
             response = await client.get(
-                "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/analytics/bigquery/query",
+                "/api/analytics/bigquery/query",
                 params={"query": query}
             )
             
@@ -287,14 +325,20 @@ async def get_raw_incoming_statements(limit: int = 25) -> Dict[str, Any]:
         return {"success": False, "raw_statements": [], "total_count": 0}
 
 
-async def get_system_status() -> Dict[str, Any]:
+async def get_system_status(request: Optional[Request] = None) -> Dict[str, Any]:
     """Get system status including Pub/Sub health and ETL processor status."""
     try:
-        async with httpx.AsyncClient() as client:
+        base_url = get_api_base_url(request)
+        # Use base_url for httpx client if provided
+        client_kwargs = {}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        
+        async with httpx.AsyncClient(**client_kwargs) as client:
             # Get total statement count
             count_query = "SELECT COUNT(*) as total FROM taps_data.statements"
             count_response = await client.get(
-                "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/analytics/bigquery/query",
+                "/api/analytics/bigquery/query",
                 params={"query": count_query}
             )
             
@@ -307,7 +351,7 @@ async def get_system_status() -> Dict[str, Any]:
             # Get latest timestamp
             latest_query = "SELECT MAX(timestamp) as latest FROM taps_data.statements"
             latest_response = await client.get(
-                "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/analytics/bigquery/query",
+                "/api/analytics/bigquery/query",
                 params={"query": latest_query}
             )
             
@@ -318,7 +362,7 @@ async def get_system_status() -> Dict[str, Any]:
                     latest_timestamp = data["data"]["rows"][0]["latest"]
             
             # Get ETL processor status
-            etl_status = await get_etl_status(client)
+            etl_status = await get_etl_status(client, base_url)
             
             return {
                 "total_statements": total_count,
@@ -337,12 +381,10 @@ async def get_system_status() -> Dict[str, Any]:
         }
 
 
-async def get_etl_status(client: httpx.AsyncClient) -> Dict[str, Any]:
+async def get_etl_status(client: httpx.AsyncClient, base_url: Optional[str] = None) -> Dict[str, Any]:
     """Get ETL processor status."""
     try:
-        response = await client.get(
-            "https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/etl/status"
-        )
+        response = await client.get("/api/etl/status")
         
         if response.status_code == 200:
             data = response.json()
@@ -388,11 +430,12 @@ async def get_etl_status(client: httpx.AsyncClient) -> Dict[str, Any]:
 @router.get("/data-explorer", response_class=HTMLResponse)
 async def data_explorer(request: Request, limit: int = Query(100, ge=1, le=100)) -> HTMLResponse:
     """Simplified data explorer showing real-time xAPI data with data type indicators."""
+    base_url = get_api_base_url(request)
     # Get ETL processed data, direct xAPI requests, and endpoint tracking data
-    etl_data = await get_recent_bigquery_data(limit)
-    direct_data = await get_direct_xapi_requests(limit)
-    endpoint_data = await get_endpoint_tracking_data(limit)
-    status = await get_system_status()
+    etl_data = await get_recent_bigquery_data(limit, base_url)
+    direct_data = await get_direct_xapi_requests(limit, base_url)
+    endpoint_data = await get_endpoint_tracking_data(limit, base_url)
+    status = await get_system_status(request)
     
     # Combine only real xAPI statements (exclude endpoint tracking)
     all_statements = []
@@ -428,8 +471,9 @@ async def data_explorer(request: Request, limit: int = Query(100, ge=1, le=100))
 @router.get("/raw-statements", response_class=HTMLResponse)
 async def raw_statements_debug(request: Request, limit: int = Query(25, ge=1, le=100)) -> HTMLResponse:
     """Debug view showing raw incoming xAPI statements before processing."""
-    raw_data = await get_raw_incoming_statements(limit)
-    status = await get_system_status()
+    base_url = get_api_base_url(request)
+    raw_data = await get_raw_incoming_statements(limit, base_url)
+    status = await get_system_status(request)
     
     context = {
         "request": request,
@@ -453,10 +497,11 @@ async def recent_pubsub_feed(request: Request, limit: int = 25) -> HTMLResponse:
 
 
 @router.get("/api/pubsub-status")
-async def pubsub_status() -> Dict[str, Any]:
+async def pubsub_status(request: Request) -> Dict[str, Any]:
     """API endpoint to check Pub/Sub and data pipeline status."""
-    status = await get_system_status()
-    data = await get_recent_bigquery_data(5)  # Get last 5 events
+    base_url = get_api_base_url(request)
+    status = await get_system_status(request)
+    data = await get_recent_bigquery_data(5, base_url)  # Get last 5 events
     
     return {
         "status": "healthy",
