@@ -1,5 +1,5 @@
 """
-User Matching UI for manually matching users between CSV and xAPI data.
+User Matching UI for manually matching orphaned statements to users.
 """
 
 from fastapi import APIRouter, Request, HTTPException
@@ -15,9 +15,9 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-class MergeUsersRequest(BaseModel):
-    csv_email: str
-    xapi_email: str
+class MatchStatementRequest(BaseModel):
+    statement_id: str
+    user_id: str
 
 
 @router.get("/user-matching", response_class=HTMLResponse)
@@ -32,224 +32,169 @@ async def user_matching_page(request: Request) -> HTMLResponse:
 
 
 @router.get("/user-matching/data")
-async def get_user_matching_data() -> JSONResponse:
-    """Get data for user matching interface."""
+async def get_orphaned_statements() -> JSONResponse:
+    """Get orphaned statements (statements without matched users)."""
     try:
         gcp_config = get_gcp_config()
         client = gcp_config.bigquery_client
         dataset_id = gcp_config.bigquery_dataset
         
-        # Get CSV-only users (users with CSV data but no xAPI activities)
-        csv_only_query = f"""
+        # Get orphaned statements (where normalized_user_id is NULL or empty)
+        # Check both possible table names
+        orphaned_query = f"""
         SELECT 
-            u.user_id,
-            u.email,
-            u.name,
-            u.first_seen,
-            u.last_seen,
-            u.activity_count,
-            JSON_EXTRACT_SCALAR(u.csv_data[OFFSET(0)], '$.Group') as cohort_group,
-            JSON_EXTRACT_SCALAR(u.csv_data[OFFSET(0)], '$.Team') as cohort_team
-        FROM `{dataset_id}.users` u
-        WHERE 'csv' IN UNNEST(u.sources)
-            AND NOT EXISTS (
-                SELECT 1 FROM `{dataset_id}.user_activities` ua 
-                WHERE ua.user_email = u.email
-            )
-        ORDER BY u.last_seen DESC
-        LIMIT 50
+            statement_id,
+            timestamp,
+            actor_id,
+            actor_name,
+            verb_display,
+            object_name,
+            object_id,
+            result_response,
+            normalized_user_id
+        FROM `{dataset_id}.statements`
+        WHERE (normalized_user_id IS NULL OR normalized_user_id = '')
+            AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY)
+        ORDER BY timestamp DESC
+        LIMIT 100
         """
         
-        # Get xAPI-only users (users with activities but no CSV data)
-        xapi_only_query = f"""
+        # Get all users for dropdown
+        users_query = f"""
         SELECT 
-            u.user_id,
-            u.email,
-            u.name,
-            u.first_seen,
-            u.last_seen,
-            u.activity_count
-        FROM `{dataset_id}.users` u
-        WHERE 'xapi' IN UNNEST(u.sources)
-            AND NOT EXISTS (
-                SELECT 1 FROM `{dataset_id}.csv_imports` ci 
-                WHERE ci.normalized_user_id = u.user_id
-            )
-        ORDER BY u.activity_count DESC
-        LIMIT 50
-        """
-        
-        # Get duplicate emails
-        duplicate_query = f"""
-        SELECT 
+            user_id,
             email,
-            COUNT(*) as user_count,
-            ARRAY_AGG(
-                STRUCT(
-                    user_id,
-                    name,
-                    sources,
-                    activity_count,
-                    first_seen,
-                    last_seen
-                )
-            ) as users
+            name,
+            activity_count,
+            first_seen,
+            last_seen
         FROM `{dataset_id}.users`
-        WHERE email IS NOT NULL 
-            AND email != ''
-        GROUP BY email
-        HAVING COUNT(*) > 1
-        ORDER BY user_count DESC
-        LIMIT 20
+        ORDER BY name ASC, email ASC
+        LIMIT 500
         """
         
         # Execute queries
-        csv_only_results = list(client.query(csv_only_query).result())
-        xapi_only_results = list(client.query(xapi_only_query).result())
-        duplicate_results = list(client.query(duplicate_query).result())
+        orphaned_results = list(client.query(orphaned_query).result())
+        users_results = list(client.query(users_query).result())
         
-        # Format results
-        csv_only_users = []
-        for row in csv_only_results:
-            cohort = f"{row.cohort_group or 'X'} {row.cohort_team or 'X'}".strip()
-            csv_only_users.append({
+        # Format orphaned statements
+        orphaned_statements = []
+        for row in orphaned_results:
+            orphaned_statements.append({
+                "statement_id": row.statement_id,
+                "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+                "actor_id": row.actor_id,
+                "actor_name": row.actor_name or "Unknown",
+                "verb": row.verb_display or "Unknown",
+                "object_name": row.object_name or row.object_id or "Unknown",
+                "response": row.result_response[:100] if row.result_response else None,
+            })
+        
+        # Format users for dropdown
+        users = []
+        for row in users_results:
+            display_name = f"{row.name or 'Unknown'}"
+            if row.email:
+                display_name += f" ({row.email})"
+            users.append({
                 "user_id": row.user_id,
                 "email": row.email,
                 "name": row.name,
-                "first_seen": row.first_seen.isoformat() if row.first_seen else None,
-                "last_seen": row.last_seen.isoformat() if row.last_seen else None,
-                "activity_count": row.activity_count,
-                "cohort": cohort if cohort != "X X" else "Unassigned"
+                "display_name": display_name,
+                "activity_count": row.activity_count or 0,
             })
-        
-        xapi_only_users = []
-        for row in xapi_only_results:
-            xapi_only_users.append({
-                "user_id": row.user_id,
-                "email": row.email,
-                "name": row.name,
-                "first_seen": row.first_seen.isoformat() if row.first_seen else None,
-                "last_seen": row.last_seen.isoformat() if row.last_seen else None,
-                "activity_count": row.activity_count
-            })
-        
-        duplicate_users = []
-        for row in duplicate_results:
-            users = []
-            for user in row.users:
-                users.append({
-                    "user_id": user.user_id,
-                    "name": user.name,
-                    "sources": user.sources,
-                    "activity_count": user.activity_count,
-                    "first_seen": user.first_seen.isoformat() if user.first_seen else None,
-                    "last_seen": user.last_seen.isoformat() if user.last_seen else None
-                })
-            
-            duplicate_users.append({
-                "email": row.email,
-                "user_count": row.user_count,
-                "users": users
-            })
-        
-        summary = {
-            "csv_only_count": len(csv_only_users),
-            "xapi_only_count": len(xapi_only_users),
-            "duplicate_count": len(duplicate_users)
-        }
         
         return JSONResponse({
             "success": True,
-            "summary": summary,
-            "csv_only_users": csv_only_users,
-            "xapi_only_users": xapi_only_users,
-            "duplicate_users": duplicate_users
+            "orphaned_count": len(orphaned_statements),
+            "orphaned_statements": orphaned_statements,
+            "users": users
         })
         
     except Exception as e:
-        logger.error(f"Error getting user matching data: {e}")
+        logger.error(f"Error getting orphaned statements: {e}")
         return JSONResponse({
             "success": False,
             "message": str(e)
         }, status_code=500)
 
 
-@router.post("/user-matching/merge")
-async def merge_users(request: MergeUsersRequest) -> JSONResponse:
-    """Manually merge two users."""
+@router.post("/user-matching/match")
+async def match_statement_to_user(request: MatchStatementRequest) -> JSONResponse:
+    """Match an orphaned statement to a user."""
     try:
         gcp_config = get_gcp_config()
         client = gcp_config.bigquery_client
         dataset_id = gcp_config.bigquery_dataset
         
-        csv_email = request.csv_email.lower().strip()
-        xapi_email = request.xapi_email.lower().strip()
+        statement_id = request.statement_id.strip()
+        user_id = request.user_id.strip()
         
-        # Check if both users exist
-        check_query = f"""
+        # Verify statement exists and is orphaned
+        check_statement_query = f"""
+        SELECT 
+            statement_id,
+            normalized_user_id,
+            actor_id,
+            actor_name
+        FROM `{dataset_id}.statements`
+        WHERE statement_id = '{statement_id}'
+        """
+        
+        statement_results = list(client.query(check_statement_query).result())
+        
+        if not statement_results:
+            return JSONResponse({
+                "success": False,
+                "message": "Statement not found"
+            }, status_code=404)
+        
+        statement = statement_results[0]
+        
+        if statement.normalized_user_id and statement.normalized_user_id.strip():
+            return JSONResponse({
+                "success": False,
+                "message": f"Statement already matched to user: {statement.normalized_user_id}"
+            }, status_code=400)
+        
+        # Verify user exists
+        check_user_query = f"""
         SELECT 
             user_id,
             email,
-            name,
-            sources,
-            activity_count,
-            first_seen,
-            last_seen
+            name
         FROM `{dataset_id}.users`
-        WHERE email IN ('{csv_email}', '{xapi_email}')
+        WHERE user_id = '{user_id}'
         """
         
-        results = list(client.query(check_query).result())
+        user_results = list(client.query(check_user_query).result())
         
-        if len(results) != 2:
+        if not user_results:
             return JSONResponse({
                 "success": False,
-                "message": "One or both users not found"
-            }, status_code=400)
+                "message": "User not found"
+            }, status_code=404)
         
-        # Find which is CSV and which is xAPI
-        csv_user = None
-        xapi_user = None
+        user = user_results[0]
         
-        for user in results:
-            if csv_email in user.sources and xapi_email not in user.sources:
-                csv_user = user
-            elif xapi_email in user.sources and csv_email not in user.sources:
-                xapi_user = user
-        
-        if not csv_user or not xapi_user:
-            return JSONResponse({
-                "success": False,
-                "message": "Users must be from different sources (one CSV, one xAPI)"
-            }, status_code=400)
-        
-        # Merge users by updating the CSV user with xAPI data
-        merge_query = f"""
-        UPDATE `{dataset_id}.users`
-        SET 
-            sources = ARRAY_CONCAT(sources, ['{xapi_email}']),
-            activity_count = activity_count + {xapi_user.activity_count},
-            first_seen = LEAST(first_seen, TIMESTAMP('{xapi_user.first_seen.isoformat()}')),
-            last_seen = GREATEST(last_seen, TIMESTAMP('{xapi_user.last_seen.isoformat()}')),
-            updated_at = CURRENT_TIMESTAMP()
-        WHERE user_id = '{csv_user.user_id}';
-        
-        -- Delete the xAPI user
-        DELETE FROM `{dataset_id}.users`
-        WHERE user_id = '{xapi_user.user_id}';
+        # Update statement with normalized_user_id
+        update_query = f"""
+        UPDATE `{dataset_id}.statements`
+        SET normalized_user_id = '{user_id}'
+        WHERE statement_id = '{statement_id}'
         """
         
-        client.query(merge_query)
+        client.query(update_query)
         
-        logger.info(f"Merged users: {csv_email} + {xapi_email}")
+        logger.info(f"Matched statement {statement_id} to user {user_id} ({user.email or user.name})")
         
         return JSONResponse({
             "success": True,
-            "message": f"Successfully merged {csv_user.name or csv_email} with {xapi_user.name or xapi_email}"
+            "message": f"Statement matched to {user.name or user.email or user_id}"
         })
         
     except Exception as e:
-        logger.error(f"Error merging users: {e}")
+        logger.error(f"Error matching statement: {e}")
         return JSONResponse({
             "success": False,
             "message": str(e)
