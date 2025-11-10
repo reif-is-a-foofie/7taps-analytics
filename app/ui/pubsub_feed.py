@@ -209,8 +209,6 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
         
         logger.info(f"get_recent_bigquery_data called with limit={limit}, base_url={base_url}, cohort_id={cohort_id}")
         
-        logger.info(f"get_recent_bigquery_data called with limit={limit}, base_url={base_url}, cohort_id={cohort_id}")
-        
         async with httpx.AsyncClient(**client_kwargs) as client:
             # Build cohort filter
             cohort_filter = build_cohort_filter_sql(cohort_id=cohort_id) if cohort_id else ""
