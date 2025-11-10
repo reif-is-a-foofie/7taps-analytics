@@ -212,105 +212,141 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
     """Get recent xAPI data directly from BigQuery."""
     try:
         from app.utils.cohort_filtering import build_cohort_filter_sql
-        from app.config.gcp_config import get_gcp_config
-        from google.cloud import bigquery
         
-        # Use direct BigQuery query (more reliable than internal API)
-        gcp_config = get_gcp_config()
-        client = gcp_config.bigquery_client
-        dataset_id = gcp_config.bigquery_dataset
+        # Use base_url for httpx client if provided
+        client_kwargs = {}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        else:
+            # Fallback: use internal API endpoint
+            client_kwargs["base_url"] = "https://taps-analytics-ui-euvwb5vwea-uc.a.run.app"
         
-        # Build cohort filter
-        cohort_filter = build_cohort_filter_sql(cohort_id=cohort_id) if cohort_id else ""
-        
-        query = f"""
-        SELECT 
-            timestamp,
-            actor_id,
-            verb_display,
-            object_name,
-            result_completion,
-            result_success,
-            result_score_scaled,
-            result_response,
-            context_platform,
-            raw_json,
-            'ETL Processed' as data_type,
-            statement_id
-        FROM `{dataset_id}.statements` 
-        WHERE 1=1
-        {cohort_filter}
-        ORDER BY timestamp DESC 
-        LIMIT {limit}
-        """
-        
-        logger.info(f"Querying BigQuery directly: {query[:100]}...")
-        query_job = client.query(query)
-        rows = list(query_job.result())
-        
-        logger.info(f"Direct BigQuery query returned {len(rows)} rows")
-        
-        # Convert BigQuery rows to dicts and enhance
-        enhanced_statements = []
-        for row in rows:
-            try:
-                # Convert row to dict
-                statement = dict(row)
+        async with httpx.AsyncClient(**client_kwargs, timeout=30.0) as client:
+            # Build cohort filter
+            cohort_filter = build_cohort_filter_sql(cohort_id=cohort_id) if cohort_id else ""
+            
+            # Get recent statements from BigQuery with data type indicator
+            query = f"""
+            SELECT 
+                timestamp,
+                actor_id,
+                verb_display,
+                object_name,
+                result_completion,
+                result_success,
+                result_score_scaled,
+                result_response,
+                context_platform,
+                raw_json,
+                'ETL Processed' as data_type,
+                statement_id
+            FROM taps_data.statements 
+            WHERE 1=1
+            {cohort_filter}
+            ORDER BY timestamp DESC 
+            LIMIT {limit}
+            """
+            
+            logger.info(f"Calling BigQuery API endpoint with query limit={limit}")
+            response = await client.get(
+                "/api/analytics/bigquery/query",
+                params={"query": query},
+                timeout=30.0
+            )
+            
+            logger.info(f"BigQuery API response: status={response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"Response success: {data.get('success')}, row_count: {data.get('row_count', 0)}")
                 
-                # Convert datetime to ISO string
-                if statement.get("timestamp") and hasattr(statement["timestamp"], "isoformat"):
-                    statement["timestamp"] = statement["timestamp"].isoformat()
-                
-                # Enhance with verbose JSON
-                import json
-                detailed_payload = None
-                if statement.get("raw_json"):
-                    try:
-                        detailed_payload = json.loads(statement["raw_json"])
-                    except:
-                        pass
-                
-                if not detailed_payload:
-                    detailed_payload = {
-                        "id": statement.get("statement_id", ""),
-                        "actor": {"name": statement.get("actor_id", ""), "mbox": f"mailto:{statement.get('actor_id', '')}"},
-                        "verb": {"id": statement.get("verb_display", ""), "display": {"en-US": statement.get("verb_display", "")}},
-                        "object": {"id": statement.get("object_name", ""), "definition": {"name": {"en-US": statement.get("object_name", "")}}},
-                        "result": {
-                            "completion": statement.get("result_completion"),
-                            "success": statement.get("result_success"),
-                            "score": {"scaled": statement.get("result_score_scaled")},
-                            "response": statement.get("result_response")
-                        },
-                        "context": {"platform": statement.get("context_platform")},
-                        "timestamp": statement.get("timestamp", ""),
-                        "data_type": statement.get("data_type", "ETL Processed")
+                if data.get("success"):
+                    # Response structure: data.data.rows (BigQueryAnalyticsResponse format)
+                    rows = data.get("data", {}).get("rows", [])
+                    row_count = data.get("row_count", 0)
+                    
+                    logger.info(f"Got {len(rows)} rows from BigQuery API")
+                    
+                    if len(rows) == 0:
+                        logger.warning("BigQuery query returned success=True but 0 rows")
+                        return {"success": True, "statements": [], "total_count": 0}
+                    
+                    # Enhance statements with verbose JSON in result_response
+                    enhanced_statements = []
+                    for statement in rows:
+                        try:
+                            # Try to use raw xAPI data if available, otherwise reconstruct
+                            import json
+                            detailed_payload = None
+                            if statement.get("raw_json"):
+                                try:
+                                    detailed_payload = json.loads(statement["raw_json"])
+                                except:
+                                    pass
+                            
+                            # Fallback to reconstructed payload if raw_json is not available
+                            if not detailed_payload:
+                                detailed_payload = {
+                                    "id": statement.get("statement_id", ""),
+                                    "actor": {"name": statement.get("actor_id", ""), "mbox": f"mailto:{statement.get('actor_id', '')}"},
+                                    "verb": {"id": statement.get("verb_display", ""), "display": {"en-US": statement.get("verb_display", "")}},
+                                    "object": {"id": statement.get("object_name", ""), "definition": {"name": {"en-US": statement.get("object_name", "")}}},
+                                    "result": {
+                                        "completion": statement.get("result_completion"),
+                                        "success": statement.get("result_success"),
+                                        "score": {"scaled": statement.get("result_score_scaled")},
+                                        "response": statement.get("result_response")
+                                    },
+                                    "context": {"platform": statement.get("context_platform")},
+                                    "timestamp": statement.get("timestamp", ""),
+                                    "data_type": statement.get("data_type", "ETL Processed")
+                                }
+                            
+                            # Update the statement with verbose JSON
+                            enhanced_statement = statement.copy()
+                            enhanced_statement["result_response"] = json.dumps(detailed_payload, indent=2)
+                            
+                            # Format timestamp to Central Time
+                            if enhanced_statement.get("timestamp"):
+                                try:
+                                    from app.utils.timestamp_utils import format_compact
+                                    enhanced_statement["timestamp"] = format_compact(enhanced_statement["timestamp"])
+                                except ImportError:
+                                    # timestamp_utils not available, keep original timestamp
+                                    pass
+                                except Exception:
+                                    # Formatting failed, keep original timestamp
+                                    pass
+                            
+                            enhanced_statements.append(enhanced_statement)
+                        except Exception as e:
+                            logger.error(f"Error enhancing statement {statement.get('statement_id', 'unknown')}: {e}")
+                            # Still add the statement even if enhancement fails
+                            enhanced_statements.append(statement)
+                    
+                    logger.info(f"Returning {len(enhanced_statements)} enhanced statements")
+                    return {
+                        "success": True,
+                        "statements": enhanced_statements,
+                        "total_count": row_count
                     }
-                
-                statement["result_response"] = json.dumps(detailed_payload, indent=2)
-                
-                # Format timestamp
-                if statement.get("timestamp"):
-                    try:
-                        from app.utils.timestamp_utils import format_compact
-                        statement["timestamp"] = format_compact(statement["timestamp"])
-                    except:
-                        pass
-                
-                enhanced_statements.append(statement)
-            except Exception as e:
-                logger.error(f"Error processing statement: {e}", exc_info=True)
-                # Add raw statement even if enhancement fails
-                enhanced_statements.append(dict(row))
-        
-        logger.info(f"Returning {len(enhanced_statements)} statements")
-        
-        return {
-            "success": True,
-            "statements": enhanced_statements,
-            "total_count": len(enhanced_statements)
-        }
-        
+                else:
+                    # Query succeeded but returned error in response
+                    error_msg = data.get("error", "Unknown query error")
+                    logger.warning(f"BigQuery query returned error: {error_msg}")
+                    return {"success": False, "statements": [], "total_count": 0, "error": error_msg}
+            
+            # Non-200 status code
+            try:
+                error_text = response.text[:500] if hasattr(response, 'text') else f"HTTP {response.status_code}"
+            except:
+                error_text = f"HTTP {response.status_code}"
+            logger.error(f"BigQuery query endpoint returned {response.status_code}: {error_text}")
+            return {"success": False, "statements": [], "total_count": 0, "error": f"Query endpoint returned {response.status_code}: {error_text}"}
+            
+    except httpx.TimeoutException as e:
+        logger.error(f"Timeout getting BigQuery data: {e}")
+        return {"success": False, "statements": [], "total_count": 0, "error": "Query timeout"}
     except Exception as e:
         logger.error(f"Failed to get BigQuery data: {e}", exc_info=True)
         return {"success": False, "statements": [], "total_count": 0, "error": str(e)}
