@@ -223,7 +223,7 @@ class BigQuerySchema:
             # Set table options
             table.time_partitioning = bigquery.TimePartitioning(
                 type_=bigquery.TimePartitioningType.DAY,
-                field="timestamp" if table_name == "statements" else "first_seen"
+                field="timestamp" if table_name == "statements" else ("flagged_at" if table_name == "flagged_content" else "first_seen")
             )
 
             try:

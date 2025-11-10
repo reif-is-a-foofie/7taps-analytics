@@ -62,7 +62,8 @@ async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = No
             
             response = await client.get(
                 "/api/analytics/bigquery/query",
-                params={"query": query}
+                params={"query": query},
+                timeout=30.0
             )
             
             if response.status_code == 200:
@@ -225,7 +226,8 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
             
             response = await client.get(
                 "/api/analytics/bigquery/query",
-                params={"query": query}
+                params={"query": query},
+                timeout=30.0
             )
             
             if response.status_code == 200:
@@ -321,7 +323,8 @@ async def get_raw_incoming_statements(limit: int = 25, base_url: Optional[str] =
             
             response = await client.get(
                 "/api/analytics/bigquery/query",
-                params={"query": query}
+                params={"query": query},
+                timeout=30.0
             )
             
             if response.status_code == 200:
