@@ -48,7 +48,7 @@ steps:
       - '--max-instances'
       - '10'
       - '--set-secrets'
-      - 'GOOGLE_AI_API_KEY=google-ai-api-key:latest,GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest'
+      - 'GOOGLE_AI_API_KEY=google-ai-api-key:latest'
       - '--set-env-vars'
       - 'GMAIL_REDIRECT_URI=https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/api/settings/gmail/callback'
       - '--quiet'
