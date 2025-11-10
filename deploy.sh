@@ -42,14 +42,19 @@ echo "☁️  Step 3: Triggering Cloud Build..."
 if [ "$USE_MANUAL_TRIGGER" = true ]; then
     echo "📤 Manually triggering build..."
     echo ""
-    echo "Running: gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA=$COMMIT_SHA --project=$PROJECT_ID"
+    echo "Running: gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA=$COMMIT_SHA --project=$PROJECT_ID --async"
     echo ""
     
     BUILD_OUTPUT=$(gcloud builds submit \
         --config=cloudbuild.yaml \
         --substitutions=SHORT_SHA=$COMMIT_SHA \
         --project=$PROJECT_ID \
+        --async \
         2>&1)
+    
+    # Show the output
+    echo "$BUILD_OUTPUT"
+    echo ""
     
     # Extract build ID from output
     BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oP 'Created \[.*builds/\K[^\]]+' || echo "")
@@ -62,7 +67,6 @@ if [ "$USE_MANUAL_TRIGGER" = true ]; then
     if [ -z "$BUILD_ID" ] || [[ "$BUILD_OUTPUT" == *"ERROR"* ]]; then
         echo ""
         echo "❌ Failed to trigger build"
-        echo "$BUILD_OUTPUT"
         exit 1
     fi
     echo ""
@@ -104,14 +108,19 @@ else
         echo ""
         echo "⚠️  Auto-trigger didn't fire. Manually triggering..."
         echo ""
-        echo "Running: gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA=$COMMIT_SHA --project=$PROJECT_ID"
+        echo "Running: gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA=$COMMIT_SHA --project=$PROJECT_ID --async"
         echo ""
         
         BUILD_OUTPUT=$(gcloud builds submit \
             --config=cloudbuild.yaml \
             --substitutions=SHORT_SHA=$COMMIT_SHA \
             --project=$PROJECT_ID \
+            --async \
             2>&1)
+        
+        # Show the output
+        echo "$BUILD_OUTPUT"
+        echo ""
         
         # Extract build ID from output
         BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oP 'Created \[.*builds/\K[^\]]+' || echo "")
@@ -124,7 +133,6 @@ else
         if [ -z "$BUILD_ID" ] || [[ "$BUILD_OUTPUT" == *"ERROR"* ]]; then
             echo ""
             echo "❌ Failed to trigger build"
-            echo "$BUILD_OUTPUT"
             exit 1
         fi
         echo ""
