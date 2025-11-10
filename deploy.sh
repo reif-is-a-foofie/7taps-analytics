@@ -41,17 +41,31 @@ echo ""
 echo "☁️  Step 3: Triggering Cloud Build..."
 if [ "$USE_MANUAL_TRIGGER" = true ]; then
     echo "📤 Manually triggering build..."
-    BUILD_ID=$(gcloud builds submit \
+    echo ""
+    echo "Running: gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA=$COMMIT_SHA --project=$PROJECT_ID"
+    echo ""
+    
+    BUILD_OUTPUT=$(gcloud builds submit \
         --config=cloudbuild.yaml \
         --substitutions=SHORT_SHA=$COMMIT_SHA \
         --project=$PROJECT_ID \
-        --async \
-        --format="value(id)" 2>&1)
+        2>&1)
     
-    if [ -z "$BUILD_ID" ] || [[ "$BUILD_ID" == *"ERROR"* ]]; then
-        echo "❌ Failed to trigger build: $BUILD_ID"
+    # Extract build ID from output
+    BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oP 'Created \[.*builds/\K[^\]]+' || echo "")
+    
+    if [ -z "$BUILD_ID" ]; then
+        # Try alternative extraction
+        BUILD_ID=$(echo "$BUILD_OUTPUT" | grep "ID" | head -1 | awk '{print $NF}' || echo "")
+    fi
+    
+    if [ -z "$BUILD_ID" ] || [[ "$BUILD_OUTPUT" == *"ERROR"* ]]; then
+        echo ""
+        echo "❌ Failed to trigger build"
+        echo "$BUILD_OUTPUT"
         exit 1
     fi
+    echo ""
     echo "✅ Build triggered: $BUILD_ID"
 else
     echo "⏳ Waiting for auto-trigger (max 30s)..."
@@ -89,17 +103,31 @@ else
     if [ -z "$BUILD_ID" ]; then
         echo ""
         echo "⚠️  Auto-trigger didn't fire. Manually triggering..."
-        BUILD_ID=$(gcloud builds submit \
+        echo ""
+        echo "Running: gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA=$COMMIT_SHA --project=$PROJECT_ID"
+        echo ""
+        
+        BUILD_OUTPUT=$(gcloud builds submit \
             --config=cloudbuild.yaml \
             --substitutions=SHORT_SHA=$COMMIT_SHA \
             --project=$PROJECT_ID \
-            --async \
-            --format="value(id)" 2>&1)
+            2>&1)
         
-        if [ -z "$BUILD_ID" ] || [[ "$BUILD_ID" == *"ERROR"* ]]; then
-            echo "❌ Failed to trigger build: $BUILD_ID"
+        # Extract build ID from output
+        BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oP 'Created \[.*builds/\K[^\]]+' || echo "")
+        
+        if [ -z "$BUILD_ID" ]; then
+            # Try alternative extraction
+            BUILD_ID=$(echo "$BUILD_OUTPUT" | grep "ID" | head -1 | awk '{print $NF}' || echo "")
+        fi
+        
+        if [ -z "$BUILD_ID" ] || [[ "$BUILD_OUTPUT" == *"ERROR"* ]]; then
+            echo ""
+            echo "❌ Failed to trigger build"
+            echo "$BUILD_OUTPUT"
             exit 1
         fi
+        echo ""
         echo "✅ Build triggered manually: $BUILD_ID"
     fi
 fi
