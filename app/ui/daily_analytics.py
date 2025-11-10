@@ -633,7 +633,7 @@ async def daily_analytics_dashboard(
         context = {
             "request": request,
             "active_page": "daily_analytics",
-            "title": "Daily Course Analytics",
+            "title": "Daily Analytics",
             "target_date": target_date,
             "group": cohort,  # Changed from cohort to group
             "available_groups": available_groups.get("groups", []),

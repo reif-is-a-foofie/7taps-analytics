@@ -62,6 +62,8 @@ async def flagged_content_dashboard(
             "safety_config": safety_config,
             "cohort_configs": cohort_configs,
             "selected_cohort": cohort,
+            "active_page": "safety",
+            "title": "Safety",
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
