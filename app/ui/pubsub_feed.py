@@ -287,11 +287,14 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                         "total_count": row_count
                     }
             
-            return {"success": False, "statements": [], "total_count": 0, "error": str(e)}
+            return {"success": False, "statements": [], "total_count": 0, "error": "Query returned non-200 status"}
             
     except httpx.TimeoutException as e:
         logger.error(f"Timeout getting BigQuery data: {e}")
         return {"success": False, "statements": [], "total_count": 0, "error": "Query timeout"}
+    except Exception as e:
+        logger.error(f"Failed to get BigQuery data: {e}")
+        return {"success": False, "statements": [], "total_count": 0, "error": str(e)}
 
 
 async def get_raw_incoming_statements(limit: int = 25, base_url: Optional[str] = None) -> Dict[str, Any]:

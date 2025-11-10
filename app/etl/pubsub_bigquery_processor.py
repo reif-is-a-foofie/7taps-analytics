@@ -120,16 +120,18 @@ class PubSubBigQueryProcessor:
 
             # Extract object information safely
             obj = message_data.get("object") or {}
-            object_id = obj.get("id", "")
+            object_id = obj.get("id", "") if isinstance(obj, dict) else ""
             object_name = None
-            object_type = obj.get("objectType", "Activity")
+            object_type = obj.get("objectType", "Activity") if isinstance(obj, dict) else "Activity"
             object_definition_type = None
 
-            if "definition" in obj and obj["definition"]:
+            if isinstance(obj, dict) and "definition" in obj and obj["definition"]:
                 definition = obj["definition"]
-                if "name" in definition and "en-US" in definition["name"]:
-                    object_name = definition["name"]["en-US"]
-                object_definition_type = definition.get("type")
+                if isinstance(definition, dict):
+                    if "name" in definition and definition["name"]:
+                        if isinstance(definition["name"], dict) and "en-US" in definition["name"]:
+                            object_name = definition["name"]["en-US"]
+                    object_definition_type = definition.get("type")
 
             # Extract result information safely
             result = message_data.get("result") or {}
@@ -354,6 +356,12 @@ class PubSubBigQueryProcessor:
             # Normalize user data and enrich with CSV metadata if matched
             user_service = get_user_normalization_service()
             normalized_statement = await user_service.normalize_xapi_statement(message_data)
+            
+            # Ensure normalized_statement is not None
+            if normalized_statement is None:
+                logger.warning(f"normalize_xapi_statement returned None for statement {statement_id}, using original")
+                normalized_statement = message_data
+            
             normalized_user_id = normalized_statement.get("normalized_user_id", "")
 
             # Transform xAPI statement to BigQuery row (already enriched by normalization)
