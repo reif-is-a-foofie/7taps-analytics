@@ -580,7 +580,7 @@ async def data_explorer(
                         "endpoint_count": 0,
                         "system_status": {
                             "total_statements": len(statements),
-                            "latest_timestamp": statements[0].get("timestamp") if statements else None,
+                            "latest_timestamp": statements[0].get("timestamp") if statements and len(statements) > 0 else None,
                             "etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}
                         },
                         "limit": limit,
