@@ -65,8 +65,13 @@ async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = No
                 timeout=30.0
             )
             
+            logger.info(f"BigQuery API response: status={response.status_code}")
+            
             if response.status_code == 200:
                 data = response.json()
+                logger.info(f"Response data keys: {list(data.keys())}")
+                logger.info(f"Response success: {data.get('success')}")
+                
                 if data.get("success"):
                     # Response structure: data.data.rows (BigQueryAnalyticsResponse format)
                     rows = data.get("data", {}).get("rows", [])
@@ -466,6 +471,21 @@ async def get_etl_status(client: httpx.AsyncClient, base_url: Optional[str] = No
     except Exception as e:
         logger.error(f"Failed to get ETL status: {e}")
         return {"running": False, "error": str(e), "messages_received": 0, "messages_processed": 0, "messages_failed": 0}
+
+
+@router.get("/api/debug/data-explorer-raw")
+async def debug_data_explorer_raw(request: Request, limit: int = Query(10)):
+    """Debug endpoint to see raw data explorer data."""
+    base_url = get_api_base_url(request)
+    etl_data = await get_recent_bigquery_data(limit, base_url)
+    
+    return JSONResponse({
+        "etl_data": etl_data,
+        "etl_success": etl_data.get("success"),
+        "etl_count": etl_data.get("total_count", 0),
+        "etl_statements": len(etl_data.get("statements", [])),
+        "etl_error": etl_data.get("error")
+    })
 
 
 @router.get("/data-explorer", response_class=HTMLResponse)
