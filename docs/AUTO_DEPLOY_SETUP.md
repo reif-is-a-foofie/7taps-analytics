@@ -25,10 +25,10 @@ Configure the trigger:
 - **Branch**: `^main$` (regex pattern)
 - **Configuration**: Cloud Build configuration file
 - **Location**: `cloudbuild.yaml`
-- **Substitution variables** (click "Show advanced"):
-  - **SHORT_SHA**: `${COMMIT_SHA:0:7}` 
-    - This extracts the first 7 characters of the commit SHA automatically
-    - **Note**: Use the substitution expression `${COMMIT_SHA:0:7}` in the trigger configuration
+- **Substitution variables**: 
+  - **NO CONFIGURATION NEEDED!** ✅
+  - Cloud Build automatically provides `$SHORT_SHA` (first 7 chars of commit)
+  - Just leave substitution variables empty
 
 ### Step 3: Verify
 
