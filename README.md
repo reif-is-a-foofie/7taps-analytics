@@ -165,13 +165,15 @@ Built with **Google Cloud Platform**, this repo demonstrates how to take 7taps l
 ---
 
 ### API Access
-**Documentation:** https://taps-analytics-ui-zz2ztq5bjq-uc.a.run.app/api/docs
+**Note:** API documentation endpoints have been removed for production deployment.
 
 Key endpoints:
 - `/api/daily-progress/data?date=YYYY-MM-DD&group=GROUP_NAME` - Daily progress data
 - `/api/daily-analytics/cohorts` - Available cohorts/groups
+- `/api/cohorts/available` - Get all available cohorts
 - `/ui/api/daily-analytics/csv?date=YYYY-MM-DD` - Download daily CSV
 - `/api/health` - System health check
+- `/health` - Basic health check
 
 ---
 
@@ -194,24 +196,15 @@ Key endpoints:
 
 See [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) for complete setup and configuration.
 
-### Natural Language Queries
-Try asking September (the AI agent) questions like:
-* "Show engagement dropoff"
-* "Find problematic users"
-* "Energy levels over time"
-* "Screen time patterns"
-* "Learning priorities"
-* "Reflection themes"
-
 ---
 
-## 🧠 AI-Powered Analytics
+## 🎯 Critical Features
 
-The system includes **September**, an AI analytics assistant that can:
-* **Understand natural language** - Ask "sleep" and get sleep-related insights
-* **Generate SQL automatically** - Converts questions to database queries
-* **Create visualizations** - Plotly charts for engagement, sentiment, and behavior
-* **Provide contextual analysis** - Explains patterns and trends in the data
+### Cohort Filtering
+- **Filter all views by cohort** - Daily analytics, flagged content, and data explorer support cohort filtering
+- **Cohort naming** - Create and manage named cohorts via `/ui/cohort-management`
+- **Flagged words by cohort** - Save specific trigger words per cohort
+- **Daily emails by cohort** - Generate cohort-specific daily progress emails
 
 September has access to the complete database context and can answer questions about:
 * User engagement patterns
