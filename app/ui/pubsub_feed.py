@@ -79,7 +79,7 @@ async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = No
                         import json
                         detailed_payload = {
                             "id": statement.get("statement_id", ""),
-                            "actor": {"name": statement.get("actor_id", ""), "mbox": f"mailto:{statement.get('actor_id', '')}"},
+                            "actor": {"name": statement.get("actor_name", ""), "mbox": f"mailto:{statement.get('actor_name', '')}"},
                             "verb": {"id": statement.get("verb_display", ""), "display": {"en-US": statement.get("verb_display", "")}},
                             "object": {"id": statement.get("object_name", ""), "definition": {"name": {"en-US": statement.get("object_name", "")}}},
                             "result": {
@@ -102,12 +102,23 @@ async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = No
                         "statements": enhanced_statements,
                         "total_count": row_count
                     }
+                else:
+                    # Table might not exist - return empty result instead of failing
+                    error_msg = data.get("error", "")
+                    if "not found" in error_msg.lower() or "does not exist" in error_msg.lower() or "not recognized" in error_msg.lower():
+                        logger.debug(f"raw_xapi_statements table not found, returning empty result")
+                        return {"success": True, "statements": [], "total_count": 0}
+                    else:
+                        logger.warning(f"BigQuery query error: {error_msg}")
+                        return {"success": False, "statements": [], "total_count": 0, "error": error_msg}
             
-            return {"success": False, "statements": [], "total_count": 0}
+            # Non-200 status - return empty instead of failing the whole page
+            logger.warning(f"Direct xAPI query returned {response.status_code}, returning empty result")
+            return {"success": True, "statements": [], "total_count": 0}
             
     except Exception as e:
-        logger.error(f"Failed to get direct xAPI requests: {e}")
-        return {"success": False, "statements": [], "total_count": 0}
+        logger.warning(f"Failed to get direct xAPI requests (table may not exist): {e}")
+        return {"success": True, "statements": [], "total_count": 0}  # Don't fail the whole page
 
 
 async def get_endpoint_tracking_data(limit: int = 25, base_url: Optional[str] = None) -> Dict[str, Any]:
