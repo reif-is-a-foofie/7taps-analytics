@@ -303,17 +303,11 @@ from app.api.etl_control import router as etl_control_router
 from app.api.migration import router as migration_router
 from app.api.completed_activities_diagnostic import router as diagnostic_router
 
-# UI Routers
-from app.ui.bigquery_dashboard import router as bigquery_dashboard_router
-from app.ui.dashboard import router as ui_dashboard_router
-from app.ui.statement_browser import router as statement_browser_router
+# UI Routers (only routes in main menu)
 from app.ui.data_import import router as data_import_ui_router
 from app.ui.pubsub_feed import router as pubsub_feed_router
 from app.ui.daily_analytics import router as daily_analytics_router
-from app.ui.mapping import router as mapping_router
 from app.ui.csv_upload import router as csv_upload_router
-from app.ui.user_management import router as user_management_router
-from app.ui.data_export import router as data_export_router
 from app.api.gemini_analytics import router as gemini_router
 from app.api.ai_flagged_content import router as ai_content_router
 from app.api.batch_ai_safety import router as batch_ai_safety_router, batch_processor
@@ -349,16 +343,11 @@ app.include_router(trigger_words_router, tags=["Trigger Words"])
 app.include_router(debug_router, prefix="/api/debug", tags=["Debug & Audit"])
 app.include_router(data_import_router, prefix="/api", tags=["Data Import"])
 app.include_router(csv_to_xapi_router, tags=["CSV to xAPI"])
-app.include_router(ui_dashboard_router, prefix="/ui", tags=["Dashboard"])
+# Core UI routes (in main menu)
 app.include_router(daily_analytics_router, prefix="/ui", tags=["Daily Analytics"])
-app.include_router(mapping_router, prefix="/ui", tags=["Mapping"])
-app.include_router(bigquery_dashboard_router, prefix="/ui", tags=["BigQuery Dashboard"])
-app.include_router(statement_browser_router, prefix="/ui", tags=["Statement Browser"])
 app.include_router(pubsub_feed_router, prefix="/ui", tags=["Data Explorer"])
 app.include_router(data_import_ui_router, prefix="/ui", tags=["Data Import UI"])
 app.include_router(csv_upload_router, prefix="/ui", tags=["CSV Upload"])
-app.include_router(user_management_router, prefix="/ui", tags=["User Management"])
-app.include_router(data_export_router, prefix="/ui", tags=["Data Export"])
 app.include_router(gemini_router, tags=["Gemini AI Analytics"])
 app.include_router(ai_content_router, tags=["AI Content Analysis"])
 app.include_router(batch_ai_safety_router, tags=["Batch AI Safety"])
