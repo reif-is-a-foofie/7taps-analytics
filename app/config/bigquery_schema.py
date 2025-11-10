@@ -183,6 +183,37 @@ class BigQuerySchema:
                                description="Complete analysis result as JSON"),
         ]
 
+    def get_positive_language_table_schema(self) -> List[bigquery.SchemaField]:
+        """Schema for the positive language table."""
+        return [
+            bigquery.SchemaField("statement_id", "STRING", mode="REQUIRED",
+                               description="xAPI statement identifier"),
+            bigquery.SchemaField("timestamp", "TIMESTAMP", mode="REQUIRED",
+                               description="When the statement occurred"),
+            bigquery.SchemaField("detected_at", "TIMESTAMP", mode="REQUIRED",
+                               description="When positive language was detected"),
+            bigquery.SchemaField("actor_id", "STRING", mode="REQUIRED",
+                               description="Actor identifier"),
+            bigquery.SchemaField("actor_name", "STRING", mode="NULLABLE",
+                               description="Actor name"),
+            bigquery.SchemaField("content", "STRING", mode="NULLABLE",
+                               description="Content text"),
+            bigquery.SchemaField("is_positive", "BOOLEAN", mode="REQUIRED",
+                               description="Whether positive language was detected"),
+            bigquery.SchemaField("sentiment_score", "FLOAT", mode="REQUIRED",
+                               description="Sentiment score 0.0-1.0"),
+            bigquery.SchemaField("positive_categories", "STRING", mode="REPEATED",
+                               description="Array of positive categories detected"),
+            bigquery.SchemaField("positive_phrases", "STRING", mode="REPEATED",
+                               description="Array of positive phrases detected"),
+            bigquery.SchemaField("confidence_score", "FLOAT", mode="REQUIRED",
+                               description="Confidence score 0.0-1.0"),
+            bigquery.SchemaField("cohort", "STRING", mode="NULLABLE",
+                               description="Cohort identifier if available"),
+            bigquery.SchemaField("raw_analysis", "STRING", mode="NULLABLE",
+                               description="Complete analysis result as JSON"),
+        ]
+
     def get_table_schemas(self) -> Dict[str, List[bigquery.SchemaField]]:
         """Get all table schemas."""
         return {
@@ -191,6 +222,7 @@ class BigQuerySchema:
             "verbs": self.get_verbs_table_schema(),
             "activities": self.get_activities_table_schema(),
             "flagged_content": self.get_flagged_content_table_schema(),
+            "positive_language": self.get_positive_language_table_schema(),
         }
 
     def create_dataset_if_not_exists(self) -> bool:
@@ -223,7 +255,12 @@ class BigQuerySchema:
             # Set table options
             table.time_partitioning = bigquery.TimePartitioning(
                 type_=bigquery.TimePartitioningType.DAY,
-                field="timestamp" if table_name == "statements" else ("flagged_at" if table_name == "flagged_content" else "first_seen")
+                field=(
+                    "timestamp" if table_name == "statements" 
+                    else "flagged_at" if table_name == "flagged_content"
+                    else "detected_at" if table_name == "positive_language"
+                    else "first_seen"
+                )
             )
 
             try:

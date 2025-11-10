@@ -111,7 +111,23 @@ class BatchProcessor:
             
             return self._create_flag_result(ai_result, statement_id, user_id, timestamp, immediate=True)
         else:
-            # Step 3: Add to batch for AI analysis
+            # Step 3: Check for positive language (runs in parallel, no blocking)
+            # This doesn't block the main flow
+            try:
+                from app.services.positive_language_detection import positive_language_detection
+                import asyncio
+                
+                # Run positive language detection asynchronously (don't wait)
+                loop = asyncio.get_running_loop()
+                loop.create_task(
+                    self._detect_and_persist_positive_language(
+                        content, context, statement_id, user_id, timestamp
+                    )
+                )
+            except Exception as e:
+                logger.debug(f"Positive language detection skipped: {e}")
+            
+            # Step 4: Add to batch for AI analysis
             batch_item = BatchItem(
                 content=content,
                 context=context,
@@ -149,6 +165,36 @@ class BatchProcessor:
                     **content_metadata
                 }
             }
+    
+    async def _detect_and_persist_positive_language(
+        self,
+        content: str,
+        context: str,
+        statement_id: str,
+        user_id: str,
+        timestamp: datetime
+    ) -> None:
+        """Detect and persist positive language (non-blocking, no emails)."""
+        try:
+            from app.services.positive_language_detection import positive_language_detection
+            
+            # Detect positive language
+            positive_result = await positive_language_detection.detect_positive_language(content, context)
+            
+            # Only persist if positive language detected
+            if positive_result.get("is_positive", False):
+                await positive_language_detection.persist_positive_language(
+                    statement_id=statement_id,
+                    timestamp=timestamp,
+                    actor_id=user_id,
+                    actor_name=None,
+                    content=content,
+                    positive_result=positive_result,
+                    cohort=None
+                )
+                logger.info(f"Positive language detected: {statement_id} (sentiment: {positive_result.get('sentiment_score', 0):.2f})")
+        except Exception as e:
+            logger.debug(f"Positive language detection failed: {e}")
     
     async def _check_obvious_flags(self, content: str) -> Dict[str, Any]:
         """Check for obvious flags using local rules."""
@@ -409,11 +455,30 @@ class BatchProcessor:
     async def _process_batch_results(self, batch_items: List[BatchItem], batch_results: List[Dict[str, Any]]):
         """Process results from batch AI analysis."""
         from app.services.flagged_content_persistence import flagged_content_persistence
+        from app.services.positive_language_detection import positive_language_detection
         
         for item, result in zip(batch_items, batch_results):
             if result.get("error"):
                 logger.error(f"Error processing {item.statement_id}: {result['error']}")
                 continue
+            
+            # Check for positive language (runs for all items, not just flagged)
+            try:
+                positive_result = await positive_language_detection.detect_positive_language(
+                    item.content, item.context
+                )
+                if positive_result.get("is_positive", False):
+                    await positive_language_detection.persist_positive_language(
+                        statement_id=item.statement_id,
+                        timestamp=item.timestamp,
+                        actor_id=item.user_id,
+                        actor_name=None,
+                        content=item.content,
+                        positive_result=positive_result,
+                        cohort=None
+                    )
+            except Exception as e:
+                logger.debug(f"Positive language detection failed for {item.statement_id}: {e}")
             
             if result.get("is_flagged", False):
                 # Create flag result
