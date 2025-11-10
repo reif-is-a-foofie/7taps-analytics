@@ -528,63 +528,75 @@ async def debug_data_explorer_raw(request: Request, limit: int = Query(10)):
 async def data_explorer(
     request: Request, 
     limit: int = Query(100, ge=1, le=100),
-    cohort: Optional[str] = Query(None, description="Filter by cohort ID")
+    cohort: Optional[str] = None
 ) -> HTMLResponse:
-    """Simplified data explorer showing real-time xAPI data with data type indicators."""
-    base_url = get_api_base_url(request)
-    logger.info(f"data_explorer called with limit={limit}, cohort={cohort}, base_url={base_url}")
+    """Simple data explorer - query BigQuery, show results."""
+    from app.config.gcp_config import get_gcp_config
+    from google.cloud import bigquery
     
-    # Get ETL processed data, direct xAPI requests, and endpoint tracking data
-    etl_data = await get_recent_bigquery_data(limit, base_url, cohort_id=cohort)
-    logger.info(f"etl_data: success={etl_data.get('success')}, count={etl_data.get('total_count', 0)}, statements={len(etl_data.get('statements', []))}")
-    
-    direct_data = await get_direct_xapi_requests(limit, base_url)
-    logger.info(f"direct_data: success={direct_data.get('success')}, count={direct_data.get('total_count', 0)}")
-    
-    endpoint_data = await get_endpoint_tracking_data(limit, base_url)
-    status = await get_system_status(request)
-    
-    # Combine only real xAPI statements (exclude endpoint tracking)
-    all_statements = []
-    if etl_data.get("success"):
-        all_statements.extend(etl_data.get("statements", []))
-        logger.info(f"Added {len(etl_data.get('statements', []))} statements from etl_data")
-    if direct_data.get("success"):
-        all_statements.extend(direct_data.get("statements", []))
-        logger.info(f"Added {len(direct_data.get('statements', []))} statements from direct_data")
-    # Note: endpoint_data excluded from main display - only used for count
-    
-    logger.info(f"Total statements after combining: {len(all_statements)}")
-    
-    # Sort by timestamp (most recent first)
-    all_statements.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-    
-    # Limit to requested number
-    all_statements = all_statements[:limit]
-    
-    # Determine success: true if queries succeeded (even with 0 results) OR if we have statements
-    queries_succeeded = etl_data.get("success", False) or direct_data.get("success", False) or endpoint_data.get("success", False)
-    has_statements = len(all_statements) > 0
-    
-    logger.info(f"Final: queries_succeeded={queries_succeeded}, has_statements={has_statements}, total_statements={len(all_statements)}")
-    
-    context = {
-        "request": request,
-        "active_page": "data_explorer",
-        "title": "Data Explorer",
-        "statements": all_statements,
-        "total_count": len(all_statements),
-        "etl_count": etl_data.get("total_count", 0),
-        "direct_count": direct_data.get("total_count", 0),
-        "endpoint_count": endpoint_data.get("total_count", 0),
-        "system_status": status,
-        "limit": limit,
-        "cohort": cohort,
-        "success": queries_succeeded or has_statements,
-        "error": etl_data.get("error") or direct_data.get("error") or endpoint_data.get("error")
-    }
-
-    return templates.TemplateResponse("data_explorer_modern.html", context)
+    try:
+        # 1. Query BigQuery directly
+        gcp_config = get_gcp_config()
+        client = gcp_config.bigquery_client
+        dataset_id = gcp_config.bigquery_dataset
+        
+        query = f"""
+        SELECT 
+            timestamp,
+            actor_id,
+            verb_display,
+            object_name,
+            result_completion,
+            result_success,
+            result_score_scaled,
+            result_response,
+            context_platform,
+            raw_json,
+            statement_id
+        FROM `{dataset_id}.statements` 
+        ORDER BY timestamp DESC 
+        LIMIT {limit}
+        """
+        
+        query_job = client.query(query)
+        rows = list(query_job.result())
+        
+        # 2. Convert to dicts
+        statements = []
+        for row in rows:
+            stmt = dict(row)
+            if stmt.get("timestamp"):
+                try:
+                    stmt["timestamp"] = stmt["timestamp"].isoformat()
+                except:
+                    pass
+            statements.append(stmt)
+        
+        # 3. Show it
+        context = {
+            "request": request,
+            "active_page": "data_explorer",
+            "title": "Data Explorer",
+            "statements": statements,
+            "total_count": len(statements),
+            "success": True,
+            "error": None
+        }
+        
+        return templates.TemplateResponse("data_explorer_modern.html", context)
+        
+    except Exception as e:
+        logger.error(f"Error: {e}", exc_info=True)
+        context = {
+            "request": request,
+            "active_page": "data_explorer",
+            "title": "Data Explorer",
+            "statements": [],
+            "total_count": 0,
+            "success": False,
+            "error": str(e)
+        }
+        return templates.TemplateResponse("data_explorer_modern.html", context)
 
 
 @router.get("/raw-statements", response_class=HTMLResponse)
