@@ -285,7 +285,6 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                         "total_count": row_count
                     }
             
-            return {"success": False, "statements": [], "total_count": 0, "error": "Query returned non-200 status"}
             
     except httpx.TimeoutException as e:
         logger.error(f"Timeout getting BigQuery data: {e}")
