@@ -530,67 +530,61 @@ async def data_explorer(
     limit: int = Query(100, ge=1, le=100),
     cohort: Optional[str] = None
 ) -> HTMLResponse:
-    """Simple data explorer - query BigQuery, show results."""
-    from app.config.gcp_config import get_gcp_config
-    from google.cloud import bigquery
+    """Simple data explorer - use API endpoint that works."""
+    base_url = get_api_base_url(request) or "https://taps-analytics-ui-euvwb5vwea-uc.a.run.app"
     
     try:
-        # 1. Query BigQuery directly
-        gcp_config = get_gcp_config()
-        client = gcp_config.bigquery_client
-        dataset_id = gcp_config.bigquery_dataset
-        
-        query = f"""
-        SELECT 
-            timestamp,
-            actor_id,
-            verb_display,
-            object_name,
-            result_completion,
-            result_success,
-            result_score_scaled,
-            result_response,
-            context_platform,
-            raw_json,
-            statement_id
-        FROM `{dataset_id}.statements` 
-        ORDER BY timestamp DESC 
-        LIMIT {limit}
-        """
-        
-        query_job = client.query(query)
-        rows = list(query_job.result())
-        
-        # 2. Convert to dicts
-        statements = []
-        for row in rows:
-            stmt = dict(row)
-            if stmt.get("timestamp"):
-                try:
-                    stmt["timestamp"] = stmt["timestamp"].isoformat()
-                except:
-                    pass
-            statements.append(stmt)
-        
-        # 3. Show it
-        context = {
-            "request": request,
-            "active_page": "data_explorer",
-            "title": "Data Explorer",
-            "statements": statements,
-            "total_count": len(statements),
-            "success": True,
-            "error": None
-        }
-        
-        logger.info(f"Returning {len(statements)} statements to template")
-        return templates.TemplateResponse("data_explorer_modern.html", context)
-        
+        async with httpx.AsyncClient(base_url=base_url, timeout=30.0) as client:
+            query = f"""
+            SELECT 
+                timestamp,
+                actor_id,
+                verb_display,
+                object_name,
+                result_completion,
+                result_success,
+                result_score_scaled,
+                result_response,
+                context_platform,
+                raw_json,
+                statement_id
+            FROM taps_data.statements 
+            ORDER BY timestamp DESC 
+            LIMIT {limit}
+            """
+            
+            response = await client.get("/api/analytics/bigquery/query", params={"query": query})
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    rows = data.get("data", {}).get("rows", [])
+                    statements = []
+                    for row in rows:
+                        stmt = dict(row)
+                        if stmt.get("timestamp"):
+                            try:
+                                stmt["timestamp"] = stmt["timestamp"].isoformat()
+                            except:
+                                pass
+                        statements.append(stmt)
+                    
+                    context = {
+                        "request": request,
+                        "active_page": "data_explorer",
+                        "title": "Data Explorer",
+                        "statements": statements,
+                        "total_count": len(statements),
+                        "success": True,
+                        "error": None
+                    }
+                    return templates.TemplateResponse("data_explorer_modern.html", context)
+            
+            # If we get here, something failed
+            raise Exception(f"API returned {response.status_code}: {response.text[:200]}")
+            
     except Exception as e:
         logger.error(f"Error in data_explorer: {e}", exc_info=True)
-        import traceback
-        error_details = traceback.format_exc()
-        logger.error(f"Traceback: {error_details}")
         context = {
             "request": request,
             "active_page": "data_explorer",
@@ -598,7 +592,7 @@ async def data_explorer(
             "statements": [],
             "total_count": 0,
             "success": False,
-            "error": f"{str(e)}: {error_details[:500]}"
+            "error": str(e)
         }
         return templates.TemplateResponse("data_explorer_modern.html", context)
 
