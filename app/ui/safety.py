@@ -17,6 +17,15 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+@router.get("/safety", response_class=HTMLResponse)
+async def safety_dashboard(
+    request: Request,
+    cohort: Optional[str] = Query(None, description="Filter by cohort")
+):
+    """Safety dashboard - redirects to flagged-content handler."""
+    return await flagged_content_dashboard(request, cohort)
+
+
 @router.get("/flagged-content", response_class=HTMLResponse)
 async def flagged_content_dashboard(
     request: Request,
