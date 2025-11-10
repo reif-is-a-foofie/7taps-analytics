@@ -19,13 +19,13 @@ router = APIRouter()
 logger = get_logger("daily_progress")
 templates = Jinja2Templates(directory="app/templates")
 
-def get_daily_progress_data(target_date: str, group: Optional[str] = None) -> Dict[str, Any]:
+def get_daily_progress_data(target_date: str, cohort: Optional[str] = None) -> Dict[str, Any]:
     """Get daily progress data for the 7pm email workflow."""
     try:
         from app.utils.cohort_filtering import build_cohort_filter_sql
         
-        # Filter by cohort if specified (group parameter is now cohort_id)
-        cohort_filter = build_cohort_filter_sql(cohort_id=group) if group else ""
+        # Filter by cohort if specified
+        cohort_filter = build_cohort_filter_sql(cohort_id=cohort) if cohort else ""
         
         # Also filter by 7taps platform
         platform_filter = "AND context_platform = '7taps'"
@@ -127,7 +127,7 @@ def get_daily_progress_data(target_date: str, group: Optional[str] = None) -> Di
             return {
                 "success": True,
                 "date": target_date,
-                "group": group,
+                "cohort": cohort,
                 "summary": {
                     "total_users": total_users,
                     "completed_users": len(completed_users),
@@ -164,7 +164,7 @@ def get_daily_progress_data(target_date: str, group: Optional[str] = None) -> Di
 async def daily_progress_dashboard(
     request: Request,
     target_date: Optional[str] = Query(None, description="Target date (YYYY-MM-DD)"),
-    group: Optional[str] = Query(None, description="Group filter (e.g., 7taps)")
+    cohort: Optional[str] = Query(None, description="Cohort filter (e.g., 7taps)")
 ):
     """Daily progress dashboard for 7pm email workflow."""
     try:
@@ -173,13 +173,13 @@ async def daily_progress_dashboard(
             target_date = date.today().strftime("%Y-%m-%d")
         
         # Get progress data
-        progress_data = get_daily_progress_data(target_date, group)
+        progress_data = get_daily_progress_data(target_date, cohort)
         
         context = {
             "request": request,
             "title": "Daily Progress - 7pm Email Prep",
             "target_date": target_date,
-            "group": group or "All Groups",
+            "cohort": cohort or "All Cohorts",
             "data": progress_data,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
@@ -193,18 +193,18 @@ async def daily_progress_dashboard(
 @router.get("/api/daily-progress/data")
 async def get_daily_progress_api(
     date: str = Query(..., description="Date in YYYY-MM-DD format"),
-    group: Optional[str] = Query(None, description="Group filter")
+    cohort: Optional[str] = Query(None, description="Cohort filter")
 ):
     """Get daily progress data as JSON for email workflow."""
-    return get_daily_progress_data(date, group)
+        return get_daily_progress_data(date, cohort)
 
 @router.get("/api/daily-progress/email-summary")
 async def get_email_summary(
     date: str = Query(..., description="Date in YYYY-MM-DD format"),
-    group: Optional[str] = Query(None, description="Group filter")
+    cohort: Optional[str] = Query(None, description="Cohort filter")
 ):
     """Get formatted summary for 7pm email."""
-    data = get_daily_progress_data(date, group)
+    data = get_daily_progress_data(date, cohort)
     
     if not data["success"]:
         return {"error": data["error"]}
@@ -215,7 +215,7 @@ async def get_email_summary(
     # Format for email
     email_summary = {
         "date": date,
-        "group": group or "All Groups",
+        "cohort": cohort or "All Cohorts",
         "completion_rate": f"{summary['completion_rate']}%",
         "completed_count": summary["completed_users"],
         "total_count": summary["total_users"],

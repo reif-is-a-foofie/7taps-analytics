@@ -657,7 +657,7 @@ async def daily_analytics_dashboard(
 @router.get("/api/daily-analytics/email-data")
 async def get_email_workflow_data(
     target_date: str = Query(..., description="Target date for analytics (YYYY-MM-DD)"),
-    group: Optional[str] = Query(None, description="Group/cohort filter (e.g., 7taps)")
+    cohort: Optional[str] = Query(None, description="Cohort filter (e.g., 7taps)")
 ):
     """Get data specifically formatted for the 7pm email workflow."""
     try:
@@ -667,15 +667,15 @@ async def get_email_workflow_data(
         lesson_mapping = analytics_manager._get_lesson_mapping()
         
         # Get detailed lesson and response data
-        lesson_data = analytics_manager._get_lesson_response_data(target_date, group)
+        lesson_data = analytics_manager._get_lesson_response_data(target_date, cohort)
         
         # Get completion data
-        completion_data = analytics_manager.get_daily_completion_data(target_date, group)
+        completion_data = analytics_manager.get_daily_completion_data(target_date, cohort)
         
         # Structure data for email templates
         email_data = {
             "date": target_date,
-            "group": group or "All Groups",
+            "cohort": cohort or "All Cohorts",
             "lesson_mapping": lesson_mapping,
             "completion_summary": {
                 "total_users": completion_data.get("total_users", 0),
