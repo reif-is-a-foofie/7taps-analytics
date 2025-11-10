@@ -205,24 +205,128 @@ class PubSubBigQueryProcessor:
             logger.error(f"Failed to transform xAPI statement: {str(e)}")
             raise
 
-    def insert_row_to_bigquery(self, row: Dict[str, Any], message_id: str) -> bool:
-        """Insert transformed row into BigQuery."""
+    async def statement_exists(self, statement_id: str) -> bool:
+        """Check if a statement already exists in BigQuery."""
         try:
-            # Insert row
-            errors = self.bigquery_client.insert_rows_json(self.table, [row])
+            query = f"""
+            SELECT statement_id 
+            FROM `{self.dataset_id}.{self.table_id}`
+            WHERE statement_id = @statement_id
+            LIMIT 1
+            """
             
-            if errors:
-                error_msg = f"BigQuery insert errors for message {message_id}: {errors}"
-                logger.error(error_msg)
-                self.metrics["errors"].append(error_msg)
-                return False
-            else:
-                logger.info(f"Successfully inserted message {message_id} into BigQuery")
+            job_config = self.bigquery_client.query_config()
+            job_config.query_parameters = [
+                bigquery.ScalarQueryParameter("statement_id", "STRING", statement_id)
+            ]
+            
+            results = self.bigquery_client.query(query, job_config=job_config)
+            return len(list(results)) > 0
+            
+        except Exception as e:
+            logger.warning(f"Error checking if statement exists: {e}")
+            # If check fails, proceed with insert (fail-safe)
+            return False
+
+    async def insert_row_to_bigquery(self, row: Dict[str, Any], message_id: str) -> bool:
+        """Insert or update row in BigQuery using MERGE for idempotency."""
+        try:
+            statement_id = row.get("statement_id", "")
+            table_id = f"{self.dataset_id}.{self.table_id}"
+            
+            # Use MERGE statement for idempotent insert (only inserts if not exists)
+            merge_query = f"""
+            MERGE `{table_id}` T
+            USING (SELECT 
+                @statement_id as statement_id,
+                @timestamp as timestamp,
+                @stored as stored,
+                @version as version,
+                @actor_id as actor_id,
+                @actor_name as actor_name,
+                @actor_type as actor_type,
+                @verb_id as verb_id,
+                @verb_display as verb_display,
+                @object_id as object_id,
+                @object_name as object_name,
+                @object_type as object_type,
+                @object_definition_type as object_definition_type,
+                @result_score_scaled as result_score_scaled,
+                @result_score_raw as result_score_raw,
+                @result_score_min as result_score_min,
+                @result_score_max as result_score_max,
+                @result_success as result_success,
+                @result_completion as result_completion,
+                @result_response as result_response,
+                @result_duration as result_duration,
+                @context_registration as context_registration,
+                @context_instructor_id as context_instructor_id,
+                @context_platform as context_platform,
+                @context_language as context_language,
+                @raw_json as raw_json
+            ) S
+            ON T.statement_id = S.statement_id
+            WHEN NOT MATCHED THEN
+              INSERT (statement_id, timestamp, stored, version, actor_id, actor_name, actor_type,
+                      verb_id, verb_display, object_id, object_name, object_type, object_definition_type,
+                      result_score_scaled, result_score_raw, result_score_min, result_score_max,
+                      result_success, result_completion, result_response, result_duration,
+                      context_registration, context_instructor_id, context_platform, context_language,
+                      raw_json)
+              VALUES (S.statement_id, S.timestamp, S.stored, S.version, S.actor_id, S.actor_name, S.actor_type,
+                      S.verb_id, S.verb_display, S.object_id, S.object_name, S.object_type, S.object_definition_type,
+                      S.result_score_scaled, S.result_score_raw, S.result_score_min, S.result_score_max,
+                      S.result_success, S.result_completion, S.result_response, S.result_duration,
+                      S.context_registration, S.context_instructor_id, S.context_platform, S.context_language,
+                      S.raw_json)
+            """
+            
+            job_config = self.bigquery_client.query_config()
+            job_config.query_parameters = [
+                bigquery.ScalarQueryParameter("statement_id", "STRING", row.get("statement_id", "")),
+                bigquery.ScalarQueryParameter("timestamp", "TIMESTAMP", row.get("timestamp")),
+                bigquery.ScalarQueryParameter("stored", "TIMESTAMP", row.get("stored")),
+                bigquery.ScalarQueryParameter("version", "STRING", row.get("version")),
+                bigquery.ScalarQueryParameter("actor_id", "STRING", row.get("actor_id", "")),
+                bigquery.ScalarQueryParameter("actor_name", "STRING", row.get("actor_name")),
+                bigquery.ScalarQueryParameter("actor_type", "STRING", row.get("actor_type")),
+                bigquery.ScalarQueryParameter("verb_id", "STRING", row.get("verb_id", "")),
+                bigquery.ScalarQueryParameter("verb_display", "STRING", row.get("verb_display")),
+                bigquery.ScalarQueryParameter("object_id", "STRING", row.get("object_id", "")),
+                bigquery.ScalarQueryParameter("object_name", "STRING", row.get("object_name")),
+                bigquery.ScalarQueryParameter("object_type", "STRING", row.get("object_type")),
+                bigquery.ScalarQueryParameter("object_definition_type", "STRING", row.get("object_definition_type")),
+                bigquery.ScalarQueryParameter("result_score_scaled", "FLOAT", row.get("result_score_scaled")),
+                bigquery.ScalarQueryParameter("result_score_raw", "FLOAT", row.get("result_score_raw")),
+                bigquery.ScalarQueryParameter("result_score_min", "FLOAT", row.get("result_score_min")),
+                bigquery.ScalarQueryParameter("result_score_max", "FLOAT", row.get("result_score_max")),
+                bigquery.ScalarQueryParameter("result_success", "BOOLEAN", row.get("result_success")),
+                bigquery.ScalarQueryParameter("result_completion", "BOOLEAN", row.get("result_completion")),
+                bigquery.ScalarQueryParameter("result_response", "STRING", row.get("result_response")),
+                bigquery.ScalarQueryParameter("result_duration", "STRING", row.get("result_duration")),
+                bigquery.ScalarQueryParameter("context_registration", "STRING", row.get("context_registration")),
+                bigquery.ScalarQueryParameter("context_instructor_id", "STRING", row.get("context_instructor_id")),
+                bigquery.ScalarQueryParameter("context_platform", "STRING", row.get("context_platform")),
+                bigquery.ScalarQueryParameter("context_language", "STRING", row.get("context_language")),
+                bigquery.ScalarQueryParameter("raw_json", "STRING", row.get("raw_json", ""))
+            ]
+            
+            # Execute MERGE query
+            query_job = self.bigquery_client.query(merge_query, job_config=job_config)
+            query_job.result()  # Wait for completion
+            
+            # Check if this was an insert (MERGE only inserts when not matched)
+            num_rows_affected = query_job.num_dml_affected_rows or 0
+            if num_rows_affected > 0:
+                logger.info(f"Successfully inserted statement {statement_id} (message {message_id})")
                 self.metrics["bigquery_rows_inserted"] += 1
-                return True
+            else:
+                logger.debug(f"Statement {statement_id} already exists, skipped duplicate insert (idempotent)")
+            
+            return True
 
         except Exception as e:
-            error_msg = f"Failed to insert message {message_id} into BigQuery: {str(e)}"
+            error_msg = f"Failed to insert/update message {message_id} in BigQuery: {str(e)}"
             logger.error(error_msg)
             self.metrics["errors"].append(error_msg)
             return False
@@ -235,8 +339,17 @@ class PubSubBigQueryProcessor:
             # Decode message data
             message_data = json.loads(message.data.decode('utf-8'))
             message_id = message.message_id
+            statement_id = message_data.get("id", "")
 
-            logger.info(f"Processing message {message_id} for BigQuery")
+            logger.info(f"Processing message {message_id} for BigQuery (statement_id: {statement_id})")
+
+            # Check for duplicate statement (idempotency check)
+            if statement_id and await self.statement_exists(statement_id):
+                logger.info(f"Statement {statement_id} already exists, skipping duplicate (idempotent)")
+                # Acknowledge the message since we've already processed it
+                message.ack()
+                self.metrics["messages_processed"] += 1
+                return
 
             # Normalize user data and enrich with CSV metadata if matched
             user_service = get_user_normalization_service()
@@ -246,8 +359,8 @@ class PubSubBigQueryProcessor:
             # Transform xAPI statement to BigQuery row (already enriched by normalization)
             row = self.transform_xapi_to_bigquery_row(normalized_statement, message_id, normalized_user_id)
 
-            # Insert into BigQuery
-            if self.insert_row_to_bigquery(row, message_id):
+            # Insert/update into BigQuery (MERGE handles idempotency)
+            if await self.insert_row_to_bigquery(row, message_id):
                 self.metrics["messages_processed"] += 1
                 self.metrics["last_message_time"] = datetime.now(timezone.utc)
 
