@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from app.logging_config import get_logger
 from app.services.user_normalization import get_user_normalization_service
+from app.services.cohort_sync import get_cohort_sync_service
 from app.config.gcp_config import get_gcp_config
 
 logger = get_logger("csv_import_service")
@@ -58,6 +59,14 @@ class CSVImportService:
             
             # Store processed data in BigQuery
             await self._store_csv_data(processed_rows, filename)
+            
+            # Sync cohorts after CSV import
+            try:
+                cohort_sync_service = get_cohort_sync_service()
+                sync_result = await cohort_sync_service.sync_cohorts_from_users()
+                logger.info(f"Cohort sync after CSV import: {sync_result.get('synced_count', 0)} cohorts synced")
+            except Exception as e:
+                logger.warning(f"Failed to sync cohorts after CSV import: {e}")
             
             return {
                 "success": True,

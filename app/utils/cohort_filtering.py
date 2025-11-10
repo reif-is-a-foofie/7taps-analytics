@@ -122,7 +122,7 @@ async def get_available_cohorts_from_statements() -> list:
 
 async def get_available_cohorts_from_users() -> list:
     """
-    Get list of all available cohorts from users table (Team + Group combinations).
+    Get list of all available cohorts from cohorts table (preferred) or users table (fallback).
     
     Returns:
         List of cohort dicts with cohort_id, cohort_name, and user counts
@@ -132,15 +132,51 @@ async def get_available_cohorts_from_users() -> list:
         client = gcp_config.bigquery_client
         dataset_id = gcp_config.bigquery_dataset
         
+        # Try to get from cohorts table first
+        try:
+            query = f"""
+            SELECT 
+                cohort_id,
+                cohort_name,
+                team,
+                group_name,
+                user_count,
+                statement_count,
+                last_activity
+            FROM `{dataset_id}.cohorts`
+            WHERE active = TRUE
+            ORDER BY user_count DESC
+            """
+            
+            results = list(client.query(query).result())
+            
+            cohorts = []
+            for row in results:
+                cohorts.append({
+                    "cohort_id": row.cohort_id,
+                    "cohort_name": row.cohort_name,
+                    "team": row.team,
+                    "group": row.group_name,
+                    "user_count": row.user_count,
+                    "statement_count": getattr(row, 'statement_count', 0),
+                    "last_activity": row.last_activity.isoformat() if row.last_activity else None
+                })
+            
+            if cohorts:
+                return cohorts
+        except Exception as e:
+            logger.debug(f"cohorts table not available, falling back to users table: {e}")
+        
+        # Fallback to users table if cohorts table doesn't exist
         query = f"""
         SELECT 
-            JSON_EXTRACT_SCALAR(csv_data[OFFSET(0)], '$.Group') as group_name,
-            JSON_EXTRACT_SCALAR(csv_data[OFFSET(0)], '$.Team') as team_name,
+            csv_data[OFFSET(0)].group as group_name,
+            csv_data[OFFSET(0)].team as team_name,
             COUNT(*) as user_count
         FROM `{dataset_id}.users`
         WHERE csv_data IS NOT NULL 
             AND ARRAY_LENGTH(csv_data) > 0
-            AND JSON_EXTRACT_SCALAR(csv_data[OFFSET(0)], '$.Group') IS NOT NULL
+            AND csv_data[OFFSET(0)].group IS NOT NULL
         GROUP BY group_name, team_name
         ORDER BY user_count DESC
         """
