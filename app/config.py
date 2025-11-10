@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     DEPLOYMENT_MODE: str = "full"  # "full" or "cloud_run"
 
     # GCP configuration (shared across deployment targets)
-    GCP_PROJECT_ID: str = "taps-data"
+    GCP_PROJECT_ID: str = "pol-a-477603"
     GCP_BIGQUERY_DATASET: str = "taps_data"
     GCP_LOCATION: str = "us-central1"
     GCP_SERVICE_ACCOUNT_KEY_PATH: str = ""
