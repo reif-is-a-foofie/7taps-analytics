@@ -23,65 +23,24 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Redis cache configuration for query result caching
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
+# Caching removed - using Pub/Sub for real-time data
+# Cache configuration kept for future use if needed
 CACHE_TTL = int(os.getenv('BIGQUERY_CACHE_TTL', '3600'))  # 1 hour default
 COST_THRESHOLD_BYTES = int(os.getenv('BIGQUERY_COST_THRESHOLD', '1048576'))  # 1MB threshold
 
-def get_redis_client():
-    """Get Redis client for caching."""
-    try:
-        return redis.from_url(REDIS_URL, decode_responses=True)
-    except Exception as e:
-        logger.warning(f"Redis connection failed: {e}. Caching disabled.")
-        return None
-
 def generate_cache_key(query: str, params: Optional[Dict[str, Any]] = None) -> str:
-    """Generate a cache key for the query."""
+    """Generate a cache key for the query (for future caching implementation)."""
     cache_data = {"query": query, "params": params or {}}
     cache_string = json.dumps(cache_data, sort_keys=True)
     return f"bq_cache:{hashlib.md5(cache_string.encode()).hexdigest()}"
 
 def get_cached_result(cache_key: str) -> Optional[Dict[str, Any]]:
-    """Get cached query result."""
-    redis_client = get_redis_client()
-    if not redis_client:
-        return None
-    
-    try:
-        cached_data = redis_client.get(cache_key)
-        if cached_data:
-            result = json.loads(cached_data)
-            result['cached'] = True
-            result['cache_hit'] = True
-            logger.info(f"Cache hit for query: {cache_key[:20]}...")
-            return result
-    except Exception as e:
-        logger.warning(f"Cache retrieval error: {e}")
-    
+    """Get cached query result (disabled - using Pub/Sub for real-time data)."""
     return None
 
 def cache_result(cache_key: str, result: Dict[str, Any], ttl: int = CACHE_TTL) -> None:
-    """Cache query result."""
-    redis_client = get_redis_client()
-    if not redis_client:
-        return
-    
-    try:
-        # Don't cache large results to avoid memory issues
-        result_size = len(json.dumps(result))
-        if result_size > COST_THRESHOLD_BYTES:
-            logger.info(f"Result too large to cache: {result_size} bytes")
-            return
-        
-        result['cached'] = False
-        result['cache_hit'] = False
-        result['cached_at'] = datetime.now(timezone.utc).isoformat()
-        
-        redis_client.setex(cache_key, ttl, json.dumps(result))
-        logger.info(f"Cached result for query: {cache_key[:20]}... (TTL: {ttl}s)")
-    except Exception as e:
-        logger.warning(f"Cache storage error: {e}")
+    """Cache query result (disabled - using Pub/Sub for real-time data)."""
+    pass
 
 def estimate_query_cost(sql_query: str) -> Dict[str, Any]:
     """Estimate BigQuery query cost based on table sizes and query complexity."""
@@ -207,12 +166,7 @@ def execute_bigquery_query(sql_query: str, params: Optional[Dict[str, Any]] = No
             "cache_key": cache_key
         }
         
-        # Cache the result if it's worth caching
-        if use_cache and cost_estimate['should_cache'] and len(rows) > 0:
-            # Adjust TTL based on cost priority
-            ttl = CACHE_TTL * 2 if cost_estimate['cache_priority'] == 'high' else CACHE_TTL
-            cache_result(cache_key, result, ttl)
-            logger.info(f"Query executed and cached: {cost_estimate['estimated_bytes']} bytes estimated")
+        # Caching disabled - using Pub/Sub for real-time data
 
         return result
 

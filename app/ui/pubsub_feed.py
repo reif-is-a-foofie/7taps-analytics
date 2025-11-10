@@ -68,9 +68,13 @@ async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = No
             if response.status_code == 200:
                 data = response.json()
                 if data.get("success"):
+                    # Response structure: data.data.rows (BigQueryAnalyticsResponse format)
+                    rows = data.get("data", {}).get("rows", [])
+                    row_count = data.get("row_count", 0)
+                    
                     # Enhance statements with verbose JSON in result_response
                     enhanced_statements = []
-                    for statement in data["data"]["rows"]:
+                    for statement in rows:
                         # Create detailed payload for result section - show actual xAPI data
                         import json
                         detailed_payload = {
@@ -96,7 +100,7 @@ async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = No
                     return {
                         "success": True,
                         "statements": enhanced_statements,
-                        "total_count": data["row_count"]
+                        "total_count": row_count
                     }
             
             return {"success": False, "statements": [], "total_count": 0}
@@ -227,9 +231,13 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
             if response.status_code == 200:
                 data = response.json()
                 if data.get("success"):
+                    # Response structure: data.data.rows (BigQueryAnalyticsResponse format)
+                    rows = data.get("data", {}).get("rows", [])
+                    row_count = data.get("row_count", 0)
+                    
                     # Enhance statements with verbose JSON in result_response
                     enhanced_statements = []
-                    for statement in data["data"]["rows"]:
+                    for statement in rows:
                         # Try to use raw xAPI data if available, otherwise reconstruct
                         import json
                         detailed_payload = None
@@ -274,7 +282,7 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                     return {
                         "success": True,
                         "statements": enhanced_statements,
-                        "total_count": data["row_count"]
+                        "total_count": row_count
                     }
             
             return {"success": False, "statements": [], "total_count": 0}
@@ -319,10 +327,13 @@ async def get_raw_incoming_statements(limit: int = 25, base_url: Optional[str] =
             if response.status_code == 200:
                 data = response.json()
                 if data.get("success"):
+                    # Response structure: data.data.rows (BigQueryAnalyticsResponse format)
+                    rows = data.get("data", {}).get("rows", [])
+                    row_count = data.get("row_count", 0)
                     return {
                         "success": True,
-                        "raw_statements": data["data"]["rows"],
-                        "total_count": data["row_count"]
+                        "raw_statements": rows,
+                        "total_count": row_count
                     }
             
             return {"success": False, "raw_statements": [], "total_count": 0}
@@ -352,8 +363,10 @@ async def get_system_status(request: Optional[Request] = None) -> Dict[str, Any]
             total_count = 0
             if count_response.status_code == 200:
                 data = count_response.json()
-                if data.get("success") and data["data"]["rows"]:
-                    total_count = data["data"]["rows"][0]["total"]
+                if data.get("success"):
+                    rows = data.get("data", {}).get("rows", [])
+                    if rows:
+                        total_count = rows[0].get("total", 0)
             
             # Get latest timestamp
             latest_query = "SELECT MAX(timestamp) as latest FROM taps_data.statements"
@@ -365,8 +378,10 @@ async def get_system_status(request: Optional[Request] = None) -> Dict[str, Any]
             latest_timestamp = None
             if latest_response.status_code == 200:
                 data = latest_response.json()
-                if data.get("success") and data["data"]["rows"]:
-                    latest_timestamp = data["data"]["rows"][0]["latest"]
+                if data.get("success"):
+                    rows = data.get("data", {}).get("rows", [])
+                    if rows:
+                        latest_timestamp = rows[0].get("latest")
             
             # Get ETL processor status
             etl_status = await get_etl_status(client, base_url)
