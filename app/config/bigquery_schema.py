@@ -150,6 +150,39 @@ class BigQuerySchema:
                                description="Total statements for this activity"),
         ]
 
+    def get_flagged_content_table_schema(self) -> List[bigquery.SchemaField]:
+        """Schema for the flagged content table."""
+        return [
+            bigquery.SchemaField("statement_id", "STRING", mode="REQUIRED",
+                               description="xAPI statement identifier"),
+            bigquery.SchemaField("timestamp", "TIMESTAMP", mode="REQUIRED",
+                               description="When the statement occurred"),
+            bigquery.SchemaField("flagged_at", "TIMESTAMP", mode="REQUIRED",
+                               description="When the content was flagged"),
+            bigquery.SchemaField("actor_id", "STRING", mode="REQUIRED",
+                               description="Actor identifier"),
+            bigquery.SchemaField("actor_name", "STRING", mode="NULLABLE",
+                               description="Actor name"),
+            bigquery.SchemaField("content", "STRING", mode="NULLABLE",
+                               description="Flagged content text"),
+            bigquery.SchemaField("is_flagged", "BOOLEAN", mode="REQUIRED",
+                               description="Whether content was flagged"),
+            bigquery.SchemaField("severity", "STRING", mode="REQUIRED",
+                               description="Severity level: critical, high, medium, low"),
+            bigquery.SchemaField("flagged_reasons", "STRING", mode="REPEATED",
+                               description="Array of reasons for flagging"),
+            bigquery.SchemaField("confidence_score", "FLOAT", mode="REQUIRED",
+                               description="Confidence score 0.0-1.0"),
+            bigquery.SchemaField("suggested_actions", "STRING", mode="REPEATED",
+                               description="Array of suggested actions"),
+            bigquery.SchemaField("analysis_method", "STRING", mode="NULLABLE",
+                               description="Analysis method: immediate_ai, batch_ai, obvious_flag_fallback"),
+            bigquery.SchemaField("cohort", "STRING", mode="NULLABLE",
+                               description="Cohort identifier if available"),
+            bigquery.SchemaField("raw_analysis", "STRING", mode="NULLABLE",
+                               description="Complete analysis result as JSON"),
+        ]
+
     def get_table_schemas(self) -> Dict[str, List[bigquery.SchemaField]]:
         """Get all table schemas."""
         return {
@@ -157,6 +190,7 @@ class BigQuerySchema:
             "actors": self.get_actors_table_schema(),
             "verbs": self.get_verbs_table_schema(),
             "activities": self.get_activities_table_schema(),
+            "flagged_content": self.get_flagged_content_table_schema(),
         }
 
     def create_dataset_if_not_exists(self) -> bool:
