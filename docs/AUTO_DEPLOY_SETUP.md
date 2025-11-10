@@ -28,6 +28,7 @@ Configure the trigger:
 - **Substitution variables** (click "Show advanced"):
   - **SHORT_SHA**: `${COMMIT_SHA:0:7}` 
     - This extracts the first 7 characters of the commit SHA automatically
+    - **Note**: Use the substitution expression `${COMMIT_SHA:0:7}` in the trigger configuration
 
 ### Step 3: Verify
 

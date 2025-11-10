@@ -68,7 +68,6 @@ options:
   # Use Cloud Build's built-in caching
   substitution_option: 'ALLOW_LOOSE'
 
-# Substitutions for GitHub triggers
-# SHORT_SHA will be set automatically from COMMIT_SHA by the trigger
-substitutions:
-  SHORT_SHA: '${COMMIT_SHA:0:7}'  # First 7 chars of commit SHA
+# Note: For GitHub triggers, configure SHORT_SHA substitution in trigger settings:
+# SHORT_SHA = ${COMMIT_SHA:0:7} (set in trigger configuration, not here)
+# For manual triggers, SHORT_SHA is provided via --substitutions flag
