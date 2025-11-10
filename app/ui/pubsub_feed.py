@@ -72,6 +72,12 @@ async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = No
                     rows = data.get("data", {}).get("rows", [])
                     row_count = data.get("row_count", 0)
                     
+                    logger.info(f"BigQuery query returned {len(rows)} rows, row_count={row_count}")
+                    
+                    if len(rows) == 0:
+                        logger.warning("BigQuery query returned success=True but 0 rows")
+                        return {"success": True, "statements": [], "total_count": 0}
+                    
                     # Enhance statements with verbose JSON in result_response
                     enhanced_statements = []
                     for statement in rows:
