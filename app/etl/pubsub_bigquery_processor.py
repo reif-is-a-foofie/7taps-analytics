@@ -283,7 +283,7 @@ class PubSubBigQueryProcessor:
                       S.raw_json)
             """
             
-            job_config = self.bigquery_client.query_config()
+            job_config = bigquery.QueryJobConfig()
             job_config.query_parameters = [
                 bigquery.ScalarQueryParameter("statement_id", "STRING", row.get("statement_id", "")),
                 bigquery.ScalarQueryParameter("timestamp", "TIMESTAMP", row.get("timestamp")),
