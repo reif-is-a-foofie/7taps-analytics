@@ -78,6 +78,9 @@ class BatchProcessor:
         content_hash = self._hash_content(content)
         timestamp = datetime.now(timezone.utc)
         
+        # Store content in metadata for persistence
+        content_metadata = {"content": content}
+        
         # Step 1: Check for obvious flags using local rules
         obvious_result = await self._check_obvious_flags(content)
         
@@ -86,6 +89,9 @@ class BatchProcessor:
             
             # Step 2: Run AI immediately for ANY obvious flag (safety first!)
             ai_result = await self._run_immediate_ai_analysis(content, context)
+            
+            # Add content to metadata
+            ai_result.setdefault("analysis_metadata", {}).update(content_metadata)
             
             # If AI analysis failed, use obvious_result as fallback
             if ai_result.get("error"):
@@ -97,6 +103,7 @@ class BatchProcessor:
                     "confidence_score": obvious_result.get("confidence", 0.9),
                     "suggested_actions": obvious_result.get("suggested_actions", ["Immediate review required"]),
                     "analysis_metadata": {
+                        **content_metadata,
                         "analysis_method": "obvious_flag_fallback",
                         "ai_analysis_failed": True
                     }
@@ -138,7 +145,8 @@ class BatchProcessor:
                 "message": "Content queued for batch AI analysis",
                 "analysis_metadata": {
                     "analysis_method": "batch_queued",
-                    "processing_time": "pending"
+                    "processing_time": "pending",
+                    **content_metadata
                 }
             }
     
@@ -400,24 +408,40 @@ class BatchProcessor:
     
     async def _process_batch_results(self, batch_items: List[BatchItem], batch_results: List[Dict[str, Any]]):
         """Process results from batch AI analysis."""
+        from app.services.flagged_content_persistence import flagged_content_persistence
+        
         for item, result in zip(batch_items, batch_results):
             if result.get("error"):
                 logger.error(f"Error processing {item.statement_id}: {result['error']}")
                 continue
             
             if result.get("is_flagged", False):
-                # Create flag post
+                # Create flag result
                 flag_result = self._create_flag_result(result, item.statement_id, item.user_id, item.timestamp, immediate=False)
                 logger.info(f"Flagged content from batch: {item.statement_id} - {result.get('severity', 'unknown')}")
-                # TODO: Store flag result in database or send alerts
+                
+                # Persist to BigQuery
+                try:
+                    # Add content to metadata
+                    result.setdefault("analysis_metadata", {})["content"] = item.content
+                    await flagged_content_persistence.persist_flagged_content(
+                        statement_id=item.statement_id,
+                        timestamp=item.timestamp,
+                        actor_id=item.user_id,
+                        actor_name=None,
+                        content=item.content,
+                        analysis_result=result,
+                        cohort=None
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to persist flagged content from batch: {e}")
             else:
                 # Mark as analyzed
                 logger.info(f"Content cleared from batch: {item.statement_id}")
-                # TODO: Mark as analyzed in database
     
     def _create_flag_result(self, analysis_result: Dict[str, Any], statement_id: str, user_id: str, timestamp: datetime, immediate: bool) -> Dict[str, Any]:
-        """Create standardized flag result."""
-        return {
+        """Create standardized flag result and persist to BigQuery."""
+        flag_result = {
             "status": "flagged",
             "statement_id": statement_id,
             "user_id": user_id,
@@ -433,6 +457,38 @@ class BatchProcessor:
                 "processing_time": timestamp.isoformat()
             }
         }
+        
+        # Persist to BigQuery if flagged
+        if flag_result["is_flagged"]:
+            try:
+                from app.services.flagged_content_persistence import flagged_content_persistence
+                
+                # Get content from metadata
+                content = analysis_result.get("analysis_metadata", {}).get("content", "")
+                
+                # Persist synchronously (will be called from async context)
+                # Use asyncio.ensure_future if we're in an async context
+                try:
+                    loop = asyncio.get_running_loop()
+                    # Schedule persistence task
+                    loop.create_task(
+                        flagged_content_persistence.persist_flagged_content(
+                            statement_id=statement_id,
+                            timestamp=timestamp,
+                            actor_id=user_id,
+                            actor_name=None,  # Will be extracted from statement if available
+                            content=content,
+                            analysis_result=analysis_result,
+                            cohort=None  # Will be extracted from statement if available
+                        )
+                    )
+                except RuntimeError:
+                    # No event loop, skip persistence (shouldn't happen in normal flow)
+                    logger.warning("No event loop for persistence, skipping BigQuery write")
+            except Exception as e:
+                logger.error(f"Failed to persist flagged content: {e}")
+        
+        return flag_result
     
     def _hash_content(self, content: str) -> str:
         """Create hash for content deduplication."""
