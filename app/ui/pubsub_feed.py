@@ -249,50 +249,55 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                     # Enhance statements with verbose JSON in result_response
                     enhanced_statements = []
                     for statement in rows:
-                        # Try to use raw xAPI data if available, otherwise reconstruct
-                        import json
-                        detailed_payload = None
-                        if statement.get("raw_json"):
-                            try:
-                                detailed_payload = json.loads(statement["raw_json"])
-                            except:
-                                pass
-                        
-                        # Fallback to reconstructed payload if raw_json is not available
-                        if not detailed_payload:
-                            detailed_payload = {
-                                "id": statement.get("statement_id", ""),
-                                "actor": {"name": statement.get("actor_id", ""), "mbox": f"mailto:{statement.get('actor_id', '')}"},
-                                "verb": {"id": statement.get("verb_display", ""), "display": {"en-US": statement.get("verb_display", "")}},
-                                "object": {"id": statement.get("object_name", ""), "definition": {"name": {"en-US": statement.get("object_name", "")}}},
-                                "result": {
-                                    "completion": statement.get("result_completion"),
-                                    "success": statement.get("result_success"),
-                                    "score": {"scaled": statement.get("result_score_scaled")},
-                                    "response": statement.get("result_response")
-                                },
-                                "context": {"platform": statement.get("context_platform")},
-                                "timestamp": statement.get("timestamp", ""),
-                                "data_type": statement.get("data_type", "ETL Processed")
-                            }
-                        
-                        # Update the statement with verbose JSON
-                        enhanced_statement = statement.copy()
-                        enhanced_statement["result_response"] = json.dumps(detailed_payload, indent=2)
-                        
-                        # Format timestamp to Central Time
-                        if enhanced_statement.get("timestamp"):
-                            try:
-                                from app.utils.timestamp_utils import format_compact
-                                enhanced_statement["timestamp"] = format_compact(enhanced_statement["timestamp"])
-                            except ImportError:
-                                # timestamp_utils not available, keep original timestamp
-                                pass
-                            except Exception:
-                                # Formatting failed, keep original timestamp
-                                pass
-                        
-                        enhanced_statements.append(enhanced_statement)
+                        try:
+                            # Try to use raw xAPI data if available, otherwise reconstruct
+                            import json
+                            detailed_payload = None
+                            if statement.get("raw_json"):
+                                try:
+                                    detailed_payload = json.loads(statement["raw_json"])
+                                except:
+                                    pass
+                            
+                            # Fallback to reconstructed payload if raw_json is not available
+                            if not detailed_payload:
+                                detailed_payload = {
+                                    "id": statement.get("statement_id", ""),
+                                    "actor": {"name": statement.get("actor_id", ""), "mbox": f"mailto:{statement.get('actor_id', '')}"},
+                                    "verb": {"id": statement.get("verb_display", ""), "display": {"en-US": statement.get("verb_display", "")}},
+                                    "object": {"id": statement.get("object_name", ""), "definition": {"name": {"en-US": statement.get("object_name", "")}}},
+                                    "result": {
+                                        "completion": statement.get("result_completion"),
+                                        "success": statement.get("result_success"),
+                                        "score": {"scaled": statement.get("result_score_scaled")},
+                                        "response": statement.get("result_response")
+                                    },
+                                    "context": {"platform": statement.get("context_platform")},
+                                    "timestamp": statement.get("timestamp", ""),
+                                    "data_type": statement.get("data_type", "ETL Processed")
+                                }
+                            
+                            # Update the statement with verbose JSON
+                            enhanced_statement = statement.copy()
+                            enhanced_statement["result_response"] = json.dumps(detailed_payload, indent=2)
+                            
+                            # Format timestamp to Central Time
+                            if enhanced_statement.get("timestamp"):
+                                try:
+                                    from app.utils.timestamp_utils import format_compact
+                                    enhanced_statement["timestamp"] = format_compact(enhanced_statement["timestamp"])
+                                except ImportError:
+                                    # timestamp_utils not available, keep original timestamp
+                                    pass
+                                except Exception:
+                                    # Formatting failed, keep original timestamp
+                                    pass
+                            
+                            enhanced_statements.append(enhanced_statement)
+                        except Exception as e:
+                            logger.error(f"Error enhancing statement {statement.get('statement_id', 'unknown')}: {e}")
+                            # Still add the statement even if enhancement fails
+                            enhanced_statements.append(statement)
                     
                     return {
                         "success": True,
