@@ -207,6 +207,10 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
         if base_url:
             client_kwargs["base_url"] = base_url
         
+        logger.info(f"get_recent_bigquery_data called with limit={limit}, base_url={base_url}, cohort_id={cohort_id}")
+        
+        logger.info(f"get_recent_bigquery_data called with limit={limit}, base_url={base_url}, cohort_id={cohort_id}")
+        
         async with httpx.AsyncClient(**client_kwargs) as client:
             # Build cohort filter
             cohort_filter = build_cohort_filter_sql(cohort_id=cohort_id) if cohort_id else ""
@@ -233,18 +237,26 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
             LIMIT {limit}
             """
             
+            logger.info(f"Executing BigQuery query: {query[:100]}...")
+            
             response = await client.get(
                 "/api/analytics/bigquery/query",
                 params={"query": query},
                 timeout=30.0
             )
             
+            logger.info(f"BigQuery API response: status={response.status_code}")
+            
             if response.status_code == 200:
                 data = response.json()
+                logger.info(f"Response data keys: {list(data.keys())}, success={data.get('success')}")
+                
                 if data.get("success"):
                     # Response structure: data.data.rows (BigQueryAnalyticsResponse format)
                     rows = data.get("data", {}).get("rows", [])
                     row_count = data.get("row_count", 0)
+                    
+                    logger.info(f"BigQuery query returned {len(rows)} rows, row_count={row_count}")
                     
                     # Enhance statements with verbose JSON in result_response
                     enhanced_statements = []
@@ -322,7 +334,7 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
         logger.error(f"Timeout getting BigQuery data: {e}")
         return {"success": False, "statements": [], "total_count": 0, "error": "Query timeout"}
     except Exception as e:
-        logger.error(f"Failed to get BigQuery data: {e}")
+        logger.error(f"Failed to get BigQuery data: {e}", exc_info=True)
         return {"success": False, "statements": [], "total_count": 0, "error": str(e)}
 
 
@@ -491,9 +503,15 @@ async def data_explorer(
 ) -> HTMLResponse:
     """Simplified data explorer showing real-time xAPI data with data type indicators."""
     base_url = get_api_base_url(request)
+    logger.info(f"data_explorer called with limit={limit}, cohort={cohort}, base_url={base_url}")
+    
     # Get ETL processed data, direct xAPI requests, and endpoint tracking data
     etl_data = await get_recent_bigquery_data(limit, base_url, cohort_id=cohort)
+    logger.info(f"etl_data: success={etl_data.get('success')}, count={etl_data.get('total_count', 0)}, statements={len(etl_data.get('statements', []))}")
+    
     direct_data = await get_direct_xapi_requests(limit, base_url)
+    logger.info(f"direct_data: success={direct_data.get('success')}, count={direct_data.get('total_count', 0)}")
+    
     endpoint_data = await get_endpoint_tracking_data(limit, base_url)
     status = await get_system_status(request)
     
@@ -501,9 +519,13 @@ async def data_explorer(
     all_statements = []
     if etl_data.get("success"):
         all_statements.extend(etl_data.get("statements", []))
+        logger.info(f"Added {len(etl_data.get('statements', []))} statements from etl_data")
     if direct_data.get("success"):
         all_statements.extend(direct_data.get("statements", []))
+        logger.info(f"Added {len(direct_data.get('statements', []))} statements from direct_data")
     # Note: endpoint_data excluded from main display - only used for count
+    
+    logger.info(f"Total statements after combining: {len(all_statements)}")
     
     # Sort by timestamp (most recent first)
     all_statements.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
@@ -514,6 +536,8 @@ async def data_explorer(
     # Determine success: true if queries succeeded (even with 0 results) OR if we have statements
     queries_succeeded = etl_data.get("success", False) or direct_data.get("success", False) or endpoint_data.get("success", False)
     has_statements = len(all_statements) > 0
+    
+    logger.info(f"Final: queries_succeeded={queries_succeeded}, has_statements={has_statements}, total_statements={len(all_statements)}")
     
     context = {
         "request": request,
