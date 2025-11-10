@@ -24,3 +24,17 @@ coverage.xml
 *.swp
 *.swo
 *~
+# Exclude large/unnecessary files for faster builds
+Lessons Map/
+archive/
+*.md
+!README.md
+docs/
+*.sh
+!deploy.sh
+google-cloud-key.json
+.env
+.env.*
+test_results/
+*.tmp
+*.bak

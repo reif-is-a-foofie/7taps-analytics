@@ -1,31 +1,17 @@
-# Use slim base for faster builds and smaller images
-FROM python:3.11-slim
+# Use pre-built base image with all dependencies
+# Base image is rebuilt only when requirements.txt changes
+# This makes app-only changes deploy in ~30 seconds
+ARG BASE_IMAGE=gcr.io/pol-a-477603/taps-analytics-ui-base:latest
+FROM ${BASE_IMAGE}
 
-# Set working directory
+# Set working directory (already set in base, but explicit is good)
 WORKDIR /app
 
-# Install system dependencies (cached layer)
-RUN apt-get update && apt-get install -y \
-    gcc \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Copy and install Python dependencies first (cached layer)
-# This layer rarely changes, so it gets cached
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
-
-# Copy application code (changes frequently)
+# Copy application code (only thing that changes frequently)
 COPY app/ ./app/
 
 # Note: .env is not copied - secrets come from GCP Secret Manager in production
-
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
+# Note: Dependencies are already installed in base image
 
 # Expose port (Cloud Run uses PORT env var, default to 8080)
 EXPOSE 8080

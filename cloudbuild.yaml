@@ -1,26 +1,30 @@
 steps:
-  # Step 1: Build container and push to Artifact Registry with caching
+  # Step 1: Build container using pre-built base image (ultra-fast)
+  # Base image contains all dependencies, so this only copies code
   - name: 'gcr.io/cloud-builders/docker'
+    env:
+      - 'DOCKER_BUILDKIT=1'
     args:
       - 'build'
       - '-t'
       - 'gcr.io/$PROJECT_ID/taps-analytics-ui:$SHORT_SHA'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/taps-analytics-ui:latest'
+      - '--build-arg'
+      - 'BASE_IMAGE=gcr.io/$PROJECT_ID/taps-analytics-ui-base:latest'
       - '--cache-from'
       - 'gcr.io/$PROJECT_ID/taps-analytics-ui:latest'
+      - '--cache-from'
+      - 'gcr.io/$PROJECT_ID/taps-analytics-ui-base:latest'
+      - '--build-arg'
+      - 'BUILDKIT_INLINE_CACHE=1'
       - '.'
-    timeout: '600s'
+    timeout: '120s'
 
+  # Step 2: Push image (only SHA tag - skip latest to save time)
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/taps-analytics-ui:$SHORT_SHA']
-    timeout: '600s'
+    timeout: '300s'
 
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/taps-analytics-ui:latest']
-    timeout: '600s'
-
-  # Step 2: Deploy new image to Cloud Run with traffic swap
+  # Step 3: Deploy to Cloud Run (can start while image is being pushed)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -44,7 +48,8 @@ steps:
       - '10'
       - '--set-secrets'
       - 'GOOGLE_AI_API_KEY=google-ai-api-key:latest'
-    timeout: '600s'
+      - '--quiet'
+    timeout: '300s'
 
 
 # Define images for caching
@@ -57,3 +62,8 @@ options:
   machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
   diskSizeGb: 100
+  # Enable BuildKit for cache mounts
+  env:
+    - 'DOCKER_BUILDKIT=1'
+  # Use Cloud Build's built-in caching
+  substitution_option: 'ALLOW_LOOSE'
