@@ -577,7 +577,8 @@ async def get_bigquery_integration_status():
             "configuration": {
                 "cache_ttl": CACHE_TTL,
                 "cost_threshold_bytes": COST_THRESHOLD_BYTES,
-                "redis_url": REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
+                "cache_enabled": False,
+                "data_source": "Pub/Sub"
             },
             "endpoints": [
                 "/api/analytics/bigquery/query",
