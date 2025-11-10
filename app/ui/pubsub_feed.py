@@ -305,9 +305,11 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                             
                             enhanced_statements.append(enhanced_statement)
                         except Exception as e:
-                            logger.error(f"Error enhancing statement {statement.get('statement_id', 'unknown')}: {e}")
+                            logger.error(f"Error enhancing statement {statement.get('statement_id', 'unknown')}: {e}", exc_info=True)
                             # Still add the statement even if enhancement fails
                             enhanced_statements.append(statement)
+                    
+                    logger.info(f"Enhanced {len(enhanced_statements)} statements, returning success=True")
                     
                     return {
                         "success": True,
