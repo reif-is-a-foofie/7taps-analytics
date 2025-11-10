@@ -575,6 +575,12 @@ async def data_explorer(
                         "title": "Data Explorer",
                         "statements": statements,
                         "total_count": len(statements),
+                        "etl_count": len(statements),
+                        "direct_count": 0,
+                        "endpoint_count": 0,
+                        "system_status": {"etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}},
+                        "limit": limit,
+                        "cohort": cohort,
                         "success": True,
                         "error": None
                     }
