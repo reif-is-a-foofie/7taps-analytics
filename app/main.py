@@ -319,6 +319,7 @@ from app.ui.cohort_management import router as cohort_management_router
 from app.ui.user_matching import router as user_matching_router
 from app.api.cohort_safety import router as cohort_safety_router
 from app.api.cohort_api import router as cohort_api_router
+from app.ui.settings import router as settings_router
 
 # Enhanced Safety System Router
 try:
@@ -363,6 +364,7 @@ app.include_router(user_matching_router, prefix="/ui", tags=["User Matching"])
 if ENHANCED_SAFETY_AVAILABLE:
     app.include_router(enhanced_safety_router, tags=["Enhanced Safety"])
 app.include_router(group_analytics_router, tags=["Group Analytics"])
+app.include_router(settings_router, prefix="/ui", tags=["Settings"])
 app.include_router(etl_control_router, prefix="/api", tags=["ETL Control"])
 app.include_router(migration_router, prefix="/api", tags=["Migration"])
 app.include_router(diagnostic_router, tags=["Completed Activities Diagnostic"])

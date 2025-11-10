@@ -214,6 +214,21 @@ class BigQuerySchema:
                                description="Complete analysis result as JSON"),
         ]
 
+    def get_alert_emails_table_schema(self) -> List[bigquery.SchemaField]:
+        """Schema for the alert emails table."""
+        return [
+            bigquery.SchemaField("email_id", "STRING", mode="REQUIRED",
+                               description="Unique identifier for the email"),
+            bigquery.SchemaField("email", "STRING", mode="REQUIRED",
+                               description="Email address"),
+            bigquery.SchemaField("is_active", "BOOLEAN", mode="REQUIRED",
+                               description="Whether the email is active"),
+            bigquery.SchemaField("created_at", "TIMESTAMP", mode="REQUIRED",
+                               description="When the email was added"),
+            bigquery.SchemaField("updated_at", "TIMESTAMP", mode="REQUIRED",
+                               description="When the email was last updated"),
+        ]
+
     def get_table_schemas(self) -> Dict[str, List[bigquery.SchemaField]]:
         """Get all table schemas."""
         return {
@@ -223,6 +238,7 @@ class BigQuerySchema:
             "activities": self.get_activities_table_schema(),
             "flagged_content": self.get_flagged_content_table_schema(),
             "positive_language": self.get_positive_language_table_schema(),
+            "alert_emails": self.get_alert_emails_table_schema(),
         }
 
     def create_dataset_if_not_exists(self) -> bool:

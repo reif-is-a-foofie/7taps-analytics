@@ -136,8 +136,15 @@ class FlaggedContentPersistence:
     ) -> None:
         """Send email alert for flagged content."""
         try:
-            # Email configuration
-            recipient_email = "reiftauati@gmail.com"
+            # Get list of alert emails
+            from app.services.alert_email_manager import alert_email_manager
+            recipient_emails = await alert_email_manager.get_active_emails()
+            
+            if not recipient_emails:
+                logger.warning("No alert emails configured, skipping email alert")
+                await self._send_alert(statement_id, actor_id, actor_name, content, analysis_result, cohort)
+                return
+            
             smtp_server = os.getenv("ALERT_EMAIL_SMTP_SERVER")
             smtp_username = os.getenv("ALERT_EMAIL_SMTP_USERNAME")
             smtp_password = os.getenv("ALERT_EMAIL_SMTP_PASSWORD")
@@ -183,7 +190,7 @@ View full details: https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/ui/safety
             message = EmailMessage()
             message["Subject"] = subject
             message["From"] = sender
-            message["To"] = recipient_email
+            message["To"] = ", ".join(recipient_emails)
             message.set_content(body)
             
             # Send email
@@ -197,7 +204,7 @@ View full details: https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/ui/safety
                 server.login(smtp_username, smtp_password)
                 server.send_message(message)
             
-            logger.info(f"Email alert sent for flagged content: {statement_id} to {recipient_email}")
+            logger.info(f"Email alert sent for flagged content: {statement_id} to {', '.join(recipient_emails)}")
             
             # Also log the alert
             await self._send_alert(statement_id, actor_id, actor_name, content, analysis_result, cohort)

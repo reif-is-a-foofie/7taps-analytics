@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - POL Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-3">
+                <div class="flex items-center space-x-6">
+                    <a href="/" class="text-xl font-bold text-primary-600">POL Analytics</a>
+                    <div class="flex space-x-4">
+                        <a href="/ui/data-explorer" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">Dashboard</a>
+                        <a href="/ui/daily-analytics" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">Daily Analytics</a>
+                        <a href="/ui/safety" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">Safety</a>
+                        <a href="/ui/settings" class="text-sm font-medium text-primary-600 border-b-2 border-primary-600 pb-1">Settings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="glass-effect rounded-xl p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
+            <p class="text-gray-600">Manage alert email addresses and system configuration</p>
+        </div>
+
+        <!-- Alert Email Management -->
+        <div class="glass-effect rounded-xl p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-900">Alert Email Addresses</h2>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">
+                Email addresses that will receive notifications when flagged content is detected.
+            </p>
+
+            <!-- Add Email Form -->
+            <div class="mb-6">
+                <form id="addEmailForm" class="flex gap-2">
+                    <input 
+                        type="email" 
+                        id="newEmail" 
+                        placeholder="Enter email address (e.g., kate@practiceoflife.com)"
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        required
+                    >
+                    <button 
+                        type="submit"
+                        class="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                        Add Email
+                    </button>
+                </form>
+            </div>
+
+            <!-- Email List -->
+            <div id="emailList" class="space-y-2">
+                <div class="text-gray-500 text-sm">Loading emails...</div>
+            </div>
+        </div>
+
+        <!-- SMTP Configuration Info -->
+        <div class="glass-effect rounded-xl p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">SMTP Configuration</h2>
+            <p class="text-sm text-gray-600 mb-2">
+                Email alerts are sent using SMTP configuration from environment variables:
+            </p>
+            <ul class="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                <li><code class="bg-gray-100 px-2 py-1 rounded">ALERT_EMAIL_SMTP_SERVER</code></li>
+                <li><code class="bg-gray-100 px-2 py-1 rounded">ALERT_EMAIL_SMTP_USERNAME</code></li>
+                <li><code class="bg-gray-100 px-2 py-1 rounded">ALERT_EMAIL_SMTP_PASSWORD</code></li>
+                <li><code class="bg-gray-100 px-2 py-1 rounded">ALERT_EMAIL_SMTP_PORT</code> (default: 587)</li>
+                <li><code class="bg-gray-100 px-2 py-1 rounded">ALERT_EMAIL_SENDER</code> (default: no-reply@practiceoflife.com)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Load emails on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEmails();
+        });
+
+        // Add email form handler
+        document.getElementById('addEmailForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const emailInput = document.getElementById('newEmail');
+            const email = emailInput.value.trim();
+
+            if (!email) {
+                alert('Please enter an email address');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/settings/alert-emails', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    emailInput.value = '';
+                    loadEmails();
+                    showNotification('Email added successfully', 'success');
+                } else {
+                    showNotification(data.error || 'Failed to add email', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding email:', error);
+                showNotification('Failed to add email', 'error');
+            }
+        });
+
+        async function loadEmails() {
+            try {
+                const response = await fetch('/api/settings/alert-emails');
+                const data = await response.json();
+
+                if (data.success) {
+                    renderEmails(data.emails);
+                } else {
+                    document.getElementById('emailList').innerHTML = 
+                        '<div class="text-red-500 text-sm">Failed to load emails</div>';
+                }
+            } catch (error) {
+                console.error('Error loading emails:', error);
+                document.getElementById('emailList').innerHTML = 
+                    '<div class="text-red-500 text-sm">Error loading emails</div>';
+            }
+        }
+
+        function renderEmails(emails) {
+            const container = document.getElementById('emailList');
+            
+            if (emails.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 text-sm">No email addresses configured</div>';
+                return;
+            }
+
+            container.innerHTML = emails.map(email => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-gray-900 font-medium">${email.email}</span>
+                        ${email.id === 'default' ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Default</span>' : ''}
+                        ${email.created_at ? `<span class="text-xs text-gray-500">Added ${new Date(email.created_at).toLocaleDateString()}</span>` : ''}
+                    </div>
+                    ${email.id !== 'default' ? `
+                        <button 
+                            onclick="deleteEmail('${email.id}')"
+                            class="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                            Delete
+                        </button>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function deleteEmail(emailId) {
+            if (!confirm('Are you sure you want to remove this email address?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/settings/alert-emails/${emailId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadEmails();
+                    showNotification('Email removed successfully', 'success');
+                } else {
+                    showNotification(data.error || 'Failed to remove email', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting email:', error);
+                showNotification('Failed to remove email', 'error');
+            }
+        }
+
+        function showNotification(message, type) {
+            // Simple notification - could be enhanced with a toast library
+            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+
