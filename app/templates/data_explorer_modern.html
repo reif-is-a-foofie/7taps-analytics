@@ -83,7 +83,7 @@
                         <div class="flex space-x-4">
                             <a href="/ui/data-explorer" class="text-sm font-medium text-primary-600 border-b-2 border-primary-600 pb-1">Dashboard</a>
                             <a href="/ui/daily-analytics" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">Daily Analytics</a>
-                            <a href="/ui/safety" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">Flagged Language</a>
+                            <a href="/ui/safety" class="text-sm font-medium text-gray-500 hover:text-gray-700 pb-1">Safety</a>
                         </div>
                     </div>
                 </div>
@@ -112,15 +112,6 @@
                         <option value="">All Cohorts</option>
                         <!-- Cohorts will be loaded dynamically -->
                     </select>
-                    
-                    <a href="/" class="text-gray-600 hover:text-primary-600 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                        </svg>
-                    </a>
-                    <a href="/raw-statements" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors">
-                        Raw Debug
-                    </a>
                 </div>
             </div>
 
@@ -143,30 +134,6 @@
                                 <span class="text-sm text-gray-700">Statements Endpoint: {{ endpoint_count or 0 }}</span>
                             </div>
                         </div>
-                        
-                        <!-- ETL Processor Status -->
-                        <div class="mt-3 pt-3 border-t border-gray-200">
-                            <p class="text-xs font-medium text-gray-500 mb-2">Critical Services</p>
-                            <div class="flex items-center space-x-4">
-                                <div class="flex items-center space-x-1">
-                                    {% if system_status and system_status.etl_status and system_status.etl_status.running %}
-                                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                        <span class="text-xs text-green-700 font-medium">ETL Processor: Running</span>
-                                    {% else %}
-                                        <div class="w-2 h-2 bg-red-500 rounded-full"></div>
-                                        <span class="text-xs text-red-700 font-medium">ETL Processor: Down</span>
-                                    {% endif %}
-                                </div>
-                                {% if system_status and system_status.etl_status and system_status.etl_status.running %}
-                                <div class="flex items-center space-x-1">
-                                    <span class="text-xs text-gray-600">
-                                        Processed: {{ system_status.etl_status.get('messages_processed', 0) }} | 
-                                        Failed: {{ system_status.etl_status.get('messages_failed', 0) }}
-                                    </span>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
                     </div>
                     <div class="w-12 h-12 bg-info-100 rounded-lg flex items-center justify-center">
                         <svg class="w-6 h-6 text-info-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +147,7 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- System Status Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-fade-in">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-fade-in">
             <!-- Total Statements -->
             <div class="glass-effect rounded-xl p-6 card-hover">
                 <div class="flex items-center justify-between">
@@ -217,33 +184,6 @@
                 </div>
             </div>
 
-            <!-- ETL Status -->
-            <div class="glass-effect rounded-xl p-6 card-hover">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">ETL Processor</p>
-                        <div class="flex items-center space-x-2">
-                            {% if system_status.etl_status and system_status.etl_status.running %}
-                                <div class="w-2 h-2 bg-success-500 rounded-full animate-pulse-slow"></div>
-                                <span class="text-sm font-semibold text-success-600">Running</span>
-                            {% else %}
-                                <div class="w-2 h-2 bg-danger-500 rounded-full"></div>
-                                <span class="text-sm font-semibold text-danger-600">Stopped</span>
-                            {% endif %}
-                        </div>
-                        {% if system_status.etl_status and system_status.etl_status.uptime_seconds %}
-                            <p class="text-xs text-gray-500 mt-1">
-                                Uptime: {{ (system_status.etl_status.uptime_seconds / 60) | round(1) }}m
-                            </p>
-                        {% endif %}
-                    </div>
-                    <div class="w-12 h-12 {% if system_status.etl_status and system_status.etl_status.running %}bg-success-100{% else %}bg-danger-100{% endif %} rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 {% if system_status.etl_status and system_status.etl_status.running %}text-success-600{% else %}text-danger-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                    </div>
-                </div>
-            </div>
 
             <!-- Processing Stats -->
             <div class="glass-effect rounded-xl p-6 card-hover">
@@ -276,28 +216,6 @@
             </div>
         </div>
 
-        <!-- ETL Errors Alert -->
-        {% if system_status.etl_status and system_status.etl_status.errors %}
-        <div class="mb-6 animate-slide-up">
-            <div class="glass-effect rounded-xl p-4 border-l-4 border-danger-500">
-                <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                        <svg class="w-5 h-5 text-danger-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <h3 class="text-sm font-medium text-danger-800">ETL Processing Errors</h3>
-                        <div class="mt-2 text-sm text-danger-700">
-                            {% for error in system_status.etl_status.errors[-3:] %}
-                            <p class="mb-1">{{ error }}</p>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
 
         <!-- Controls -->
         <div class="glass-effect rounded-xl p-6 mb-6 animate-slide-up">
