@@ -46,7 +46,6 @@ async def get_direct_xapi_requests(limit: int = 25, base_url: Optional[str] = No
             SELECT 
                 timestamp,
                 actor_name,
-                actor_mbox,
                 verb_id as verb_display,
                 object_name,
                 result_completion,
@@ -311,7 +310,6 @@ async def get_raw_incoming_statements(limit: int = 25, base_url: Optional[str] =
                 timestamp,
                 statement_id,
                 actor_name,
-                actor_mbox,
                 verb_id,
                 object_id,
                 object_name,
