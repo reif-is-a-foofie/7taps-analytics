@@ -483,6 +483,10 @@ async def data_explorer(
     # Limit to requested number
     all_statements = all_statements[:limit]
     
+    # Determine success: true if queries succeeded (even with 0 results) OR if we have statements
+    queries_succeeded = etl_data.get("success", False) or direct_data.get("success", False) or endpoint_data.get("success", False)
+    has_statements = len(all_statements) > 0
+    
     context = {
         "request": request,
         "active_page": "data_explorer",
@@ -495,7 +499,8 @@ async def data_explorer(
         "system_status": status,
         "limit": limit,
         "cohort": cohort,
-        "success": etl_data.get("success", False) or direct_data.get("success", False) or endpoint_data.get("success", False)
+        "success": queries_succeeded or has_statements,
+        "error": etl_data.get("error") or direct_data.get("error") or endpoint_data.get("error")
     }
 
     return templates.TemplateResponse("data_explorer_modern.html", context)
