@@ -217,7 +217,7 @@ class PubSubBigQueryProcessor:
             LIMIT 1
             """
             
-            job_config = self.bigquery_client.query_config()
+            job_config = bigquery.QueryJobConfig()
             job_config.query_parameters = [
                 bigquery.ScalarQueryParameter("statement_id", "STRING", statement_id)
             ]
