@@ -206,7 +206,6 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
             SELECT 
                 timestamp,
                 actor_id,
-                actor_mbox,
                 verb_display,
                 object_name,
                 result_completion,
