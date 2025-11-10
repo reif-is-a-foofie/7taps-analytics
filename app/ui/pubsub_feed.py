@@ -285,8 +285,12 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                             try:
                                 from app.utils.timestamp_utils import format_compact
                                 enhanced_statement["timestamp"] = format_compact(enhanced_statement["timestamp"])
-                            except:
-                                pass  # Keep original timestamp if formatting fails
+                            except ImportError:
+                                # timestamp_utils not available, keep original timestamp
+                                pass
+                            except Exception:
+                                # Formatting failed, keep original timestamp
+                                pass
                         
                         enhanced_statements.append(enhanced_statement)
                     
