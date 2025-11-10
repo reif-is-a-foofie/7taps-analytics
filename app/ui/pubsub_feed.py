@@ -427,11 +427,11 @@ async def get_etl_status(client: httpx.AsyncClient, base_url: Optional[str] = No
                     "status": "healthy" if processor.get("running", False) and metrics.get("messages_failed", 0) == 0 else "warning" if processor.get("running", False) else "error"
                 }
         
-        return {"running": False, "error": "Failed to get ETL status"}
+        return {"running": False, "error": "Failed to get ETL status", "messages_received": 0, "messages_processed": 0, "messages_failed": 0}
         
     except Exception as e:
         logger.error(f"Failed to get ETL status: {e}")
-        return {"running": False, "error": str(e)}
+        return {"running": False, "error": str(e), "messages_received": 0, "messages_processed": 0, "messages_failed": 0}
 
 
 @router.get("/data-explorer", response_class=HTMLResponse)

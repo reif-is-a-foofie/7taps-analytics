@@ -253,11 +253,11 @@
                         <div class="text-xs space-y-1 mt-1">
                             <div class="flex justify-between">
                                 <span>Received:</span>
-                                <span class="font-semibold">{{ system_status.etl_status.messages_received if system_status.etl_status else 0 }}</span>
+                                <span class="font-semibold">{{ system_status.etl_status.get('messages_received', 0) if system_status.etl_status else 0 }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span>Processed:</span>
-                                <span class="font-semibold text-success-600">{{ system_status.etl_status.messages_processed if system_status.etl_status else 0 }}</span>
+                                <span class="font-semibold text-success-600">{{ system_status.etl_status.get('messages_processed', 0) if system_status.etl_status else 0 }}</span>
                             </div>
                             {% if system_status and system_status.etl_status and system_status.etl_status.get('messages_failed', 0) > 0 %}
                             <div class="flex justify-between">
