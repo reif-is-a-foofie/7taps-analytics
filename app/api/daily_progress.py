@@ -196,7 +196,7 @@ async def get_daily_progress_api(
     cohort: Optional[str] = Query(None, description="Cohort filter")
 ):
     """Get daily progress data as JSON for email workflow."""
-        return get_daily_progress_data(date, cohort)
+    return get_daily_progress_data(date, cohort)
 
 @router.get("/api/daily-progress/email-summary")
 async def get_email_summary(
