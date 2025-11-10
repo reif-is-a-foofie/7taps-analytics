@@ -284,7 +284,19 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                         "statements": enhanced_statements,
                         "total_count": row_count
                     }
+                else:
+                    # Query succeeded but returned error in response
+                    error_msg = data.get("error", "Unknown query error")
+                    logger.warning(f"BigQuery query returned error: {error_msg}")
+                    return {"success": False, "statements": [], "total_count": 0, "error": error_msg}
             
+            # Non-200 status code
+            try:
+                error_text = response.text[:500] if hasattr(response, 'text') else f"HTTP {response.status_code}"
+            except:
+                error_text = f"HTTP {response.status_code}"
+            logger.error(f"BigQuery query endpoint returned {response.status_code}: {error_text}")
+            return {"success": False, "statements": [], "total_count": 0, "error": f"Query endpoint returned {response.status_code}: {error_text}"}
             
     except httpx.TimeoutException as e:
         logger.error(f"Timeout getting BigQuery data: {e}")
