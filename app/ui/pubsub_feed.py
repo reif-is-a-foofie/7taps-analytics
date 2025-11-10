@@ -583,10 +583,14 @@ async def data_explorer(
             "error": None
         }
         
+        logger.info(f"Returning {len(statements)} statements to template")
         return templates.TemplateResponse("data_explorer_modern.html", context)
         
     except Exception as e:
-        logger.error(f"Error: {e}", exc_info=True)
+        logger.error(f"Error in data_explorer: {e}", exc_info=True)
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Traceback: {error_details}")
         context = {
             "request": request,
             "active_page": "data_explorer",
@@ -594,7 +598,7 @@ async def data_explorer(
             "statements": [],
             "total_count": 0,
             "success": False,
-            "error": str(e)
+            "error": f"{str(e)}: {error_details[:500]}"
         }
         return templates.TemplateResponse("data_explorer_modern.html", context)
 
