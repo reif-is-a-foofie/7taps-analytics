@@ -69,6 +69,19 @@ git commit -m "$COMMIT_MSG"
 echo "🚀 Pushing to origin/$BRANCH..."
 git push origin "$BRANCH"
 
+COMMIT_SHA=$(git rev-parse --short HEAD)
+
 echo ""
 echo "✅ Successfully committed and pushed!"
-echo "🔗 Latest commit: $(git rev-parse --short HEAD)"
+echo "🔗 Latest commit: $COMMIT_SHA"
+
+# Optionally wait for deployment (skip with --no-wait flag)
+if [ "$1" != "--no-wait" ] && [ -f "scripts/wait-for-deploy.sh" ]; then
+    echo ""
+    echo "⏳ Waiting for automatic deployment..."
+    ./scripts/wait-for-deploy.sh "$COMMIT_SHA"
+elif [ "$1" != "--no-wait" ]; then
+    echo ""
+    echo "💡 Tip: Use './scripts/wait-for-deploy.sh' to monitor deployment"
+    echo "   Or check: https://console.cloud.google.com/cloud-build/builds?project=pol-a-477603"
+fi
