@@ -160,8 +160,8 @@
                                 {% if system_status and system_status.etl_status and system_status.etl_status.running %}
                                 <div class="flex items-center space-x-1">
                                     <span class="text-xs text-gray-600">
-                                        Processed: {{ system_status.etl_status.messages_processed or 0 }} | 
-                                        Failed: {{ system_status.etl_status.messages_failed or 0 }}
+                                        Processed: {{ system_status.etl_status.get('messages_processed', 0) }} | 
+                                        Failed: {{ system_status.etl_status.get('messages_failed', 0) }}
                                     </span>
                                 </div>
                                 {% endif %}
@@ -259,10 +259,10 @@
                                 <span>Processed:</span>
                                 <span class="font-semibold text-success-600">{{ system_status.etl_status.messages_processed if system_status.etl_status else 0 }}</span>
                             </div>
-                            {% if system_status.etl_status and system_status.etl_status.messages_failed > 0 %}
+                            {% if system_status and system_status.etl_status and system_status.etl_status.get('messages_failed', 0) > 0 %}
                             <div class="flex justify-between">
                                 <span>Failed:</span>
-                                <span class="font-semibold text-danger-600">{{ system_status.etl_status.messages_failed }}</span>
+                                <span class="font-semibold text-danger-600">{{ system_status.etl_status.get('messages_failed', 0) }}</span>
                             </div>
                             {% endif %}
                         </div>
