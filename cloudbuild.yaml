@@ -52,10 +52,9 @@ steps:
     timeout: '300s'
 
 
-# Define images for caching
+# Define images for caching (only SHA tag - latest removed for speed)
 images:
   - 'gcr.io/$PROJECT_ID/taps-analytics-ui:$SHORT_SHA'
-  - 'gcr.io/$PROJECT_ID/taps-analytics-ui:latest'
 
 # Optimize for speed
 options:

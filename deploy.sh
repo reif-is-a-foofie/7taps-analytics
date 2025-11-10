@@ -26,9 +26,9 @@ echo ""
 # Step 2: Check for Cloud Build trigger
 echo "🔍 Step 2: Checking Cloud Build trigger..."
 TRIGGER_NAME="taps-analytics-deploy"
-TRIGGER_EXISTS=$(gcloud builds triggers list --project=$PROJECT_ID --format="value(name)" 2>/dev/null | grep -c "^${TRIGGER_NAME}$" || echo "0")
+TRIGGER_EXISTS=$(gcloud builds triggers list --project=$PROJECT_ID --format="value(name)" 2>/dev/null | grep -q "^${TRIGGER_NAME}$" && echo "1" || echo "0")
 
-if [ "$TRIGGER_EXISTS" -eq 0 ]; then
+if [ "$TRIGGER_EXISTS" = "0" ]; then
     echo "⚠️  No Cloud Build trigger found. Will trigger manually."
     USE_MANUAL_TRIGGER=true
 else
