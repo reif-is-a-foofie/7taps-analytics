@@ -529,25 +529,14 @@ async def get_bigquery_connection_status():
 async def get_bigquery_integration_status():
     """Get BigQuery integration status with cost and cache metrics."""
     try:
-        # Get cache statistics
-        redis_client = get_redis_client()
+        # Cache statistics (disabled - using Pub/Sub for real-time data)
         cache_stats = {
-            "redis_connected": redis_client is not None,
+            "redis_connected": False,
+            "cache_enabled": False,
             "cache_keys": 0,
-            "cache_memory_usage": 0
+            "cache_memory_usage": 0,
+            "data_source": "Pub/Sub"
         }
-        
-        if redis_client:
-            try:
-                # Get cache statistics
-                cache_keys = redis_client.keys("bq_cache:*")
-                cache_stats["cache_keys"] = len(cache_keys)
-                
-                # Get memory usage
-                info = redis_client.info('memory')
-                cache_stats["cache_memory_usage"] = info.get('used_memory_human', '0B')
-            except Exception as e:
-                logger.warning(f"Failed to get cache stats: {e}")
         
         # Get BigQuery connection status
         connection_status = await get_bigquery_connection_status()
@@ -556,16 +545,9 @@ async def get_bigquery_integration_status():
         cost_savings = {
             "cache_hit_rate": "N/A",
             "estimated_monthly_savings": "N/A",
-            "cache_efficiency": "N/A"
+            "cache_efficiency": "N/A",
+            "note": "Using Pub/Sub for real-time data processing"
         }
-        
-        if cache_stats["cache_keys"] > 0:
-            # Rough estimation based on cache usage
-            cost_savings = {
-                "cache_hit_rate": "60-80%",  # Based on typical caching patterns
-                "estimated_monthly_savings": "$50-200",  # Rough estimate
-                "cache_efficiency": "High"
-            }
         
         return {
             "status": "healthy",
