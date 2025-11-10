@@ -229,6 +229,33 @@ class BigQuerySchema:
                                description="When the email was last updated"),
         ]
 
+    def get_gmail_oauth_table_schema(self) -> List[bigquery.SchemaField]:
+        """Schema for the Gmail OAuth tokens table."""
+        return [
+            bigquery.SchemaField("token_id", "STRING", mode="REQUIRED",
+                               description="Unique identifier for the token"),
+            bigquery.SchemaField("email", "STRING", mode="REQUIRED",
+                               description="Gmail email address"),
+            bigquery.SchemaField("token", "STRING", mode="NULLABLE",
+                               description="OAuth access token"),
+            bigquery.SchemaField("refresh_token", "STRING", mode="NULLABLE",
+                               description="OAuth refresh token"),
+            bigquery.SchemaField("token_uri", "STRING", mode="NULLABLE",
+                               description="Token URI"),
+            bigquery.SchemaField("client_id", "STRING", mode="NULLABLE",
+                               description="OAuth client ID"),
+            bigquery.SchemaField("client_secret", "STRING", mode="NULLABLE",
+                               description="OAuth client secret"),
+            bigquery.SchemaField("scopes", "STRING", mode="NULLABLE",
+                               description="OAuth scopes as JSON"),
+            bigquery.SchemaField("expiry", "TIMESTAMP", mode="NULLABLE",
+                               description="Token expiry time"),
+            bigquery.SchemaField("created_at", "TIMESTAMP", mode="REQUIRED",
+                               description="When the token was created"),
+            bigquery.SchemaField("updated_at", "TIMESTAMP", mode="REQUIRED",
+                               description="When the token was last updated"),
+        ]
+
     def get_table_schemas(self) -> Dict[str, List[bigquery.SchemaField]]:
         """Get all table schemas."""
         return {
@@ -239,6 +266,7 @@ class BigQuerySchema:
             "flagged_content": self.get_flagged_content_table_schema(),
             "positive_language": self.get_positive_language_table_schema(),
             "alert_emails": self.get_alert_emails_table_schema(),
+            "gmail_oauth_tokens": self.get_gmail_oauth_table_schema(),
         }
 
     def create_dataset_if_not_exists(self) -> bool:

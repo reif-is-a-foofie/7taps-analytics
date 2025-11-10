@@ -76,42 +76,37 @@
             </div>
         </div>
 
-        <!-- SMTP Configuration Status -->
+        <!-- Gmail OAuth Configuration -->
         <div class="glass-effect rounded-xl p-6 mb-6">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-gray-900">SMTP Configuration</h2>
+                <h2 class="text-xl font-semibold text-gray-900">Email Sending</h2>
                 <button 
                     onclick="testEmailConnection()"
                     class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
                 >
-                    Test Connection
+                    Test Email
                 </button>
             </div>
             
-            <div id="smtpStatus" class="mb-4">
-                <div class="text-gray-500 text-sm">Checking SMTP configuration...</div>
+            <div id="gmailStatus" class="mb-4">
+                <div class="text-gray-500 text-sm">Checking email configuration...</div>
             </div>
             
             <div class="border-t border-gray-200 pt-4 mt-4">
-                <h3 class="text-sm font-semibold text-gray-900 mb-2">Setup Instructions</h3>
-                <div class="text-sm text-gray-600 space-y-2">
-                    <p><strong>Option 1: Gmail SMTP (Recommended)</strong></p>
-                    <ol class="list-decimal list-inside space-y-1 ml-2">
-                        <li>Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" class="text-blue-600 underline">Google App Passwords</a></li>
-                        <li>Select "Mail" and "Other (Custom name)" → enter "POL Analytics"</li>
-                        <li>Copy the 16-character App Password</li>
-                        <li>Set these environment variables in GCP Secret Manager or Cloud Run:</li>
-                    </ol>
-                    <div class="bg-gray-50 p-3 rounded mt-2 font-mono text-xs">
-                        <div>ALERT_EMAIL_SMTP_SERVER=smtp.gmail.com</div>
-                        <div>ALERT_EMAIL_SMTP_PORT=587</div>
-                        <div>ALERT_EMAIL_SMTP_USERNAME=your-email@gmail.com</div>
-                        <div>ALERT_EMAIL_SMTP_PASSWORD=your-app-password</div>
-                        <div>ALERT_EMAIL_SENDER=your-email@gmail.com</div>
-                    </div>
-                    <p class="mt-3"><strong>Option 2: Other SMTP Services</strong></p>
-                    <p class="text-xs">Use SendGrid, Mailgun, or any SMTP service with TLS support.</p>
-                </div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-2">Easy Setup: Connect Gmail</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    Just click the button below to connect your Gmail account. No SMTP configuration needed!
+                </p>
+                <button 
+                    id="connectGmailBtn"
+                    onclick="connectGmail()"
+                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors mb-4"
+                >
+                    🔗 Connect Gmail Account
+                </button>
+                <p class="text-xs text-gray-500 mt-2">
+                    You'll be redirected to Google to authorize POL Analytics to send emails on your behalf.
+                </p>
             </div>
         </div>
     </div>
@@ -135,40 +130,69 @@
             }
         }
 
-        async function loadSMTPStatus() {
+        async function loadGmailStatus() {
             try {
-                const response = await fetch('/api/settings/smtp-status');
+                const response = await fetch('/api/settings/gmail/status');
                 const data = await response.json();
 
-                const statusDiv = document.getElementById('smtpStatus');
+                const statusDiv = document.getElementById('gmailStatus');
+                const connectBtn = document.getElementById('connectGmailBtn');
                 
-                if (data.configured) {
+                if (data.connected) {
                     statusDiv.innerHTML = `
                         <div class="flex items-center space-x-2">
                             <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span class="text-green-700 font-medium">SMTP Configured</span>
+                            <span class="text-green-700 font-medium">Gmail Connected</span>
                         </div>
                         <div class="mt-2 text-sm text-gray-600">
-                            <div>Server: <code class="bg-gray-100 px-1 rounded">${data.server || 'N/A'}</code></div>
-                            <div>Port: <code class="bg-gray-100 px-1 rounded">${data.port || '587'}</code></div>
-                            <div>Sender: <code class="bg-gray-100 px-1 rounded">${data.sender || 'N/A'}</code></div>
+                            <div>Email: <code class="bg-gray-100 px-1 rounded">${data.email || 'N/A'}</code></div>
                         </div>
                     `;
+                    if (connectBtn) {
+                        connectBtn.textContent = '✅ Gmail Connected';
+                        connectBtn.disabled = true;
+                        connectBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                        connectBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                    }
                 } else {
                     statusDiv.innerHTML = `
                         <div class="flex items-center space-x-2">
                             <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <span class="text-yellow-700 font-medium">SMTP Not Configured</span>
+                            <span class="text-yellow-700 font-medium">Gmail Not Connected</span>
                         </div>
                         <div class="mt-2 text-sm text-gray-600">
-                            ${data.missing_vars ? `<p>Missing: ${data.missing_vars.join(', ')}</p>` : '<p>Email alerts will not be sent until SMTP is configured.</p>'}
+                            <p>Click "Connect Gmail Account" to enable email sending.</p>
+                            ${data.error ? `<p class="text-red-600 text-xs">Error: ${data.error}</p>` : ''}
                         </div>
                     `;
+                    if (connectBtn) {
+                        connectBtn.textContent = '🔗 Connect Gmail Account';
+                        connectBtn.disabled = false;
+                        connectBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                        connectBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                    }
                 }
             } catch (error) {
-                console.error('Error loading SMTP status:', error);
-                document.getElementById('smtpStatus').innerHTML = 
-                    '<div class="text-red-500 text-sm">Error checking SMTP status</div>';
+                console.error('Error loading Gmail status:', error);
+                document.getElementById('gmailStatus').innerHTML = 
+                    '<div class="text-red-500 text-sm">Error checking Gmail status</div>';
+            }
+        }
+
+        async function connectGmail() {
+            try {
+                const response = await fetch('/api/settings/gmail/connect');
+                const data = await response.json();
+
+                if (data.success) {
+                    // Redirect to Google OAuth
+                    window.location.href = data.authorization_url;
+                } else {
+                    showNotification(data.error || 'Failed to connect Gmail', 'error');
+                }
+            } catch (error) {
+                console.error('Error connecting Gmail:', error);
+                showNotification('Failed to connect Gmail', 'error');
             }
         }
 
@@ -198,10 +222,10 @@
             }
         }
 
-        // Load SMTP status on page load
+        // Load status on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadEmails();
-            loadSMTPStatus();
+            loadGmailStatus();
         });
 
         // Add email form handler

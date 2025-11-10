@@ -145,23 +145,12 @@ class FlaggedContentPersistence:
                 await self._send_alert(statement_id, actor_id, actor_name, content, analysis_result, cohort)
                 return
             
-            smtp_server = os.getenv("ALERT_EMAIL_SMTP_SERVER")
-            smtp_username = os.getenv("ALERT_EMAIL_SMTP_USERNAME")
-            smtp_password = os.getenv("ALERT_EMAIL_SMTP_PASSWORD")
-            
-            if not smtp_server or not smtp_username or not smtp_password:
-                logger.warning("SMTP not configured, skipping email alert")
-                # Still log the alert
-                await self._send_alert(statement_id, actor_id, actor_name, content, analysis_result, cohort)
-                return
-            
             severity = analysis_result.get("severity", "low")
             flagged_reasons = analysis_result.get("flagged_reasons", [])
             suggested_actions = analysis_result.get("suggested_actions", [])
             confidence_score = analysis_result.get("confidence_score", 0.0)
             
-            # Create email
-            sender = os.getenv("ALERT_EMAIL_SENDER", "no-reply@practiceoflife.com")
+            # Create email content
             subject = f"🚨 Flagged Content Alert - {severity.upper()}: {statement_id[:20]}..."
             
             body = f"""
@@ -187,13 +176,41 @@ Content Preview:
 View full details: https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/ui/safety
 """
             
+            # Try Gmail OAuth first (easier!)
+            try:
+                from app.services.gmail_oauth import gmail_oauth_service
+                gmail_status = await gmail_oauth_service.get_connection_status()
+                if gmail_status.get("connected"):
+                    result = await gmail_oauth_service.send_email(
+                        to_emails=recipient_emails,
+                        subject=subject,
+                        body=body
+                    )
+                    if result.get("success"):
+                        logger.info(f"Email alert sent via Gmail API: {statement_id} to {', '.join(recipient_emails)}")
+                        await self._send_alert(statement_id, actor_id, actor_name, content, analysis_result, cohort)
+                        return
+            except Exception as e:
+                logger.debug(f"Gmail OAuth not available, falling back to SMTP: {e}")
+            
+            # Fallback to SMTP
+            smtp_server = os.getenv("ALERT_EMAIL_SMTP_SERVER")
+            smtp_username = os.getenv("ALERT_EMAIL_SMTP_USERNAME")
+            smtp_password = os.getenv("ALERT_EMAIL_SMTP_PASSWORD")
+            
+            if not smtp_server or not smtp_username or not smtp_password:
+                logger.warning("Neither Gmail OAuth nor SMTP configured, skipping email alert")
+                await self._send_alert(statement_id, actor_id, actor_name, content, analysis_result, cohort)
+                return
+            
+            sender = os.getenv("ALERT_EMAIL_SENDER", "no-reply@practiceoflife.com")
+            
             message = EmailMessage()
             message["Subject"] = subject
             message["From"] = sender
             message["To"] = ", ".join(recipient_emails)
             message.set_content(body)
             
-            # Send email
             port = int(os.getenv("ALERT_EMAIL_SMTP_PORT", "587"))
             use_tls = os.getenv("ALERT_EMAIL_SMTP_USE_TLS", "true").lower() != "false"
             context = ssl.create_default_context()
@@ -204,14 +221,11 @@ View full details: https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/ui/safety
                 server.login(smtp_username, smtp_password)
                 server.send_message(message)
             
-            logger.info(f"Email alert sent for flagged content: {statement_id} to {', '.join(recipient_emails)}")
-            
-            # Also log the alert
+            logger.info(f"Email alert sent via SMTP: {statement_id} to {', '.join(recipient_emails)}")
             await self._send_alert(statement_id, actor_id, actor_name, content, analysis_result, cohort)
             
         except Exception as e:
             logger.error(f"Failed to send email alert: {e}")
-            # Still log the alert even if email fails
             await self._send_alert(statement_id, actor_id, actor_name, content, analysis_result, cohort)
     
     async def _send_alert(
