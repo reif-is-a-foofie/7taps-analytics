@@ -202,6 +202,11 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
     try:
         from app.utils.cohort_filtering import build_cohort_filter_sql
         
+        # Ensure base_url is set - critical for internal API calls
+        if not base_url:
+            # Fallback to environment or default
+            base_url = os.getenv("API_BASE_URL") or os.getenv("CLOUD_RUN_SERVICE_URL") or "https://taps-analytics-ui-euvwb5vwea-uc.a.run.app"
+        
         # Use base_url for httpx client if provided
         client_kwargs = {}
         if base_url:
@@ -311,10 +316,15 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                     
                     logger.info(f"Enhanced {len(enhanced_statements)} statements, returning success=True")
                     
+                    # CRITICAL: Ensure we always return statements even if enhancement had issues
+                    if len(enhanced_statements) == 0 and len(rows) > 0:
+                        logger.warning(f"Enhancement produced 0 statements but had {len(rows)} rows - returning raw rows")
+                        enhanced_statements = rows  # Fallback to raw rows
+                    
                     return {
                         "success": True,
                         "statements": enhanced_statements,
-                        "total_count": row_count
+                        "total_count": row_count if row_count > 0 else len(enhanced_statements)
                     }
                 else:
                     # Query succeeded but returned error in response
