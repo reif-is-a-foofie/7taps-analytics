@@ -203,11 +203,12 @@ class BatchProcessor:
         content_lower = content.lower()
         
         # Critical patterns - always flag immediately
+        # Note: Using simpler patterns that don't rely on word boundaries for phrases
         critical_patterns = [
-            r"\b(kill myself|suicide|end my life|end it all|ending everything|ending it all)\b",
-            r"\b(hurt(ing|s)? myself|self harm|self-harm|hurting myself)\b",
-            r"\b(want to die|don't want to live|thoughts about (hurting|ending))\b",
-            r"\b(serious thoughts about (hurting|ending))\b"
+            r"(kill myself|suicide|end my life|end it all|ending everything|ending it all)",
+            r"(hurt(ing|s)? myself|self harm|self-harm|hurting myself)",
+            r"(want to die|don't want to live)",
+            r"(thoughts about (hurting|ending)|serious thoughts about (hurting|ending))"
         ]
         
         # High patterns - flag immediately
