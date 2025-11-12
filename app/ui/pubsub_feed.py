@@ -562,15 +562,30 @@ async def data_explorer(
         statements = []
         for row in results:
             stmt = {}
+            timestamp_value = None
+            
             for field_name in row.keys():
                 value = row[field_name]
-                if hasattr(value, 'isoformat'):
+                if field_name == "timestamp" and hasattr(value, 'isoformat'):
+                    # Keep the datetime object for formatting
+                    timestamp_value = value
+                    stmt[field_name] = value.isoformat()  # Keep ISO for now, will replace below
+                elif hasattr(value, 'isoformat'):
                     stmt[field_name] = value.isoformat()
                 else:
                     stmt[field_name] = value
             
             # Format timestamp to human-readable format
-            if stmt.get("timestamp"):
+            if timestamp_value:
+                try:
+                    from app.utils.timestamp_utils import format_human_readable_long
+                    stmt["timestamp"] = format_human_readable_long(timestamp_value)
+                except Exception as e:
+                    logger.warning(f"Failed to format timestamp: {e}")
+                    # If formatting fails, keep ISO format
+                    pass
+            elif stmt.get("timestamp"):
+                # Fallback: try to format from ISO string
                 try:
                     from app.utils.timestamp_utils import format_human_readable_long
                     stmt["timestamp"] = format_human_readable_long(stmt["timestamp"])
