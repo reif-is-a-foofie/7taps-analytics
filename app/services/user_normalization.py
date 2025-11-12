@@ -6,6 +6,7 @@ Handles user profile normalization, merging, and deduplication across data sourc
 
 import re
 import hashlib
+import json
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 from app.logging_config import get_logger
@@ -285,12 +286,20 @@ class UserNormalizationService:
             table = self.bigquery_client.get_table(table_id)
             
             # Use MERGE statement for upsert
+            # Convert arrays to JSON strings for BigQuery parameters
+            sources_json = json.dumps(bigquery_row["sources"] if isinstance(bigquery_row["sources"], list) else [bigquery_row["sources"]])
+            csv_data_json = json.dumps(bigquery_row["csv_data"] if isinstance(bigquery_row["csv_data"], list) else [bigquery_row["csv_data"]])
+            
             merge_query = f"""
             MERGE `{table_id}` T
             USING (SELECT @user_id as user_id, @email as email, @name as name, 
-                          @sources as sources, @first_seen as first_seen, @last_seen as last_seen,
-                          @activity_count as activity_count, @csv_data as csv_data,
-                          @created_at as created_at, @updated_at as updated_at) S
+                          ARRAY(SELECT value FROM UNNEST(JSON_EXTRACT_ARRAY(@sources_json)) AS value) as sources,
+                          PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%S%Ez', @first_seen) as first_seen,
+                          PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%S%Ez', @last_seen) as last_seen,
+                          @activity_count as activity_count,
+                          ARRAY(SELECT PARSE_JSON(value) FROM UNNEST(JSON_EXTRACT_ARRAY(@csv_data_json)) AS value) as csv_data,
+                          PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%S%Ez', @created_at) as created_at,
+                          PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%S%Ez', @updated_at) as updated_at) S
             ON T.user_id = S.user_id
             WHEN MATCHED THEN
               UPDATE SET 
@@ -314,16 +323,17 @@ class UserNormalizationService:
                 bigquery.ScalarQueryParameter("user_id", "STRING", bigquery_row["user_id"]),
                 bigquery.ScalarQueryParameter("email", "STRING", bigquery_row["email"]),
                 bigquery.ScalarQueryParameter("name", "STRING", bigquery_row["name"]),
-                bigquery.ScalarQueryParameter("sources", "STRING", str(bigquery_row["sources"])),
+                bigquery.ScalarQueryParameter("sources_json", "STRING", sources_json),
                 bigquery.ScalarQueryParameter("first_seen", "STRING", bigquery_row["first_seen"]),
                 bigquery.ScalarQueryParameter("last_seen", "STRING", bigquery_row["last_seen"]),
                 bigquery.ScalarQueryParameter("activity_count", "INT64", bigquery_row["activity_count"]),
-                bigquery.ScalarQueryParameter("csv_data", "STRING", str(bigquery_row["csv_data"])),
+                bigquery.ScalarQueryParameter("csv_data_json", "STRING", csv_data_json),
                 bigquery.ScalarQueryParameter("created_at", "STRING", bigquery_row["created_at"]),
                 bigquery.ScalarQueryParameter("updated_at", "STRING", bigquery_row["updated_at"])
             ]
             
-            self.bigquery_client.query(merge_query, job_config=job_config)
+            query_job = self.bigquery_client.query(merge_query, job_config=job_config)
+            query_job.result()  # Wait for completion
             
             return True
             
