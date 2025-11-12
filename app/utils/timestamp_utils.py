@@ -98,10 +98,10 @@ def format_human_readable_long(timestamp_input: Union[str, datetime, None]) -> s
     dt = parse_timestamp(timestamp_input)
     central_dt = to_central_time(dt)
     
-    # Day name
+    # Day name (abbreviated: Mon, Tue, Wed, etc.)
     day_name = central_dt.strftime("%a")
     
-    # Month name
+    # Month name (abbreviated: Jan, Feb, Mar, etc.)
     month_name = central_dt.strftime("%b")
     
     # Day with ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
@@ -115,7 +115,14 @@ def format_human_readable_long(timestamp_input: Union[str, datetime, None]) -> s
     # Year
     year = central_dt.year
     
-    # Time in 12-hour format with am/pm
-    time_str = central_dt.strftime("%I:%M:%S %p").lstrip("0")
+    # Time in 12-hour format with lowercase am/pm
+    hour = central_dt.hour
+    minute = central_dt.minute
+    second = central_dt.second
+    am_pm = "am" if hour < 12 else "pm"
+    hour_12 = hour % 12
+    if hour_12 == 0:
+        hour_12 = 12
+    time_str = f"{hour_12}:{minute:02d}:{second:02d}{am_pm}"
     
     return f"{day_name} {month_name} {day_str}. {year}, {time_str}"
