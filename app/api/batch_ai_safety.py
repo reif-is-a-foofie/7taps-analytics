@@ -83,6 +83,7 @@ class BatchProcessor:
         
         # Step 1: Check for obvious flags using local rules
         obvious_result = await self._check_obvious_flags(content)
+        logger.debug(f"Obvious flag check for statement {statement_id}: is_obvious={obvious_result.get('is_obvious')}, severity={obvious_result.get('severity', 'none')}")
         
         if obvious_result["is_obvious"]:
             logger.info(f"Obvious flag detected for statement {statement_id} - running AI immediately for safety")
@@ -264,8 +265,10 @@ class BatchProcessor:
             import google.generativeai as genai
             
             if not settings.GOOGLE_AI_API_KEY:
+                logger.warning("Gemini API key not configured - skipping AI analysis")
                 return {"error": "AI not configured"}
             
+            logger.info(f"🔵 Calling Gemini API for immediate analysis (content length: {len(content)})")
             genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
             model = genai.GenerativeModel('gemini-2.0-flash')
             
@@ -303,6 +306,7 @@ class BatchProcessor:
             """
             
             response = model.generate_content(prompt)
+            logger.info(f"✅ Gemini API responded (response length: {len(response.text) if response.text else 0})")
             
             # Parse response
             try:
@@ -375,8 +379,10 @@ class BatchProcessor:
             import google.generativeai as genai
             
             if not settings.GOOGLE_AI_API_KEY:
+                logger.warning("Gemini API key not configured - skipping batch AI analysis")
                 return [{"error": "AI not configured"} for _ in batch_items]
             
+            logger.info(f"🔵 Calling Gemini API for batch analysis ({len(batch_items)} items)")
             genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
             model = genai.GenerativeModel('gemini-2.5-flash')
             
@@ -424,6 +430,7 @@ class BatchProcessor:
             """
             
             response = model.generate_content(prompt)
+            logger.info(f"✅ Gemini API responded for batch (response length: {len(response.text) if response.text else 0})")
             
             # Parse batch response
             try:
