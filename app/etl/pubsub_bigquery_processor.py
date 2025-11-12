@@ -237,6 +237,10 @@ class PubSubBigQueryProcessor:
             table_id = f"{self.dataset_id}.{self.table_id}"
             
             # Use MERGE statement for idempotent insert (only inserts if not exists)
+            # Handle NULL booleans properly - use CAST(NULL AS BOOL) in SQL when None
+            result_success_val = row.get("result_success")
+            result_completion_val = row.get("result_completion")
+            
             merge_query = f"""
             MERGE `{table_id}` T
             USING (SELECT 
@@ -257,8 +261,8 @@ class PubSubBigQueryProcessor:
                 @result_score_raw as result_score_raw,
                 @result_score_min as result_score_min,
                 @result_score_max as result_score_max,
-                @result_success as result_success,
-                @result_completion as result_completion,
+                {'@result_success' if result_success_val is not None else 'CAST(NULL AS BOOL)'} as result_success,
+                {'@result_completion' if result_completion_val is not None else 'CAST(NULL AS BOOL)'} as result_completion,
                 @result_response as result_response,
                 @result_duration as result_duration,
                 @context_registration as context_registration,
@@ -284,7 +288,7 @@ class PubSubBigQueryProcessor:
             """
             
             job_config = bigquery.QueryJobConfig()
-            job_config.query_parameters = [
+            params = [
                 bigquery.ScalarQueryParameter("statement_id", "STRING", row.get("statement_id", "")),
                 bigquery.ScalarQueryParameter("timestamp", "TIMESTAMP", row.get("timestamp")),
                 bigquery.ScalarQueryParameter("stored", "TIMESTAMP", row.get("stored")),
@@ -302,8 +306,6 @@ class PubSubBigQueryProcessor:
                 bigquery.ScalarQueryParameter("result_score_raw", "FLOAT", row.get("result_score_raw")),
                 bigquery.ScalarQueryParameter("result_score_min", "FLOAT", row.get("result_score_min")),
                 bigquery.ScalarQueryParameter("result_score_max", "FLOAT", row.get("result_score_max")),
-                bigquery.ScalarQueryParameter("result_success", "BOOLEAN", row.get("result_success")),
-                bigquery.ScalarQueryParameter("result_completion", "BOOLEAN", row.get("result_completion")),
                 bigquery.ScalarQueryParameter("result_response", "STRING", row.get("result_response")),
                 bigquery.ScalarQueryParameter("result_duration", "STRING", row.get("result_duration")),
                 bigquery.ScalarQueryParameter("context_registration", "STRING", row.get("context_registration")),
@@ -312,6 +314,14 @@ class PubSubBigQueryProcessor:
                 bigquery.ScalarQueryParameter("context_language", "STRING", row.get("context_language")),
                 bigquery.ScalarQueryParameter("raw_json", "STRING", row.get("raw_json", ""))
             ]
+            
+            # Only add boolean parameters if they're not None
+            if result_success_val is not None:
+                params.append(bigquery.ScalarQueryParameter("result_success", "BOOLEAN", result_success_val))
+            if result_completion_val is not None:
+                params.append(bigquery.ScalarQueryParameter("result_completion", "BOOLEAN", result_completion_val))
+            
+            job_config.query_parameters = params
             
             # Execute MERGE query
             query_job = self.bigquery_client.query(merge_query, job_config=job_config)
