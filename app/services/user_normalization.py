@@ -284,28 +284,32 @@ class UserNormalizationService:
             # Insert/update in BigQuery using MERGE with proper array handling
             table_id = f"{self.dataset_id}.users"
             
-            # Convert timestamps to proper format
-            first_seen_ts = bigquery_row["first_seen"] if bigquery_row["first_seen"] else None
-            last_seen_ts = bigquery_row["last_seen"] if bigquery_row["last_seen"] else None
-            created_at_ts = bigquery_row["created_at"]
-            updated_at_ts = bigquery_row["updated_at"]
+            # Parse timestamps
+            from datetime import datetime as dt
+            first_seen_ts = dt.fromisoformat(bigquery_row["first_seen"].replace('Z', '+00:00')) if bigquery_row["first_seen"] else None
+            last_seen_ts = dt.fromisoformat(bigquery_row["last_seen"].replace('Z', '+00:00')) if bigquery_row["last_seen"] else None
+            created_at_ts = dt.fromisoformat(bigquery_row["created_at"].replace('Z', '+00:00'))
+            updated_at_ts = dt.fromisoformat(bigquery_row["updated_at"].replace('Z', '+00:00'))
             
             # Ensure sources and csv_data are lists
             sources_list = bigquery_row["sources"] if isinstance(bigquery_row["sources"], list) else [bigquery_row["sources"]] if bigquery_row["sources"] else []
             csv_data_list = bigquery_row["csv_data"] if isinstance(bigquery_row["csv_data"], list) else [bigquery_row["csv_data"]] if bigquery_row["csv_data"] else []
             
-            # Use MERGE with ARRAY constructor
+            # Use MERGE with proper array handling - convert JSON arrays to string and parse in SQL
+            sources_json_str = json.dumps(sources_list)
+            csv_data_json_str = json.dumps(csv_data_list)
+            
             merge_query = f"""
             MERGE `{table_id}` T
             USING (SELECT 
                 @user_id as user_id,
                 @email as email,
                 @name as name,
-                @sources as sources,
+                ARRAY(SELECT value FROM UNNEST(JSON_EXTRACT_ARRAY(@sources_json)) AS value) as sources,
                 @first_seen as first_seen,
                 @last_seen as last_seen,
                 @activity_count as activity_count,
-                @csv_data as csv_data,
+                ARRAY(SELECT PARSE_JSON(value) FROM UNNEST(JSON_EXTRACT_ARRAY(@csv_data_json)) AS value) as csv_data,
                 @created_at as created_at,
                 @updated_at as updated_at
             ) S
@@ -332,11 +336,11 @@ class UserNormalizationService:
                 bigquery.ScalarQueryParameter("user_id", "STRING", bigquery_row["user_id"]),
                 bigquery.ScalarQueryParameter("email", "STRING", bigquery_row["email"]),
                 bigquery.ScalarQueryParameter("name", "STRING", bigquery_row["name"]),
-                bigquery.ArrayQueryParameter("sources", "STRING", sources_list),
+                bigquery.ScalarQueryParameter("sources_json", "STRING", sources_json_str),
                 bigquery.ScalarQueryParameter("first_seen", "TIMESTAMP", first_seen_ts),
                 bigquery.ScalarQueryParameter("last_seen", "TIMESTAMP", last_seen_ts),
                 bigquery.ScalarQueryParameter("activity_count", "INT64", bigquery_row["activity_count"]),
-                bigquery.ArrayQueryParameter("csv_data", "JSON", [json.dumps(item) if not isinstance(item, str) else item for item in csv_data_list]),
+                bigquery.ScalarQueryParameter("csv_data_json", "STRING", csv_data_json_str),
                 bigquery.ScalarQueryParameter("created_at", "TIMESTAMP", created_at_ts),
                 bigquery.ScalarQueryParameter("updated_at", "TIMESTAMP", updated_at_ts)
             ]
