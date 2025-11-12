@@ -16,12 +16,15 @@ from app.api.cloud_function_ingestion import publish_to_pubsub
 from app.api.trigger_word_alerts import trigger_word_alert_manager
 from app.api.ai_flagged_content import analyze_xapi_statement_content
 from app.config.gcp_config import get_gcp_config
+from app.logging_config import get_logger
 from app.models import (
     xAPIStatement,
     xAPIIngestionResponse,
     xAPIIngestionStatus,
     xAPIValidationError,
 )
+
+logger = get_logger("xapi_ingestion")
 
 # Initialize router
 router = APIRouter()
@@ -102,6 +105,61 @@ async def _prepare_statement_payload(statement: xAPIStatement, *, source: str) -
             print(f"   Severity: {ai_analysis.get('severity', 'unknown')}")
             print(f"   Reasons: {ai_analysis.get('flagged_reasons', [])}")
             print(f"   Confidence: {ai_analysis.get('confidence_score', 0)}")
+            
+            # Persist flagged content to BigQuery
+            try:
+                from app.services.flagged_content_persistence import flagged_content_persistence
+                
+                # Extract content from statement
+                content = ""
+                result = payload.get("result", {})
+                if result.get("response"):
+                    content = result["response"]
+                
+                # Extract actor info
+                actor = payload.get("actor", {})
+                actor_id = actor.get("mbox", actor.get("mbox_sha1sum", actor.get("openid", "unknown")))
+                if actor_id.startswith("mailto:"):
+                    actor_id = actor_id[7:]
+                actor_name = actor.get("name", None)
+                
+                # Extract cohort from context extensions
+                context = payload.get("context", {})
+                extensions = context.get("extensions", {})
+                cohort = extensions.get("https://7taps.com/cohort", None)
+                
+                # Extract timestamp
+                timestamp = payload.get("timestamp")
+                if isinstance(timestamp, str):
+                    try:
+                        timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    except:
+                        timestamp = datetime.now(timezone.utc)
+                elif isinstance(timestamp, datetime):
+                    pass  # Already a datetime
+                elif timestamp is None:
+                    timestamp = datetime.now(timezone.utc)
+                
+                # Persist asynchronously
+                import asyncio
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(
+                        flagged_content_persistence.persist_flagged_content(
+                            statement_id=statement.id,
+                            timestamp=timestamp,
+                            actor_id=actor_id,
+                            actor_name=actor_name,
+                            content=content,
+                            analysis_result=ai_analysis,
+                            cohort=cohort
+                        )
+                    )
+                except RuntimeError:
+                    # No event loop, skip persistence (shouldn't happen in async context)
+                    logger.warning(f"No event loop for persistence, skipping BigQuery write for {statement.id}")
+            except Exception as persist_error:
+                logger.error(f"Failed to persist flagged content for {statement.id}: {persist_error}")
             
     except Exception as e:
         print(f"⚠️ AI content analysis failed for statement {statement.id}: {e}")
