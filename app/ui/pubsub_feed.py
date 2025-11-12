@@ -571,11 +571,11 @@ async def data_explorer(
             statements.append(stmt)
         
         logger.info(f"Got {len(statements)} statements from BigQuery")
-    
-    context = {
-        "request": request,
-        "active_page": "data_explorer",
-        "title": "Data Explorer",
+        
+        context = {
+            "request": request,
+            "active_page": "data_explorer",
+            "title": "Data Explorer",
             "statements": statements,
             "total_count": len(statements),
             "etl_count": len(statements),
@@ -586,7 +586,7 @@ async def data_explorer(
                 "latest_timestamp": statements[0].get("timestamp") if statements and len(statements) > 0 else None,
                 "etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}
             },
-        "limit": limit,
+            "limit": limit,
             "cohort": cohort,
             "success": True,
             "error": None
