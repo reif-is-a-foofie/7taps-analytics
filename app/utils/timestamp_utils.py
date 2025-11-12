@@ -90,6 +90,32 @@ def get_current_central_time() -> datetime:
     """Get current time in Central Time."""
     return datetime.now(timezone.utc).astimezone(CENTRAL_TZ)
 
-def get_current_central_time_str() -> str:
-    """Get current time as formatted string in Central Time."""
-    return format_human_readable(datetime.now(timezone.utc))
+def format_human_readable_long(timestamp_input: Union[str, datetime, None]) -> str:
+    """
+    Format timestamp as long human-readable format.
+    Format: "Tues Nov 11th. 2025, 11:34:05am"
+    """
+    dt = parse_timestamp(timestamp_input)
+    central_dt = to_central_time(dt)
+    
+    # Day name
+    day_name = central_dt.strftime("%a")
+    
+    # Month name
+    month_name = central_dt.strftime("%b")
+    
+    # Day with ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
+    day = central_dt.day
+    if 10 <= day % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    day_str = f"{day}{suffix}"
+    
+    # Year
+    year = central_dt.year
+    
+    # Time in 12-hour format with am/pm
+    time_str = central_dt.strftime("%I:%M:%S %p").lstrip("0")
+    
+    return f"{day_name} {month_name} {day_str}. {year}, {time_str}"

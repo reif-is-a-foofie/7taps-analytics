@@ -568,6 +568,16 @@ async def data_explorer(
                     stmt[field_name] = value.isoformat()
                 else:
                     stmt[field_name] = value
+            
+            # Format timestamp to human-readable format
+            if stmt.get("timestamp"):
+                try:
+                    from app.utils.timestamp_utils import format_human_readable_long
+                    stmt["timestamp"] = format_human_readable_long(stmt["timestamp"])
+                except Exception:
+                    # If formatting fails, keep original
+                    pass
+            
             statements.append(stmt)
         
         logger.info(f"Got {len(statements)} statements from BigQuery")
