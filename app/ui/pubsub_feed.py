@@ -286,39 +286,39 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                             
                             # Fallback to reconstructed payload if raw_json is not available
                             if not detailed_payload:
-                                detailed_payload = {
-                                    "id": statement.get("statement_id", ""),
-                                    "actor": {"name": statement.get("actor_id", ""), "mbox": f"mailto:{statement.get('actor_id', '')}"},
-                                    "verb": {"id": statement.get("verb_display", ""), "display": {"en-US": statement.get("verb_display", "")}},
-                                    "object": {"id": statement.get("object_name", ""), "definition": {"name": {"en-US": statement.get("object_name", "")}}},
-                                    "result": {
-                                        "completion": statement.get("result_completion"),
-                                        "success": statement.get("result_success"),
-                                        "score": {"scaled": statement.get("result_score_scaled")},
-                                        "response": statement.get("result_response")
-                                    },
-                                    "context": {"platform": statement.get("context_platform")},
-                                    "timestamp": statement.get("timestamp", ""),
-                                    "data_type": statement.get("data_type", "ETL Processed")
-                                }
-                            
-                            # Update the statement with verbose JSON
-                            enhanced_statement = statement.copy()
-                            enhanced_statement["result_response"] = json.dumps(detailed_payload, indent=2)
-                            
-                            # Format timestamp to Central Time
-                            if enhanced_statement.get("timestamp"):
-                                try:
-                                    from app.utils.timestamp_utils import format_compact
-                                    enhanced_statement["timestamp"] = format_compact(enhanced_statement["timestamp"])
+                            detailed_payload = {
+                                "id": statement.get("statement_id", ""),
+                                "actor": {"name": statement.get("actor_id", ""), "mbox": f"mailto:{statement.get('actor_id', '')}"},
+                                "verb": {"id": statement.get("verb_display", ""), "display": {"en-US": statement.get("verb_display", "")}},
+                                "object": {"id": statement.get("object_name", ""), "definition": {"name": {"en-US": statement.get("object_name", "")}}},
+                                "result": {
+                                    "completion": statement.get("result_completion"),
+                                    "success": statement.get("result_success"),
+                                    "score": {"scaled": statement.get("result_score_scaled")},
+                                    "response": statement.get("result_response")
+                                },
+                                "context": {"platform": statement.get("context_platform")},
+                                "timestamp": statement.get("timestamp", ""),
+                                "data_type": statement.get("data_type", "ETL Processed")
+                            }
+                        
+                        # Update the statement with verbose JSON
+                        enhanced_statement = statement.copy()
+                        enhanced_statement["result_response"] = json.dumps(detailed_payload, indent=2)
+                        
+                        # Format timestamp to Central Time
+                        if enhanced_statement.get("timestamp"):
+                            try:
+                                from app.utils.timestamp_utils import format_compact
+                                enhanced_statement["timestamp"] = format_compact(enhanced_statement["timestamp"])
                                 except ImportError:
                                     # timestamp_utils not available, keep original timestamp
                                     pass
                                 except Exception:
                                     # Formatting failed, keep original timestamp
                                     pass
-                            
-                            enhanced_statements.append(enhanced_statement)
+                        
+                        enhanced_statements.append(enhanced_statement)
                         except Exception as e:
                             logger.error(f"Error enhancing statement {statement.get('statement_id', 'unknown')}: {e}")
                             # Still add the statement even if enhancement fails
@@ -571,11 +571,11 @@ async def data_explorer(
             statements.append(stmt)
         
         logger.info(f"Got {len(statements)} statements from BigQuery")
-        
-        context = {
-            "request": request,
-            "active_page": "data_explorer",
-            "title": "Data Explorer",
+    
+    context = {
+        "request": request,
+        "active_page": "data_explorer",
+        "title": "Data Explorer",
             "statements": statements,
             "total_count": len(statements),
             "etl_count": len(statements),
@@ -586,7 +586,7 @@ async def data_explorer(
                 "latest_timestamp": statements[0].get("timestamp") if statements and len(statements) > 0 else None,
                 "etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}
             },
-            "limit": limit,
+        "limit": limit,
             "cohort": cohort,
             "success": True,
             "error": None
@@ -619,7 +619,7 @@ async def data_explorer(
             "success": False,
             "error": str(e)
         }
-        return templates.TemplateResponse("data_explorer_modern.html", context)
+    return templates.TemplateResponse("data_explorer_modern.html", context)
 
 
 @router.get("/raw-statements", response_class=HTMLResponse)
