@@ -530,8 +530,9 @@ async def data_explorer(
     limit: int = Query(100, ge=1, le=100),
     cohort: Optional[str] = None
 ) -> HTMLResponse:
-    """Simple data explorer - call BigQuery function directly."""
-    from app.api.bigquery_analytics import execute_bigquery_query
+    """Simple data explorer - query BigQuery directly."""
+    from app.config.gcp_config import get_gcp_config
+    from google.cloud import bigquery
     
     try:
         query = f"""
@@ -552,27 +553,24 @@ async def data_explorer(
         LIMIT {limit}
         """
         
-        logger.info(f"Executing BigQuery query directly")
-        result = execute_bigquery_query(query)
-        logger.info(f"Query result success: {result.get('success')}")
-        
-        if not result.get("success"):
-            raise Exception(f"Query failed: {result.get('error', 'Unknown error')}")
-        
-        rows = result.get("results", [])
-        logger.info(f"Got {len(rows)} rows from BigQuery")
+        logger.info(f"Querying BigQuery directly")
+        gcp_config = get_gcp_config()
+        client = gcp_config.bigquery_client
+        query_job = client.query(query)
+        results = query_job.result()
         
         statements = []
-        for row in rows:
-            stmt = dict(row)
-            if stmt.get("timestamp"):
-                try:
-                    stmt["timestamp"] = stmt["timestamp"].isoformat()
-                except:
-                    pass
+        for row in results:
+            stmt = {}
+            for field_name in row.keys():
+                value = row[field_name]
+                if hasattr(value, 'isoformat'):
+                    stmt[field_name] = value.isoformat()
+                else:
+                    stmt[field_name] = value
             statements.append(stmt)
         
-        logger.info(f"Processed {len(statements)} statements")
+        logger.info(f"Got {len(statements)} statements from BigQuery")
         
         context = {
             "request": request,
