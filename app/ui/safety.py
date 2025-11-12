@@ -156,64 +156,86 @@ async def get_trigger_word_alerts() -> Dict[str, Any]:
 async def get_safety_metrics() -> Dict[str, Any]:
     """Get safety-related metrics."""
     try:
-        from app.api.bigquery_analytics import execute_bigquery_query
+        from app.config.gcp_config import gcp_config
+        from google.cloud import bigquery
         
-        # Get total statements processed today
-        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-        total_query = f"""
-        SELECT COUNT(*) as total_statements
-        FROM taps_data.statements 
-        WHERE DATE(timestamp) = '{today}'
+        client = gcp_config.bigquery_client
+        dataset_id = gcp_config.bigquery_dataset
+        project_id = gcp_config.project_id
+        
+        # Get total statements that have been analyzed (have ai_content_analysis)
+        total_analyzed_query = f"""
+            SELECT COUNT(*) as total_analyzed
+            FROM `{project_id}.{dataset_id}.statements`
+            WHERE JSON_EXTRACT_SCALAR(raw_json, '$.ai_content_analysis') IS NOT NULL
         """
         
-        total_result = execute_bigquery_query(total_query)
-        total_statements = 0
-        if total_result.get("success") and total_result.get("data", {}).get("rows"):
-            total_statements = total_result["data"]["rows"][0]["total_statements"]
-        
-        # Get failed statements (success = false)
-        failed_query = f"""
-        SELECT COUNT(*) as failed_statements
-        FROM taps_data.statements 
-        WHERE DATE(timestamp) = '{today}'
-        AND result_success = false
-        """
-        
-        failed_result = execute_bigquery_query(failed_query)
-        failed_statements = 0
-        if failed_result.get("success") and failed_result.get("data", {}).get("rows"):
-            failed_statements = failed_result["data"]["rows"][0]["failed_statements"]
-        
-        # Calculate safety score (percentage of successful statements)
-        safety_score = 100.0
-        if total_statements > 0:
-            safety_score = round(((total_statements - failed_statements) / total_statements) * 100, 1)
-        
-        # Get recent error rate from endpoint tracking
+        total_analyzed = 0
         try:
-            from app.api.endpoint_tracking import get_endpoint_stats
-            endpoint_stats = get_endpoint_stats("/statements")
-            success_rate = endpoint_stats.get("success_rate", 100)
-        except:
-            success_rate = 100
+            query_job = client.query(total_analyzed_query)
+            rows = list(query_job.result())
+            if rows:
+                total_analyzed = rows[0].total_analyzed
+        except Exception as e:
+            logger.warning(f"Failed to query total analyzed statements: {e}")
+        
+        # Get total flagged statements
+        total_flagged_query = f"""
+            SELECT COUNT(*) as total_flagged
+            FROM `{project_id}.{dataset_id}.flagged_content`
+            WHERE is_flagged = TRUE
+        """
+        
+        total_flagged = 0
+        try:
+            query_job = client.query(total_flagged_query)
+            rows = list(query_job.result())
+            if rows:
+                total_flagged = rows[0].total_flagged
+        except Exception as e:
+            logger.warning(f"Failed to query total flagged statements: {e}")
+        
+        # Get statements processed today
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        today_query = f"""
+            SELECT COUNT(*) as today_count
+            FROM `{project_id}.{dataset_id}.statements`
+            WHERE DATE(timestamp) = '{today}'
+        """
+        
+        today_count = 0
+        try:
+            query_job = client.query(today_query)
+            rows = list(query_job.result())
+            if rows:
+                today_count = rows[0].today_count
+        except Exception as e:
+            logger.warning(f"Failed to query today's statements: {e}")
+        
+        # Calculate detection rate
+        detection_rate = 0.0
+        if total_analyzed > 0:
+            detection_rate = round((total_flagged / total_analyzed) * 100, 2)
         
         return {
-            "total_statements_processed": total_statements,
-            "failed_statements": failed_statements,
-            "safety_score": safety_score,
-            "endpoint_success_rate": success_rate,
-            "last_incident": "No recent incidents" if failed_statements == 0 else f"{failed_statements} failed statements today",
-            "uptime_percentage": min(safety_score, success_rate)
+            "total_statements_analyzed": total_analyzed,  # Total statements that have been analyzed
+            "total_flagged": total_flagged,  # Total flagged statements
+            "today_statements": today_count,  # Statements processed today
+            "detection_rate": detection_rate,  # Percentage of analyzed statements that were flagged
+            "safety_score": 100.0 - detection_rate,  # Inverse of detection rate
+            "last_incident": f"{total_flagged} flagged statements total" if total_flagged > 0 else "No flagged content",
+            "uptime_percentage": 100.0
         }
         
     except Exception as e:
         logger.error(f"Error getting safety metrics: {e}")
         return {
             "error": str(e),
-            "total_statements_processed": 0,
-            "failed_statements": 0,
+            "total_statements_analyzed": 0,
+            "total_flagged": 0,
+            "today_statements": 0,
+            "detection_rate": 0.0,
             "safety_score": 0,
-            "endpoint_success_rate": 0,
             "last_incident": f"Error: {str(e)}",
             "uptime_percentage": 0
         }
