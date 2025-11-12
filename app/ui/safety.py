@@ -282,7 +282,7 @@ async def get_recent_flagged_statements(cohort_filter: Optional[str] = None) -> 
         flagged_statements = []
         flagged_statement_ids = set()
         
-        # Check AI analysis flags
+        # Check AI analysis flags from in-memory cache
         for statement_data in statements:
             payload = statement_data.get("payload", {})
             ai_analysis = payload.get("ai_content_analysis", {})
@@ -351,12 +351,82 @@ async def get_recent_flagged_statements(cohort_filter: Optional[str] = None) -> 
                     })
                     flagged_statement_ids.add(statement_id)
         
+        # Also query BigQuery flagged_content table for persisted flagged content
+        try:
+            from app.config.gcp_config import gcp_config
+            from google.cloud import bigquery
+            
+            client = gcp_config.bigquery_client
+            dataset_id = gcp_config.bigquery_dataset
+            project_id = gcp_config.project_id
+            
+            # Build query
+            cohort_filter_sql = ""
+            if cohort_filter:
+                cohort_filter_sql = f"AND cohort = '{cohort_filter}'"
+            
+            query = f"""
+                SELECT 
+                    statement_id,
+                    actor_name,
+                    timestamp,
+                    flagged_at,
+                    content,
+                    severity,
+                    flagged_reasons,
+                    confidence_score,
+                    suggested_actions,
+                    cohort
+                FROM `{project_id}.{dataset_id}.flagged_content`
+                WHERE is_flagged = TRUE
+                    {cohort_filter_sql}
+                ORDER BY flagged_at DESC
+                LIMIT 50
+            """
+            
+            query_job = client.query(query)
+            rows = list(query_job.result())
+            
+            # Add BigQuery flagged content to results
+            for row in rows:
+                statement_id = row.statement_id
+                if statement_id not in flagged_statement_ids:
+                    # Parse flagged_reasons (stored as JSON string)
+                    try:
+                        flagged_reasons = json.loads(row.flagged_reasons) if row.flagged_reasons else []
+                    except:
+                        flagged_reasons = [row.flagged_reasons] if row.flagged_reasons else []
+                    
+                    # Parse suggested_actions (stored as JSON string)
+                    try:
+                        suggested_actions = json.loads(row.suggested_actions) if row.suggested_actions else []
+                    except:
+                        suggested_actions = [row.suggested_actions] if row.suggested_actions else []
+                    
+                    flagged_statements.append({
+                        "statement_id": statement_id,
+                        "actor_name": row.actor_name or "Unknown",
+                        "timestamp": row.timestamp.isoformat() if row.timestamp else "",
+                        "content": row.content or "",
+                        "severity": row.severity or "medium",
+                        "flagged_reasons": flagged_reasons,
+                        "confidence_score": float(row.confidence_score) if row.confidence_score else 0.0,
+                        "suggested_actions": suggested_actions,
+                        "flag_type": "ai_analysis",
+                        "cohort": row.cohort or ""
+                    })
+                    flagged_statement_ids.add(statement_id)
+                    
+        except Exception as bq_error:
+            logger.warning(f"Failed to query BigQuery flagged_content table: {bq_error}")
+            # Continue with in-memory results only
+        
         # Sort by timestamp (most recent first)
         flagged_statements.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         
         return {
             "flagged_count": len(flagged_statements),
-            "flagged_statements": flagged_statements[:10],  # Last 10 flagged
+            "flagged_statements": flagged_statements[:50],  # Last 50 flagged
             "total_recent_statements": len(statements),
             "ai_flagged_count": len([s for s in flagged_statements if s.get("flag_type") == "ai_analysis"]),
             "trigger_word_flagged_count": len([s for s in flagged_statements if s.get("flag_type") == "trigger_word"])
