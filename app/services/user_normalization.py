@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 from app.logging_config import get_logger
 from app.config.gcp_config import get_gcp_config
+from google.cloud import bigquery
 
 logger = get_logger("user_normalization")
 
@@ -173,7 +174,7 @@ class UserNormalizationService:
                 LIMIT 1
                 """
                 
-                job_config = self.bigquery_client.query_config()
+                job_config = bigquery.QueryJobConfig()
                 job_config.query_parameters = [
                     bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
                 ]
@@ -191,7 +192,7 @@ class UserNormalizationService:
                 LIMIT 1
                 """
                 
-                job_config = self.bigquery_client.query_config()
+                job_config = bigquery.QueryJobConfig()
                 job_config.query_parameters = [
                     bigquery.ScalarQueryParameter("email", "STRING", normalized_email)
                 ]
@@ -308,7 +309,7 @@ class UserNormalizationService:
                       S.activity_count, S.csv_data, S.created_at, S.updated_at)
             """
             
-            job_config = self.bigquery_client.query_config()
+            job_config = bigquery.QueryJobConfig()
             job_config.query_parameters = [
                 bigquery.ScalarQueryParameter("user_id", "STRING", bigquery_row["user_id"]),
                 bigquery.ScalarQueryParameter("email", "STRING", bigquery_row["email"]),
