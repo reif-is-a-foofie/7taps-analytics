@@ -553,54 +553,78 @@ async def data_explorer(
             LIMIT {limit}
             """
             
+            logger.info(f"Calling API endpoint: {base_url}/api/analytics/bigquery/query")
             response = await client.get("/api/analytics/bigquery/query", params={"query": query})
+            logger.info(f"API response: status={response.status_code}")
             
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("success"):
-                    rows = data.get("data", {}).get("rows", [])
-                    statements = []
-                    for row in rows:
-                        stmt = dict(row)
-                        if stmt.get("timestamp"):
-                            try:
-                                stmt["timestamp"] = stmt["timestamp"].isoformat()
-                            except:
-                                pass
-                        statements.append(stmt)
-                    
-                    context = {
-                        "request": request,
-                        "active_page": "data_explorer",
-                        "title": "Data Explorer",
-                        "statements": statements,
-                        "total_count": len(statements),
-                        "etl_count": len(statements),
-                        "direct_count": 0,
-                        "endpoint_count": 0,
-                        "system_status": {
-                            "total_statements": len(statements),
-                            "latest_timestamp": statements[0].get("timestamp") if statements and len(statements) > 0 else None,
-                            "etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}
-                        },
-                        "limit": limit,
-                        "cohort": cohort,
-                        "success": True,
-                        "error": None
-                    }
-                    return templates.TemplateResponse("data_explorer_modern.html", context)
+            if response.status_code != 200:
+                raise Exception(f"API returned {response.status_code}: {response.text[:200]}")
             
-            # If we get here, something failed
-            raise Exception(f"API returned {response.status_code}: {response.text[:200]}")
+            data = response.json()
+            logger.info(f"API data success: {data.get('success')}")
+            
+            if not data.get("success"):
+                raise Exception(f"API query failed: {data.get('error', 'Unknown error')}")
+            
+            rows = data.get("data", {}).get("rows", [])
+            logger.info(f"Got {len(rows)} rows from API")
+            
+            statements = []
+            for row in rows:
+                stmt = dict(row)
+                if stmt.get("timestamp"):
+                    try:
+                        stmt["timestamp"] = stmt["timestamp"].isoformat()
+                    except:
+                        pass
+                statements.append(stmt)
+            
+            logger.info(f"Processed {len(statements)} statements")
+            
+            context = {
+                "request": request,
+                "active_page": "data_explorer",
+                "title": "Data Explorer",
+                "statements": statements,
+                "total_count": len(statements),
+                "etl_count": len(statements),
+                "direct_count": 0,
+                "endpoint_count": 0,
+                "system_status": {
+                    "total_statements": len(statements),
+                    "latest_timestamp": statements[0].get("timestamp") if statements and len(statements) > 0 else None,
+                    "etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}
+                },
+                "limit": limit,
+                "cohort": cohort,
+                "success": True,
+                "error": None
+            }
+            
+            logger.info(f"Rendering template with {len(statements)} statements")
+            return templates.TemplateResponse("data_explorer_modern.html", context)
             
     except Exception as e:
         logger.error(f"Error in data_explorer: {e}", exc_info=True)
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Full traceback: {error_details}")
         context = {
             "request": request,
             "active_page": "data_explorer",
             "title": "Data Explorer",
             "statements": [],
             "total_count": 0,
+            "etl_count": 0,
+            "direct_count": 0,
+            "endpoint_count": 0,
+            "system_status": {
+                "total_statements": 0,
+                "latest_timestamp": None,
+                "etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}
+            },
+            "limit": limit,
+            "cohort": cohort,
             "success": False,
             "error": str(e)
         }
