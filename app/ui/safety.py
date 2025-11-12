@@ -391,17 +391,27 @@ async def get_recent_flagged_statements(cohort_filter: Optional[str] = None) -> 
             for row in rows:
                 statement_id = row.statement_id
                 if statement_id not in flagged_statement_ids:
-                    # Parse flagged_reasons (stored as JSON string)
-                    try:
-                        flagged_reasons = json.loads(row.flagged_reasons) if row.flagged_reasons else []
-                    except:
-                        flagged_reasons = [row.flagged_reasons] if row.flagged_reasons else []
+                    # Parse flagged_reasons (REPEATED field - already an array)
+                    if isinstance(row.flagged_reasons, list):
+                        flagged_reasons = row.flagged_reasons
+                    elif row.flagged_reasons:
+                        try:
+                            flagged_reasons = json.loads(row.flagged_reasons) if isinstance(row.flagged_reasons, str) else [row.flagged_reasons]
+                        except:
+                            flagged_reasons = [row.flagged_reasons] if row.flagged_reasons else []
+                    else:
+                        flagged_reasons = []
                     
-                    # Parse suggested_actions (stored as JSON string)
-                    try:
-                        suggested_actions = json.loads(row.suggested_actions) if row.suggested_actions else []
-                    except:
-                        suggested_actions = [row.suggested_actions] if row.suggested_actions else []
+                    # Parse suggested_actions (REPEATED field - already an array)
+                    if isinstance(row.suggested_actions, list):
+                        suggested_actions = row.suggested_actions
+                    elif row.suggested_actions:
+                        try:
+                            suggested_actions = json.loads(row.suggested_actions) if isinstance(row.suggested_actions, str) else [row.suggested_actions]
+                        except:
+                            suggested_actions = [row.suggested_actions] if row.suggested_actions else []
+                    else:
+                        suggested_actions = []
                     
                     flagged_statements.append({
                         "statement_id": statement_id,

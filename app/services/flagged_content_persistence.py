@@ -86,6 +86,16 @@ class FlaggedContentPersistence:
             flagged_at = datetime.now(timezone.utc)
             
             # Prepare row
+            # Note: flagged_reasons and suggested_actions are REPEATED fields (arrays) in BigQuery
+            flagged_reasons = analysis_result.get("flagged_reasons", [])
+            suggested_actions = analysis_result.get("suggested_actions", [])
+            
+            # Ensure they're lists (REPEATED fields require arrays)
+            if not isinstance(flagged_reasons, list):
+                flagged_reasons = [flagged_reasons] if flagged_reasons else []
+            if not isinstance(suggested_actions, list):
+                suggested_actions = [suggested_actions] if suggested_actions else []
+            
             row = {
                 "statement_id": statement_id,
                 "timestamp": timestamp.isoformat(),
@@ -95,13 +105,15 @@ class FlaggedContentPersistence:
                 "content": content if content else None,  # Store full content (BigQuery STRING supports up to 2MB)
                 "is_flagged": analysis_result.get("is_flagged", False),
                 "severity": analysis_result.get("severity", "low"),
-                "flagged_reasons": analysis_result.get("flagged_reasons", []),
+                "flagged_reasons": flagged_reasons,  # REPEATED field - must be array
                 "confidence_score": analysis_result.get("confidence_score", 0.0),
-                "suggested_actions": analysis_result.get("suggested_actions", []),
+                "suggested_actions": suggested_actions,  # REPEATED field - must be array
                 "analysis_method": analysis_result.get("analysis_metadata", {}).get("analysis_method", "unknown"),
                 "cohort": cohort,
                 "raw_analysis": json.dumps(analysis_result)
             }
+            
+            logger.debug(f"Persisting flagged content row: statement_id={statement_id}, severity={row['severity']}, flagged_reasons={flagged_reasons}")
             
             # Insert into BigQuery
             table_ref = self.client.dataset(self.dataset_id).table(self.table_id)
