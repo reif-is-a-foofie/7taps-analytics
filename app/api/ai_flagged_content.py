@@ -152,6 +152,9 @@ async def analyze_xapi_statement_content(statement: Dict[str, Any]) -> Dict[str,
         # Combine all content
         full_content = " | ".join(content_parts)
         
+        # Extract just the response text for obvious flag detection (without prefixes)
+        response_text = result.get("response", "") if result.get("response") else ""
+        
         if not full_content.strip():
             return {
                 "is_flagged": False,
@@ -171,8 +174,10 @@ async def analyze_xapi_statement_content(statement: Dict[str, Any]) -> Dict[str,
         else:
             context = "general"
         
-        # Analyze with Gemini
-        analysis = await analyze_content_with_gemini(full_content, context)
+        # Analyze with Gemini - use response_text for obvious flag detection, full_content for AI analysis
+        # The batch processor will check obvious flags on the content we pass
+        # So pass the raw response text (without "Response: " prefix) for better pattern matching
+        analysis = await analyze_content_with_gemini(response_text if response_text else full_content, context)
         
         # Add statement metadata
         analysis["analysis_metadata"] = {
