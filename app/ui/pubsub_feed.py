@@ -530,80 +530,73 @@ async def data_explorer(
     limit: int = Query(100, ge=1, le=100),
     cohort: Optional[str] = None
 ) -> HTMLResponse:
-    """Simple data explorer - use API endpoint that works."""
-    base_url = get_api_base_url(request) or "https://taps-analytics-ui-euvwb5vwea-uc.a.run.app"
+    """Simple data explorer - call BigQuery function directly."""
+    from app.api.bigquery_analytics import execute_bigquery_query
     
     try:
-        async with httpx.AsyncClient(base_url=base_url, timeout=30.0) as client:
-            query = f"""
-            SELECT 
-                timestamp,
-                actor_id,
-                verb_display,
-                object_name,
-                result_completion,
-                result_success,
-                result_score_scaled,
-                result_response,
-                context_platform,
-                raw_json,
-                statement_id
-            FROM taps_data.statements 
-            ORDER BY timestamp DESC 
-            LIMIT {limit}
-            """
-            
-            logger.info(f"Calling API endpoint: {base_url}/api/analytics/bigquery/query")
-            response = await client.get("/api/analytics/bigquery/query", params={"query": query})
-            logger.info(f"API response: status={response.status_code}")
-            
-            if response.status_code != 200:
-                raise Exception(f"API returned {response.status_code}: {response.text[:200]}")
-            
-            data = response.json()
-            logger.info(f"API data success: {data.get('success')}")
-            
-            if not data.get("success"):
-                raise Exception(f"API query failed: {data.get('error', 'Unknown error')}")
-            
-            rows = data.get("data", {}).get("rows", [])
-            logger.info(f"Got {len(rows)} rows from API")
-            
-            statements = []
-            for row in rows:
-                stmt = dict(row)
-                if stmt.get("timestamp"):
-                    try:
-                        stmt["timestamp"] = stmt["timestamp"].isoformat()
-                    except:
-                        pass
-                statements.append(stmt)
-            
-            logger.info(f"Processed {len(statements)} statements")
-            
-            context = {
-                "request": request,
-                "active_page": "data_explorer",
-                "title": "Data Explorer",
-                "statements": statements,
-                "total_count": len(statements),
-                "etl_count": len(statements),
-                "direct_count": 0,
-                "endpoint_count": 0,
-                "system_status": {
-                    "total_statements": len(statements),
-                    "latest_timestamp": statements[0].get("timestamp") if statements and len(statements) > 0 else None,
-                    "etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}
-                },
-                "limit": limit,
-                "cohort": cohort,
-                "success": True,
-                "error": None
-            }
-            
-            logger.info(f"Rendering template with {len(statements)} statements")
-            return templates.TemplateResponse("data_explorer_modern.html", context)
-            
+        query = f"""
+        SELECT 
+            timestamp,
+            actor_id,
+            verb_display,
+            object_name,
+            result_completion,
+            result_success,
+            result_score_scaled,
+            result_response,
+            context_platform,
+            raw_json,
+            statement_id
+        FROM taps_data.statements 
+        ORDER BY timestamp DESC 
+        LIMIT {limit}
+        """
+        
+        logger.info(f"Executing BigQuery query directly")
+        result = execute_bigquery_query(query)
+        logger.info(f"Query result success: {result.get('success')}")
+        
+        if not result.get("success"):
+            raise Exception(f"Query failed: {result.get('error', 'Unknown error')}")
+        
+        rows = result.get("results", [])
+        logger.info(f"Got {len(rows)} rows from BigQuery")
+        
+        statements = []
+        for row in rows:
+            stmt = dict(row)
+            if stmt.get("timestamp"):
+                try:
+                    stmt["timestamp"] = stmt["timestamp"].isoformat()
+                except:
+                    pass
+            statements.append(stmt)
+        
+        logger.info(f"Processed {len(statements)} statements")
+        
+        context = {
+            "request": request,
+            "active_page": "data_explorer",
+            "title": "Data Explorer",
+            "statements": statements,
+            "total_count": len(statements),
+            "etl_count": len(statements),
+            "direct_count": 0,
+            "endpoint_count": 0,
+            "system_status": {
+                "total_statements": len(statements),
+                "latest_timestamp": statements[0].get("timestamp") if statements and len(statements) > 0 else None,
+                "etl_status": {"messages_received": 0, "messages_processed": 0, "messages_failed": 0}
+            },
+            "limit": limit,
+            "cohort": cohort,
+            "success": True,
+            "error": None
+        }
+        
+        logger.info(f"Rendering template with {len(statements)} statements")
+        return templates.TemplateResponse("data_explorer_modern.html", context)
+        
     except Exception as e:
         logger.error(f"Error in data_explorer: {e}", exc_info=True)
         import traceback
