@@ -286,7 +286,7 @@ async def get_recent_bigquery_data(limit: int = 25, base_url: Optional[str] = No
                             
                             # Fallback to reconstructed payload if raw_json is not available
                             if not detailed_payload:
-                            detailed_payload = {
+                                detailed_payload = {
                                 "id": statement.get("statement_id", ""),
                                 "actor": {"name": statement.get("actor_id", ""), "mbox": f"mailto:{statement.get('actor_id', '')}"},
                                 "verb": {"id": statement.get("verb_display", ""), "display": {"en-US": statement.get("verb_display", "")}},
