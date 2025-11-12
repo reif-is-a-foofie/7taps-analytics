@@ -204,9 +204,10 @@ class BatchProcessor:
         
         # Critical patterns - always flag immediately
         critical_patterns = [
-            r"\b(kill myself|suicide|end my life|end it all)\b",
-            r"\b(hurt myself|self harm|self-harm)\b",
-            r"\b(want to die|don't want to live)\b"
+            r"\b(kill myself|suicide|end my life|end it all|ending everything|ending it all)\b",
+            r"\b(hurt(ing|s)? myself|self harm|self-harm|hurting myself)\b",
+            r"\b(want to die|don't want to live|thoughts about (hurting|ending))\b",
+            r"\b(serious thoughts about (hurting|ending))\b"
         ]
         
         # High patterns - flag immediately

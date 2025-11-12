@@ -48,12 +48,41 @@ async def analyze_content_with_gemini(content: str, context: str = "general") ->
         Analysis results with flagged status and details
     """
     try:
-        # Use AI service client (Cloud Function or local fallback)
-        from app.services.ai_service_client import ai_service_client
-        return await ai_service_client.analyze_content(content, context, "unknown", "unknown")
+        # Use batch processor which includes obvious flag detection
+        from app.api.batch_ai_safety import batch_processor
+        
+        # Process through batch processor (checks obvious flags first, then AI)
+        result = await batch_processor.process_content(
+            content=content,
+            context=context,
+            statement_id="unknown",
+            user_id="unknown"
+        )
+        
+        # Convert batch processor result to expected format
+        if result.get("status") == "flagged":
+            return {
+                "is_flagged": result.get("is_flagged", False),
+                "severity": result.get("severity", "medium"),
+                "flagged_reasons": result.get("flagged_reasons", []),
+                "confidence_score": result.get("confidence_score", 0.0),
+                "suggested_actions": result.get("suggested_actions", []),
+                "analysis_metadata": result.get("analysis_metadata", {})
+            }
+        else:
+            # Queued or not flagged
+            return {
+                "is_flagged": False,
+                "severity": "low",
+                "flagged_reasons": [],
+                "confidence_score": 0.0,
+                "suggested_actions": [],
+                "analysis_metadata": result.get("analysis_metadata", {})
+            }
         
     except Exception as e:
-        logger.error(f"AI service analysis failed: {e}")
+        logger.error(f"Batch processor analysis failed: {e}")
+        # Fallback to keyword analysis
         return _fallback_keyword_analysis(content)
 
 
