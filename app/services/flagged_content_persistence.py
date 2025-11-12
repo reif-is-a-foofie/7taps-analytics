@@ -92,7 +92,7 @@ class FlaggedContentPersistence:
                 "flagged_at": flagged_at.isoformat(),
                 "actor_id": actor_id,
                 "actor_name": actor_name,
-                "content": content[:10000] if content else None,  # Limit to 10k chars
+                "content": content if content else None,  # Store full content (BigQuery STRING supports up to 2MB)
                 "is_flagged": analysis_result.get("is_flagged", False),
                 "severity": analysis_result.get("severity", "low"),
                 "flagged_reasons": analysis_result.get("flagged_reasons", []),
@@ -169,8 +169,8 @@ Flagged Reasons:
 Suggested Actions:
 {chr(10).join(f'  - {action}' for action in suggested_actions)}
 
-Content Preview:
-{content[:500]}{'...' if len(content) > 500 else ''}
+Full Content:
+{content}
 
 ---
 View full details: https://taps-analytics-ui-euvwb5vwea-uc.a.run.app/ui/safety

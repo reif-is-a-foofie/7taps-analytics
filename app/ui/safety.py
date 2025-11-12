@@ -447,7 +447,7 @@ async def get_safety_configuration() -> Dict[str, Any]:
             "sensitivity_level": "medium",
             "enable_ai_analysis": True,
             "cache_duration_hours": 24,
-            "max_content_length": 500,
+            "max_content_length": None,  # No limit - store full content
             "confidence_threshold": 0.7,
             "cache_size": 0
         }
