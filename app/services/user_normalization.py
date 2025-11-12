@@ -285,11 +285,10 @@ class UserNormalizationService:
             table_id = f"{self.dataset_id}.users"
             
             # Parse timestamps
-            from datetime import datetime as dt
-            first_seen_ts = dt.fromisoformat(bigquery_row["first_seen"].replace('Z', '+00:00')) if bigquery_row["first_seen"] else None
-            last_seen_ts = dt.fromisoformat(bigquery_row["last_seen"].replace('Z', '+00:00')) if bigquery_row["last_seen"] else None
-            created_at_ts = dt.fromisoformat(bigquery_row["created_at"].replace('Z', '+00:00'))
-            updated_at_ts = dt.fromisoformat(bigquery_row["updated_at"].replace('Z', '+00:00'))
+            first_seen_ts = datetime.fromisoformat(bigquery_row["first_seen"].replace('Z', '+00:00')) if bigquery_row["first_seen"] else None
+            last_seen_ts = datetime.fromisoformat(bigquery_row["last_seen"].replace('Z', '+00:00')) if bigquery_row["last_seen"] else None
+            created_at_ts = datetime.fromisoformat(bigquery_row["created_at"].replace('Z', '+00:00'))
+            updated_at_ts = datetime.fromisoformat(bigquery_row["updated_at"].replace('Z', '+00:00'))
             
             # Ensure sources and csv_data are lists
             sources_list = bigquery_row["sources"] if isinstance(bigquery_row["sources"], list) else [bigquery_row["sources"]] if bigquery_row["sources"] else []
