@@ -43,19 +43,28 @@ class CSVImportService:
             
             # Process each row with user normalization
             processed_rows = []
+            errors = []
             for i, row in enumerate(rows):
                 try:
                     # Normalize user data
                     user_service = get_user_normalization_service()
                     normalized_row = await user_service.normalize_csv_row(row)
-                    processed_rows.append(normalized_row)
+                    if normalized_row:
+                        processed_rows.append(normalized_row)
+                    else:
+                        errors.append(f"Row {i + 1}: normalize_csv_row returned None")
                     
                     if (i + 1) % 100 == 0:
                         logger.info(f"Processed {i + 1}/{len(rows)} rows")
                         
                 except Exception as e:
-                    logger.error(f"Error processing row {i + 1}: {e}")
+                    error_msg = f"Error processing row {i + 1}: {e}"
+                    logger.error(error_msg, exc_info=True)
+                    errors.append(error_msg)
                     continue
+            
+            if errors:
+                logger.warning(f"Encountered {len(errors)} errors during processing. First few: {errors[:5]}")
             
             # Store processed data in BigQuery
             await self._store_csv_data(processed_rows, filename)
