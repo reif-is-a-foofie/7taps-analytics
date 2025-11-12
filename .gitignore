@@ -1,3 +1,10 @@
+# Data files (shouldn't be committed)
+users_extracted.csv
+uvm_users.jsonl
+*.csv
+!app/data/*.csv
+*.jsonl
+
 # Python
 __pycache__/
 *.py[cod]
